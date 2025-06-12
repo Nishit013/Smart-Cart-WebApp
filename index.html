@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>🛒 Smart Cart Pro</title>
-<style>
-   body {
+  <title>🛒 Smart Cart Pro</title>
+  <style>
+    body {
       font-family: 'Segoe UI', sans-serif;
       background: linear-gradient(to right, #eef2f3, #8e9eab);
       margin: 0;
@@ -32,6 +32,7 @@
       border: 1px solid #ccc;
       border-radius: 5px;
       min-height: 80px;
+      white-space: pre-wrap;
     }
     #cart {
       margin-top: 20px;
@@ -51,12 +52,14 @@
       align-items: center;
     }
     .remove-btn, .edit-btn {
-      background: red;
       padding: 5px 10px;
       border: none;
       border-radius: 3px;
       color: white;
       cursor: pointer;
+    }
+    .remove-btn {
+      background: red;
     }
     .edit-btn {
       background: orange;
@@ -84,28 +87,28 @@
       border-radius: 5px;
       color: #856404;
     }
-</style>
- 
-  <!-- ✅ Razorpay Script for Payment -->
-<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  </style>
+
+  <!-- ✅ Razorpay Script -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 <body>
- 
-  <h1> Smart Cart Pro Web App</h1>
-<button class="btn" onclick="connectToCart()">🔗 Connect to Cart</button>
-<button class="btn" onclick="clearCart()">♻️ Clear Cart</button>
- 
+
+  <h1>Smart Cart Pro Web App</h1>
+  <button class="btn" onclick="connectToCart()">🔗 Connect to Cart</button>
+  <button class="btn" onclick="clearCart()">♻️ Clear Cart</button>
+
   <div id="output">Not connected.</div>
-<div id="cart"></div>
-<input type="tel" id="customerPhone" placeholder="Enter WhatsApp Number" />
-<div id="payment-placeholder">
-    💳 <strong>Payment Gateway:</strong> Razorpay integrated 
-</div>
- 
+  <div id="cart"></div>
+  <input type="tel" id="customerPhone" placeholder="Enter WhatsApp Number" />
+  <div id="payment-placeholder">
+    💳 <strong>Payment Gateway:</strong> Razorpay integrated
+  </div>
+
   <script>
     let bleCharacteristic;
     let cartItems = [];
- 
+
     const productDB = {
       "8901234567890": { name: "Coke 500ml", price: 40 },
       "9876543210123": { name: "Chips Large", price: 50 },
@@ -113,63 +116,68 @@
       "8801234567895": { name: "Maggie Noodles", price: 12 },
       "8901058856745": { name: "Dettol Soap", price: 28 }
     };
- 
+
     async function connectToCart() {
       try {
         const device = await navigator.bluetooth.requestDevice({
           filters: [{ name: 'ESP32-Scanner' }],
           optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb']
         });
- 
+
         const server = await device.gatt.connect();
         const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
         bleCharacteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
- 
+
         await bleCharacteristic.startNotifications();
         bleCharacteristic.addEventListener('characteristicvaluechanged', handleData);
- 
+
         document.getElementById("output").textContent = "✅ Connected to Smart Cart. Scan a product...";
       } catch (error) {
         document.getElementById("output").textContent = `❌ Connection failed: ${error}`;
       }
     }
- 
+
     function handleData(event) {
       const barcode = new TextDecoder().decode(event.target.value).trim();
       const output = document.getElementById("output");
       const product = productDB[barcode];
- 
+
       if (product) {
-        cartItems.push({...product});
+        cartItems.push({ ...product });
         output.textContent += `\n📦 Scanned: ${product.name} - ₹${product.price}`;
         renderCart();
       } else {
         output.textContent += `\n❓ Unknown barcode: ${barcode}`;
       }
     }
- 
+
     function renderCart() {
       const cartDiv = document.getElementById("cart");
-      let html = '<h2>📿 Cart Summary</h2><ul>';
+      if (cartItems.length === 0) {
+        cartDiv.innerHTML = '';
+        return;
+      }
+
+      let html = '<h2> Cart Summary</h2><ul>';
       let total = 0;
- 
+
       cartItems.forEach((item, index) => {
         total += item.price;
         html += `
-<li>
-<span>${item.name} - ₹${item.price}</span>
-<span>
-<button class="edit-btn" onclick="editItem(${index})">Edit</button>
-<button class="remove-btn" onclick="removeItem(${index})">Remove</button>
-</span>
-</li>`;
+          <li>
+            <span>${item.name} - ₹${item.price}</span>
+            <span>
+              <button class="edit-btn" onclick="editItem(${index})">Edit</button>
+              <button class="remove-btn" onclick="removeItem(${index})">Remove</button>
+            </span>
+          </li>`;
       });
- 
+
       html += `</ul><h3>Total: ₹${total}</h3>`;
       html += `<button class="btn" onclick="checkout()">💳 Checkout & Generate Bill</button>`;
       cartDiv.innerHTML = html;
     }
- 
+
     function editItem(index) {
       const newName = prompt("Edit product name:", cartItems[index].name);
       const newPrice = parseFloat(prompt("Edit product price:", cartItems[index].price));
@@ -179,18 +187,18 @@
         renderCart();
       }
     }
- 
+
     function removeItem(index) {
       cartItems.splice(index, 1);
       renderCart();
     }
- 
+
     function clearCart() {
       cartItems = [];
       document.getElementById("output").textContent = "🧹 Cart cleared.";
       renderCart();
     }
- 
+
     function sendWhatsAppBill(summary) {
       const number = document.getElementById("customerPhone").value.trim();
       if (number) {
@@ -199,21 +207,26 @@
         window.open(whatsappURL, '_blank');
       }
     }
- 
+
     function checkout() {
-      let summary = '📿 Bill Receipt\n\n';
+      if (cartItems.length === 0) {
+        alert("🚫 Cart is empty. Please scan some items before checkout.");
+        return;
+      }
+
+      let summary = ' Bill Receipt\n\n';
       let total = 0;
- 
+
       cartItems.forEach((item, i) => {
         summary += `${i + 1}. ${item.name} - ₹${item.price}\n`;
         total += item.price;
       });
- 
+
       summary += `\nTotal: ₹${total}`;
-      const totalAmount = total * 100; // Razorpay in paise
- 
+      const totalAmount = total * 100;
+
       const options = {
-        key: "rzp_live_es0XjKaI61byUK", // 🔁 Replace with your Razorpay test key
+        key: "rzp_live_es0XjKaI61byUK", // 🔁 Replace with your test/live Razorpay key
         amount: totalAmount,
         currency: "INR",
         name: "Smart Cart Pro",
@@ -231,17 +244,18 @@
           color: "#007bff",
         },
       };
- 
+
       const rzp1 = new Razorpay(options);
       rzp1.open();
     }
-</script>
-<footer>
-  <a href="privacy-policy.html">Privacy Policy</a> |
-  <a href="terms-and-conditions.html">Terms & Conditions</a> |
-  <a href="cancellation-refund.html">Cancellation & Refund</a> |
-  <a href="shipping-delivery.html">Shipping & Delivery</a> |
-  <a href="contact-us.html">Contact Us</a>
-</footer>
+  </script>
+
+  <footer>
+    <a href="privacy-policy.html">Privacy Policy</a> |
+    <a href="terms-and-conditions.html">Terms & Conditions</a> |
+    <a href="cancellation-refund.html">Cancellation & Refund</a> |
+    <a href="shipping-delivery.html">Shipping & Delivery</a> |
+    <a href="contact-us.html">Contact Us</a>
+  </footer>
 </body>
 </html>
