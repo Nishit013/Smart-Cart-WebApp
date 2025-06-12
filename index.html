@@ -51,33 +51,30 @@
       justify-content: space-between;
       align-items: center;
     }
-    .remove-btn, .edit-btn {
+    .remove-btn {
       padding: 5px 10px;
       border: none;
       border-radius: 3px;
       color: white;
-      cursor: pointer;
-    }
-    .remove-btn {
       background: red;
-    }
-    .edit-btn {
-      background: orange;
-      margin-left: 5px;
+      cursor: pointer;
     }
     .remove-btn:hover {
       background: darkred;
     }
-    .edit-btn:hover {
-      background: darkorange;
+    .qty-btn {
+      margin: 0 5px;
+      font-size: 18px;
+      padding: 5px 10px;
     }
     input[type="tel"] {
       padding: 8px;
       font-size: 16px;
       margin-top: 10px;
-      width: 200px;
+      width: 220px;
       border-radius: 5px;
       border: 1px solid #ccc;
+      display: block;
     }
     #payment-placeholder {
       margin-top: 20px;
@@ -88,23 +85,24 @@
       color: #856404;
     }
   </style>
-
   <!-- ✅ Razorpay Script -->
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-
   <!-- ✅ jsPDF Script -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
-
   <h1>Smart Cart Pro Web App</h1>
   <button class="btn" onclick="connectToCart()">🔗 Connect to Cart</button>
   <button class="btn" onclick="clearCart()">♻️ Clear Cart</button>
-
   <div id="output">Not connected.</div>
+
+  <label for="phone">📱 Enter Your Phone Number:</label>
+  <input type="tel" id="phone" placeholder="10-digit phone number">
+
   <div id="cart"></div>
+
   <div id="payment-placeholder">
-    💳 <strong>Payment Gateway:</strong> Razorpay integrated | Bill will be downloaded as PDF
+    💳 <strong>Payment Gateway:</strong> Razorpay integrated | Bill will be downloaded as PDF and sent via WhatsApp
   </div>
 
   <script>
@@ -145,7 +143,12 @@
       const product = productDB[barcode];
 
       if (product) {
-        cartItems.push({ ...product });
+        const existing = cartItems.find(item => item.name === product.name);
+        if (existing) {
+          existing.qty += 1;
+        } else {
+          cartItems.push({ ...product, qty: 1 });
+        }
         output.textContent += `\n📦 Scanned: ${product.name} - ₹${product.price}`;
         renderCart();
       } else {
@@ -160,16 +163,18 @@
         return;
       }
 
-      let html = '<h2> Cart Summary</h2><ul>';
+      let html = '<h2>Cart Summary</h2><ul>';
       let total = 0;
 
       cartItems.forEach((item, index) => {
-        total += item.price;
+        const subtotal = item.price * item.qty;
+        total += subtotal;
         html += `
           <li>
-            <span>${item.name} - ₹${item.price}</span>
+            <span>${item.name} - ₹${item.price} × ${item.qty} = ₹${subtotal}</span>
             <span>
-              <button class="edit-btn" onclick="editItem(${index})">Edit</button>
+              <button class="qty-btn" onclick="changeQty(${index}, -1)">➖</button>
+              <button class="qty-btn" onclick="changeQty(${index}, 1)">➕</button>
               <button class="remove-btn" onclick="removeItem(${index})">Remove</button>
             </span>
           </li>`;
@@ -180,14 +185,12 @@
       cartDiv.innerHTML = html;
     }
 
-    function editItem(index) {
-      const newName = prompt("Edit product name:", cartItems[index].name);
-      const newPrice = parseFloat(prompt("Edit product price:", cartItems[index].price));
-      if (newName && !isNaN(newPrice)) {
-        cartItems[index].name = newName;
-        cartItems[index].price = newPrice;
-        renderCart();
+    function changeQty(index, change) {
+      cartItems[index].qty += change;
+      if (cartItems[index].qty <= 0) {
+        cartItems.splice(index, 1);
       }
+      renderCart();
     }
 
     function removeItem(index) {
@@ -201,7 +204,6 @@
       renderCart();
     }
 
-    // ✅ PDF Bill Generator
     async function generatePDF(summary) {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
@@ -217,9 +219,22 @@
       doc.save("SmartCart_Receipt.pdf");
     }
 
+    function sendWhatsAppBill(summary, phoneNumber) {
+      const customerNumber = "91" + phoneNumber;
+      const message = encodeURIComponent(`🧾 Smart Cart Bill\n\n${summary}`);
+      const url = `https://wa.me/${customerNumber}?text=${message}`;
+      window.open(url, "_blank");
+    }
+
     function checkout() {
       if (cartItems.length === 0) {
         alert("🚫 Cart is empty. Please scan some items before checkout.");
+        return;
+      }
+
+      const phoneInput = document.getElementById("phone").value.trim();
+      if (!/^\d{10}$/.test(phoneInput)) {
+        alert("📵 Please enter a valid 10-digit phone number.");
         return;
       }
 
@@ -227,27 +242,29 @@
       let total = 0;
 
       cartItems.forEach((item, i) => {
-        summary += `${i + 1}. ${item.name} - ₹${item.price}\n`;
-        total += item.price;
+        const subtotal = item.price * item.qty;
+        summary += `${i + 1}. ${item.name} - ₹${item.price} × ${item.qty} = ₹${subtotal}\n`;
+        total += subtotal;
       });
 
       summary += `\nTotal: ₹${total}`;
       const totalAmount = total * 100;
 
       const options = {
-        key: "rzp_live_es0XjKaI61byUK", // 🔁 Replace with test/live Razorpay key
+        key: "rzp_live_es0XjKaI61byUK", // Replace with your Razorpay key
         amount: totalAmount,
         currency: "INR",
         name: "Smart Cart Pro",
         description: "Smart Cart Payment",
         handler: function (response) {
           alert("💳 Payment Successful: " + response.razorpay_payment_id);
-          generatePDF(summary); // ✅ Download PDF instead of WhatsApp
+          generatePDF(summary);
+          sendWhatsAppBill(summary, phoneInput);
           clearCart();
         },
         prefill: {
           name: "Smart Customer",
-          contact: "",
+          contact: phoneInput,
         },
         theme: {
           color: "#007bff",
