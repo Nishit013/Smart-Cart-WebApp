@@ -1,0 +1,29 @@
+# Ignore VS Code settings
+.vscode/
+
+# Ignore node modules
+node_modules/
+
+# Ignore system/AppData/local files
+/AppData/
+/src/AppData/
+/src/.DS_Store
+*.bin
+*.log
+*.tmp
+
+# Ignore cache files
+*.cache
+*.dll
+*.exe
+*.zip
+.DS_Store
+
+# Ignore all system hidden files
+*.swp
+*.swo
+Thumbs.db
+.vscode/
+node_modules/
+*.bin
+/Appdata/
