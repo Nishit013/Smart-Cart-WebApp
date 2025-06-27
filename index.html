@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>🍚 Smart Cart Pro</title>
   <style>
     body {
@@ -30,13 +30,7 @@
       color: #00e5ff;
     }
 
-    .time {
-      font-size: 0.9em;
-      color: #ccc;
-      text-align: right;
-    }
-
-    .date {
+    .time, .date {
       font-size: 0.9em;
       color: #ccc;
     }
@@ -86,6 +80,8 @@
       justify-content: center;
       gap: 10px;
       flex-wrap: wrap;
+      flex-direction: column;
+      align-items: center;
     }
 
     input[type="tel"] {
@@ -103,6 +99,11 @@
     #checkoutBtn:disabled {
       opacity: 0.5;
       pointer-events: none;
+    }
+
+    #cartItemsList {
+      max-height: 250px;
+      overflow-y: auto;
     }
 
     footer {
@@ -138,6 +139,27 @@
     .remove-btn {
       background-color: red;
     }
+
+    #toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      display: none;
+      z-index: 9999;
+      box-shadow: 0 0 10px rgba(0,0,0,0.4);
+    }
+
+    #loading {
+      display: none;
+      color: #00e5ff;
+      margin: 10px 0;
+      font-style: italic;
+    }
   </style>
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -154,7 +176,7 @@
   <h1>🛒 Smart Cart Pro</h1>
 
   <div class="section">
-    <h3><strong>🛒 Cart Number:</strong> <span style="font-weight:bold">#CART123</span></h3>
+    <h3><strong>🛒 Cart Number:</strong> <span style="font-weight:bold" id="cartNumber">#CART123</span></h3>
   </div>
 
   <div class="section">
@@ -178,7 +200,7 @@
 
   <label for="phone">📱 Enter Your Phone Number:</label>
   <input type="tel" id="phone" placeholder="10-digit phone number" oninput="validatePhone()" />
-
+  <div id="loading">⌛ Processing payment...</div>
   <button class="btn" id="checkoutBtn" onclick="checkout()" disabled>💳 Checkout & Generate Bill</button>
 
   <div class="section">
@@ -193,6 +215,8 @@
     <a href="contact-us.html">Contact Us</a>
   </footer>
 
+  <div id="toast"></div>
+
   <script>
     let cartItems = [];
     let bleCharacteristic;
@@ -201,6 +225,17 @@
       "6001051002382": { name: "NIVEA", price: 200 },
       "9876543210123": { name: "Chips Large", price: 50 }
     };
+
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("cartNumber").textContent = "#CART" + Math.floor(Math.random() * 10000);
+    });
+
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.style.display = "block";
+      setTimeout(() => toast.style.display = "none", 3000);
+    }
 
     async function connectToCart() {
       try {
@@ -217,8 +252,10 @@
         bleCharacteristic.addEventListener('characteristicvaluechanged', handleData);
 
         document.getElementById("connectionStatus").textContent = "✅ Connected to Smart Cart";
+        showToast("✅ Connected to Cart");
       } catch (error) {
         document.getElementById("connectionStatus").textContent = "❌ Connection failed: " + error.message;
+        showToast("❌ Connection failed");
         clearCart();
       }
     }
@@ -226,13 +263,15 @@
     function handleData(event) {
       const barcode = new TextDecoder().decode(event.target.value).trim();
       const product = productDB[barcode];
-      if (product) {
-        const existing = cartItems.find(item => item.name === product.name);
-        if (existing) {
-          existing.qty += 1;
-        } else {
-          cartItems.push({ ...product, qty: 1 });
-        }
+      if (!product) {
+        showToast("❌ Unknown product scanned!");
+        return;
+      }
+      const existing = cartItems.find(item => item.name === product.name);
+      if (existing) {
+        existing.qty += 1;
+      } else {
+        cartItems.push({ ...product, qty: 1 });
       }
       renderCart();
     }
@@ -310,15 +349,19 @@
 
     function sendWhatsAppBill(summary, phoneNumber) {
       const customerNumber = "91" + phoneNumber;
-      const message = encodeURIComponent("📿 Smart Cart Bill\n\n" + summary);
+      const message = encodeURIComponent(" Smart Cart Bill\n\n" + summary);
       const url = `https://wa.me/${customerNumber}?text=${message}`;
       window.open(url, "_blank");
     }
 
     function checkout() {
       const phone = document.getElementById("phone").value.trim();
-      if (!/^\d{10}$/.test(phone)) return alert("Invalid phone number.");
-      if (cartItems.length === 0) return alert("🚫 Cart is empty. Please scan some items before checkout.");
+      if (!/^\d{10}$/.test(phone)) return showToast("📵 Invalid phone number.");
+      if (cartItems.length === 0) return showToast("🚫 Cart is empty. Please scan some items.");
+
+      document.getElementById("checkoutBtn").disabled = true;
+      document.getElementById("loading").style.display = "block";
+
       let summary = '';
       let total = 0;
       cartItems.forEach((item, i) => {
@@ -335,27 +378,32 @@
         name: "Smart Cart Pro",
         description: "Smart Cart Payment",
         handler: function (response) {
-          alert("Payment Successful: " + response.razorpay_payment_id);
+          showToast("✅ Payment Successful");
           generatePDF(cartItems, total);
           sendWhatsAppBill(summary, phone);
           clearCart();
+          document.getElementById("checkoutBtn").disabled = false;
+          document.getElementById("loading").style.display = "none";
         },
-        prefill: {
-          contact: phone,
-        },
-        theme: {
-          color: "#00bcd4",
-        },
+        prefill: { contact: phone },
+        theme: { color: "#00bcd4" }
       };
+
       const rzp1 = new Razorpay(options);
       rzp1.open();
+
+      rzp1.on('payment.failed', function (response) {
+        showToast("❌ Payment Failed: " + response.error.description);
+        document.getElementById("checkoutBtn").disabled = false;
+        document.getElementById("loading").style.display = "none";
+      });
     }
 
     setInterval(() => {
       const now = new Date();
-      const hours = now.getHours().toString().padStart(2, '0');
-      const minutes = now.getMinutes().toString().padStart(2, '0');
-      document.getElementById("timeDisplay").textContent = `${hours}:${minutes}`;
+      document.getElementById("timeDisplay").textContent =
+        now.getHours().toString().padStart(2, '0') + ":" +
+        now.getMinutes().toString().padStart(2, '0');
       document.getElementById("dateDisplay").textContent = now.toLocaleDateString();
     }, 1000);
   </script>
