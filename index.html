@@ -176,7 +176,7 @@
   <h1>🛒 Smart Cart Pro</h1>
 
   <div class="section">
-    <h3><strong>🛒 Cart Number:</strong> <span style="font-weight:bold" id="cartNumber">#CART123</span></h3>
+    <h3><strong>🛒 Cart Number:</strong> <span style="font-weight:bold" id="cartNumber">#</span></h3>
   </div>
 
   <div class="section">
@@ -226,8 +226,12 @@
       "9876543210123": { name: "Chips Large", price: 50 }
     };
 
+    const urlParams = new URLSearchParams(window.location.search);
+    const cartId = urlParams.get('id') || "CART" + Math.floor(Math.random() * 10000);
+    const bleName = "ESP32-" + cartId.toUpperCase();
+
     document.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("cartNumber").textContent = "#CART" + Math.floor(Math.random() * 10000);
+      document.getElementById("cartNumber").textContent = "#" + cartId;
     });
 
     function showToast(message) {
@@ -240,7 +244,7 @@
     async function connectToCart() {
       try {
         const device = await navigator.bluetooth.requestDevice({
-          filters: [{ name: 'ESP32-Scanner' }],
+          filters: [{ name: bleName }],
           optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb']
         });
 
@@ -251,8 +255,8 @@
         await bleCharacteristic.startNotifications();
         bleCharacteristic.addEventListener('characteristicvaluechanged', handleData);
 
-        document.getElementById("connectionStatus").textContent = "✅ Connected to Smart Cart";
-        showToast("✅ Connected to Cart");
+        document.getElementById("connectionStatus").textContent = `✅ Connected to ${bleName}`;
+        showToast(`✅ Connected to ${bleName}`);
       } catch (error) {
         document.getElementById("connectionStatus").textContent = "❌ Connection failed: " + error.message;
         showToast("❌ Connection failed");
@@ -357,7 +361,7 @@
     function checkout() {
       const phone = document.getElementById("phone").value.trim();
       if (!/^\d{10}$/.test(phone)) return showToast("📵 Invalid phone number.");
-      if (cartItems.length === 0) return showToast("🚫 Cart is empty. Please scan some items.");
+      if (cartItems.length === 0) return showToast("❌ Cart is empty. Please scan some items.");
 
       document.getElementById("checkoutBtn").disabled = true;
       document.getElementById("loading").style.display = "block";
