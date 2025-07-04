@@ -223,7 +223,7 @@
     let bleCharacteristic;
  
     const productDB = {
-      "6001051002382": { name: "NIVEA", price: 200 },
+      "6001051002382": { name: "NIVEA", price: 2 },
       "8901450012655": { name: "Denver Deo", price: 18 },
       "8906053254150": { name: "PRO clean", price: 399 },
       "8901526205561": { name: "GARNIER fash wash", price: 279 },
@@ -341,23 +341,65 @@
     }
  
     async function generatePDF(cartItems, total) {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      doc.setFontSize(16);
-      doc.text("🍚 Smart Cart Pro - Bill Receipt", 20, 20);
-      let y = 30;
-      doc.setFontSize(12);
-      cartItems.forEach((item, i) => {
-        const subtotal = item.price * item.qty;
-        doc.text(`${i + 1}. ${item.name} - ₹${item.price} × ${item.qty} = ₹${subtotal}`, 20, y);
-        y += 10;
-      });
-      doc.setFontSize(13);
-      doc.text("----------------------------", 20, y);
-      y += 10;
-      doc.text("Total: ₹" + total, 20, y);
-      doc.save("SmartCart_Receipt.pdf");
-    }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // Header
+  doc.setFontSize(14);
+  doc.text("Smart Cart Pro", 20, 20);
+  doc.setFontSize(10);
+  doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, 26);
+  doc.text("GSTIN: 24XXXXXXX1Z9", 20, 31);
+  doc.text("TAX INVOICE", 150, 20);
+
+  // Date and time
+  const now = new Date();
+  doc.text(`Date: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`, 150, 26);
+
+  // Line
+  doc.setLineWidth(0.1);
+  doc.line(20, 34, 190, 34);
+
+  // Table header
+  doc.setFontSize(11);
+  let y = 40;
+  doc.text("Item", 20, y);
+  doc.text("Price", 90, y);
+  doc.text("Qty", 120, y);
+  doc.text("Amount", 150, y);
+  y += 6;
+
+  doc.setLineWidth(0.05);
+  cartItems.forEach(item => {
+    const subtotal = item.price * item.qty;
+    doc.text(item.name, 20, y);
+    doc.text(`₹${item.price.toFixed(2)}`, 90, y);
+    doc.text(`${item.qty}`, 120, y);
+    doc.text(`₹${subtotal.toFixed(2)}`, 150, y);
+    y += 6;
+  });
+
+  // Line before total
+  y += 4;
+  doc.line(20, y, 190, y);
+  y += 6;
+
+  // Total
+  doc.setFontSize(12);
+  doc.text("Total Invoice Amount:", 90, y);
+  doc.text(`₹${total.toFixed(2)}`, 150, y);
+  y += 10;
+
+  // Footer notes
+  doc.setFontSize(9);
+  doc.text("This is a computer-generated invoice and doesn't require a signature.", 20, y);
+  y += 5;
+  doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
+
+  // Save the file
+  doc.save("SmartCart_Receipt.pdf");
+}
+
  
     function sendWhatsAppBill(summary, phoneNumber) {
       const customerNumber = "91" + phoneNumber;
