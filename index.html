@@ -397,7 +397,8 @@
   doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
 
   // Save the file
-  doc.save("SmartCart_Receipt.pdf");
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
 }
 
  
