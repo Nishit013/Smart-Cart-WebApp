@@ -15,7 +15,7 @@
       flex-direction: column;
       align-items: center;
     }
-
+ 
     .header {
       width: 95%;
       max-width: 500px;
@@ -24,17 +24,17 @@
       align-items: center;
       margin-bottom: 10px;
     }
-
+ 
     .shop-name {
       font-size: 1em;
       color: #00e5ff;
     }
-
+ 
     .time, .date {
       font-size: 0.9em;
       color: #ccc;
     }
-
+ 
     h1 {
       font-family: 'Verdana', sans-serif;
       font-size: 2.2em;
@@ -42,7 +42,7 @@
       color: #00e5ff;
       text-align: center;
     }
-
+ 
     .section {
       background-color: #1e1e1e;
       border: 1px solid #444;
@@ -52,12 +52,12 @@
       width: 95%;
       max-width: 500px;
     }
-
+ 
     .section h3 {
       margin-top: 0;
       color: #00bcd4;
     }
-
+ 
     .btn {
       padding: 10px 20px;
       font-size: 1em;
@@ -70,11 +70,11 @@
       width: 90%;
       max-width: 300px;
     }
-
+ 
     .btn:hover {
       background-color: #0097a7;
     }
-
+ 
     .button-row {
       display: flex;
       justify-content: center;
@@ -83,7 +83,7 @@
       flex-direction: column;
       align-items: center;
     }
-
+ 
     input[type="tel"] {
       padding: 10px;
       font-size: 1em;
@@ -95,35 +95,35 @@
       background: #2b2b2b;
       color: white;
     }
-
+ 
     #checkoutBtn:disabled {
       opacity: 0.5;
       pointer-events: none;
     }
-
+ 
     #cartItemsList {
       max-height: 400px;
       overflow-y: auto;
       scroll-behavior: smooth;
     }
-
+ 
     footer {
       margin-top: 30px;
       font-size: 0.8em;
       color: #aaa;
       text-align: center;
     }
-
+ 
     footer a {
       color: #00bcd4;
       margin: 0 5px;
       text-decoration: none;
     }
-
+ 
     footer a:hover {
       text-decoration: underline;
     }
-
+ 
     .qty-btn, .remove-btn {
       padding: 5px 10px;
       margin: 2px;
@@ -132,15 +132,15 @@
       border: none;
       color: white;
     }
-
+ 
     .qty-btn {
       background-color: #555;
     }
-
+ 
     .remove-btn {
       background-color: red;
     }
-
+ 
     #toast {
       position: fixed;
       bottom: 20px;
@@ -154,7 +154,7 @@
       z-index: 9999;
       box-shadow: 0 0 10px rgba(0,0,0,0.4);
     }
-
+ 
     #loading {
       display: none;
       color: #00e5ff;
@@ -173,13 +173,13 @@
       <div class="date" id="dateDisplay"></div>
     </div>
   </div>
-
+ 
   <h1>🛒 Smart Cart Pro</h1>
-
+ 
   <div class="section">
     <h3><strong>🛒 Cart Number:</strong> <span style="font-weight:bold" id="cartNumber">#</span></h3>
   </div>
-
+ 
   <div class="section">
     <h3>🔗 Cart Connection Status</h3>
     <div id="connectionStatus">❌ Not connected.</div>
@@ -188,26 +188,26 @@
       <button class="btn" onclick="clearCart()">Clear Cart</button>
     </div>
   </div>
-
+ 
   <div class="section">
     <h3>📦 Scanned Products</h3>
     <div id="cartItemsList">No items scanned.</div>
   </div>
-
+ 
   <div class="section">
     <h3>💰 Total of Scanned Products</h3>
     <div id="totalPrice">₹0</div>
   </div>
-
+ 
   <label for="phone">📱 Enter Your Phone Number:</label>
   <input type="tel" id="phone" placeholder="10-digit phone number" oninput="validatePhone()" />
   <div id="loading">⌛ Processing payment...</div>
   <button class="btn" id="checkoutBtn" onclick="checkout()" disabled>💳 Checkout & Generate Bill</button>
-
+ 
   <div class="section">
     💳 <strong>Payment Gateway:</strong> Razorpay integrated | PDF + WhatsApp Bill
   </div>
-
+ 
   <footer>
     <a href="privacy-policy.html">Privacy Policy</a> |
     <a href="terms-and-conditions.html">Terms & Conditions</a> |
@@ -215,52 +215,47 @@
     <a href="shipping-delivery.html">Shipping & Delivery</a> |
     <a href="contact-us.html">Contact Us</a>
   </footer>
-
+ 
   <div id="toast"></div>
-
+ 
   <script>
     let cartItems = [];
     let bleCharacteristic;
-
+ 
     const productDB = {
       "6001051002382": { name: "NIVEA", price: 200 },
-      "8901450012655": { name: "Denver Deo", price: 349 }
-      "8906053254150": { name: "PRO clean", price: 399 }
-      "8901399409219": { name: "Santoor Body lotion", price: 99 }
-      "8904035422054": { name: "Suns cream joy", price: 99 }
-      "8901088080262": { name: "parachute", price: 40 }
-      "8901526205561": { name: "Garnier Man FashWash", price: 279 }
+      "8901450012655": { name: "Denver Deo", price: 18 }
     };
-
+ 
     const urlParams = new URLSearchParams(window.location.search);
     const cartId = urlParams.get('id') || "CART" + Math.floor(Math.random() * 10000);
     const bleName = "ESP32-" + cartId.toUpperCase();
-
+ 
     document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("cartNumber").textContent = "#" + cartId;
     });
-
+ 
     function showToast(message) {
       const toast = document.getElementById("toast");
       toast.textContent = message;
       toast.style.display = "block";
       setTimeout(() => toast.style.display = "none", 3000);
     }
-
+ 
     async function connectToCart() {
       try {
         const device = await navigator.bluetooth.requestDevice({
           filters: [{ name: bleName }],
           optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb']
         });
-
+ 
         const server = await device.gatt.connect();
         const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
         bleCharacteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
-
+ 
         await bleCharacteristic.startNotifications();
         bleCharacteristic.addEventListener('characteristicvaluechanged', handleData);
-
+ 
         document.getElementById("connectionStatus").textContent = `✅ Connected to ${bleName}`;
         showToast(`✅ Connected to ${bleName}`);
       } catch (error) {
@@ -269,7 +264,7 @@
         clearCart();
       }
     }
-
+ 
     function handleData(event) {
       const barcode = new TextDecoder().decode(event.target.value).trim();
       const product = productDB[barcode];
@@ -285,7 +280,7 @@
       }
       renderCart();
     }
-
+ 
     function renderCart() {
       const container = document.getElementById("cartItemsList");
       const totalContainer = document.getElementById("totalPrice");
@@ -312,7 +307,7 @@
       container.innerHTML = html;
       totalContainer.textContent = `₹${total}`;
     }
-
+ 
     function changeQty(index, change) {
       cartItems[index].qty += change;
       if (cartItems[index].qty <= 0) {
@@ -320,24 +315,24 @@
       }
       renderCart();
     }
-
+ 
     function removeItem(index) {
       cartItems.splice(index, 1);
       renderCart();
     }
-
+ 
     function clearCart() {
       cartItems = [];
       document.getElementById("cartItemsList").textContent = "No items scanned.";
       document.getElementById("totalPrice").textContent = "₹0";
     }
-
+ 
     function validatePhone() {
       const phone = document.getElementById("phone").value;
       const button = document.getElementById("checkoutBtn");
       button.disabled = !/^\d{10}$/.test(phone);
     }
-
+ 
     async function generatePDF(cartItems, total) {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
@@ -356,22 +351,22 @@
       doc.text("Total: ₹" + total, 20, y);
       doc.save("SmartCart_Receipt.pdf");
     }
-
+ 
     function sendWhatsAppBill(summary, phoneNumber) {
       const customerNumber = "91" + phoneNumber;
       const message = encodeURIComponent(" Smart Cart Bill\n\n" + summary);
       const url = `https://wa.me/${customerNumber}?text=${message}`;
       window.open(url, "_blank");
     }
-
+ 
     function checkout() {
       const phone = document.getElementById("phone").value.trim();
       if (!/^\d{10}$/.test(phone)) return showToast("📵 Invalid phone number.");
       if (cartItems.length === 0) return showToast("❌ Cart is empty. Please scan some items.");
-
+ 
       document.getElementById("checkoutBtn").disabled = true;
       document.getElementById("loading").style.display = "block";
-
+ 
       let summary = '';
       let total = 0;
       cartItems.forEach((item, i) => {
@@ -380,7 +375,7 @@
         total += subtotal;
       });
       summary += `\nTotal: ₹${total}`;
-
+ 
       const options = {
         key: "rzp_live_es0XjKaI61byUK",
         amount: total * 100,
@@ -398,17 +393,17 @@
         prefill: { contact: phone },
         theme: { color: "#00bcd4" }
       };
-
+ 
       const rzp1 = new Razorpay(options);
       rzp1.open();
-
+ 
       rzp1.on('payment.failed', function (response) {
         showToast("❌ Payment Failed: " + response.error.description);
         document.getElementById("checkoutBtn").disabled = false;
         document.getElementById("loading").style.display = "none";
       });
     }
-
+ 
     setInterval(() => {
       const now = new Date();
       document.getElementById("timeDisplay").textContent =
