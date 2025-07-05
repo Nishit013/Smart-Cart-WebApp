@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>🧑‍💼 Smart Cart Admin Panel</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #121212;
+      color: #f5f5f5;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #00e5ff;
+    }
+    .cart {
+      border: 1px solid #444;
+      background: #1e1e1e;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 10px;
+    }
+    .cart h3 {
+      margin-top: 0;
+      color: #00bcd4;
+    }
+    .status {
+      font-weight: bold;
+      padding: 4px 10px;
+      border-radius: 5px;
+      margin-left: 10px;
+    }
+    .paid { background: green; }
+    .pending { background: orange; }
+    .stale { background: red; }
+    button {
+      margin-top: 10px;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      background-color: #00bcd4;
+      color: white;
+      cursor: pointer;
+    }
+    ul {
+      padding-left: 20px;
+    }
+  </style>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+</head>
+<body>
+
+<script>
+  // 🔐 Admin access prompt
+  const pass = prompt("Enter admin access code:");
+  if (pass !== "adminofcart") {
+    document.body.innerHTML = "<h2>🔒 Unauthorized Access</h2>";
+    throw new Error("Unauthorized"); // Stop further execution
+  }
+</script>
+
+<h1>🧑‍💼 Smart Cart Admin Dashboard</h1>
+<div id="cartsContainer">Loading carts...</div>
+
+<script>
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyCTLNpJB02VZ_-kjZaL_y-cHX74U4hzwvE",
+    authDomain: "smartcartpro-367bf.firebaseapp.com",
+    databaseURL: "https://smartcartpro-367bf-default-rtdb.firebaseio.com",
+    projectId: "smartcartpro-367bf",
+    storageBucket: "smartcartpro-367bf.appspot.com",
+    messagingSenderId: "823504170326",
+    appId: "1:823504170326:web:0b9e24b85e8f40ba8dfaf7"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  const cartsContainer = document.getElementById("cartsContainer");
+
+  db.ref("carts").on("value", (snapshot) => {
+    const data = snapshot.val();
+    if (!data) {
+      cartsContainer.innerHTML = "<p>No carts found.</p>";
+      return;
+    }
+
+    cartsContainer.innerHTML = "";
+    Object.keys(data).forEach(cartId => {
+      const cart = data[cartId];
+      const status = cart.paymentStatus || "Pending";
+      const time = new Date(cart.lastUpdated).toLocaleString();
+      const minutesOld = (Date.now() - new Date(cart.lastUpdated)) / 60000;
+
+      const statusClass = status === "Paid" ? "paid" :
+                          minutesOld > 10 ? "stale" : "pending";
+
+      const cartEl = document.createElement("div");
+      cartEl.className = "cart";
+      cartEl.innerHTML = `
+        <h3>🛒 ${cart.cartId}
+          <span class="status ${statusClass}">${status}</span>
+        </h3>
+        <p><strong>Total:</strong> ₹${cart.total}</p>
+        <p><strong>Last Updated:</strong> ${time}</p>
+        <ul>
+          ${cart.items.map(item =>
+            `<li>${item.name} - ₹${item.price} × ${item.qty} = ₹${item.price * item.qty}</li>`
+          ).join('')}
+        </ul>
+        <button onclick="markPaid('${cart.cartId}')">Mark as Paid</button>
+        <button onclick="clearCart('${cart.cartId}')">Clear Cart</button>
+      `;
+      cartsContainer.appendChild(cartEl);
+    });
+  });
+
+  function markPaid(cartId) {
+    db.ref("carts/" + cartId + "/paymentStatus").set("Paid");
+  }
+
+  function clearCart(cartId) {
+    if (confirm("Clear cart: " + cartId + "?")) {
+      db.ref("carts/" + cartId).remove();
+    }
+  }
+</script>
+</body>
+</html>
