@@ -470,16 +470,28 @@ doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
         name: "Smart Cart Pro",
         description: "Smart Cart Payment",
         handler: function (response) {
-          showToast("✅ Payment Successful");
-          generatePDF(cartItems, total);
-          sendWhatsAppBill(summary, phone);
+  showToast("✅ Payment Successful");
 
-          db.ref('carts/' + cartId + '/paymentStatus').set("Paid");
+  // 1. Prepare bill summary
+  const billData = {
+    summary,
+    generatedAt: new Date().toISOString()
+  };
 
-          clearCart();
-          document.getElementById("checkoutBtn").disabled = false;
-          document.getElementById("loading").style.display = "none";
-        },
+  // 2. Update payment status and attach bill
+  db.ref('carts/' + cartId).update({
+    paymentStatus: "Paid",
+    bill: billData
+  });
+
+  // 3. Generate PDF and send
+  generatePDF(cartItems, total);
+  sendWhatsAppBill(summary, phone);
+  clearCart();
+
+  document.getElementById("checkoutBtn").disabled = false;
+  document.getElementById("loading").style.display = "none";
+},
         prefill: { contact: phone },
         theme: { color: "#00bcd4" }
       };
