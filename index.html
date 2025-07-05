@@ -162,6 +162,29 @@
       font-style: italic;
     }
   </style>
+  <!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+  // Your Firebase configuration object
+  const firebaseConfig = {
+    apiKey: "AIzaSyCTLNpJB02VZ_-kjZaL_y-cHX74U4hzwvE",
+    authDomain: "smartcartpro-367bf.firebaseapp.com",
+    databaseURL: "https://smartcartpro-367bf-default-rtdb.firebaseio.com",
+    projectId: "smartcartpro-367bf",
+    storageBucket: "smartcartpro-367bf.firebasestorage.app",
+    messagingSenderId: "823504170326",
+    appId: "1:823504170326:web:0b9e24b85e8f40ba8dfaf7"
+  };
+
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database(); // This lets you use db.ref(...) later
+</script>
+
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -286,6 +309,7 @@
         cartItems.push({ ...product, qty: 1 });
       }
       renderCart();
+      syncCartToFirebase();
     }
  
     function renderCart() {
@@ -324,11 +348,13 @@
         cartItems.splice(index, 1);
       }
       renderCart();
+      syncCartToFirebase();
     }
  
     function removeItem(index) {
       cartItems.splice(index, 1);
       renderCart();
+      syncCartToFirebase();
     }
  
     function clearCart() {
@@ -342,7 +368,18 @@
       const button = document.getElementById("checkoutBtn");
       button.disabled = !/^\d{10}$/.test(phone);
     }
- 
+    function syncCartToFirebase() {
+  const total = cartItems.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const cartData = {
+    cartId,
+    items: cartItems,
+    total,
+    paymentStatus: "Pending",
+    lastUpdated: new Date().toISOString()
+  };
+  db.ref('carts/' + cartId).set(cartData);
+}
+
     async function generatePDF(cartItems, total) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
@@ -439,6 +476,9 @@ doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
           showToast("✅ Payment Successful");
           generatePDF(cartItems, total);
           sendWhatsAppBill(summary, phone);
+
+          db.ref('carts/' + cartId + '/paymentStatus').set("Paid");
+
           clearCart();
           document.getElementById("checkoutBtn").disabled = false;
           document.getElementById("loading").style.display = "none";
