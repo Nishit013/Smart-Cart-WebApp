@@ -163,6 +163,7 @@
     }
   </style>
   <!-- Firebase SDK -->
+   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script>
@@ -432,19 +433,36 @@
   doc.text("This is a computer-generated invoice and doesn't require a signature.", 20, y);
   y += 5;
   doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
+  
+   // Generate blob
+  const pdfBlob = doc.output("blob");
+
+  // Upload to Firebase Storage
+  const storageRef = firebase.storage().ref();
+  const filename = `bills/${cartId}_${Date.now()}.pdf`;
+  const pdfRef = storageRef.child(filename);
+  await pdfRef.put(pdfBlob);
+
+  const pdfUrl = await pdfRef.getDownloadURL();;
 
   // Save the file
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
 doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
+
+return pdfUrl;
+
 }
 
  
-    function sendWhatsAppBill(summary, phoneNumber) {
-      const customerNumber = "91" + phoneNumber;
-      const message = encodeURIComponent(" Smart Cart Bill\n\n" + summary);
-      const url = `https://wa.me/${customerNumber}?text=${message}`;
-      window.open(url, "_blank");
-    }
+    function sendWhatsAppBill(summary, phoneNumber, pdfUrl) {
+  const customerNumber = "91" + phoneNumber;
+  const message = encodeURIComponent(
+    "🧾 Smart Cart Bill\n\n" + summary + `\n\n📄 PDF Bill: ${pdfUrl}`
+  );
+  const url = `https://wa.me/${customerNumber}?text=${message}`;
+  window.open(url, "_blank");
+}
+
  
     function checkout() {
       const phone = document.getElementById("phone").value.trim();
@@ -469,29 +487,34 @@ doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
         currency: "INR",
         name: "Smart Cart Pro",
         description: "Smart Cart Payment",
-        handler: function (response) {
+        handler: async function (response) {  // ✅ Mark function async
   showToast("✅ Payment Successful");
 
-  // 1. Prepare bill summary
+  // 1. Generate PDF and upload to Firebase Storage
+  const pdfUrl = await generatePDF(cartItems, total);  // ✅ only once
+
+  // 2. Prepare bill summary
   const billData = {
     summary,
-    generatedAt: new Date().toISOString()
+    generatedAt: new Date().toISOString(),  // ✅ added comma
+    pdfUrl: pdfUrl
   };
 
-  // 2. Update payment status and attach bill
+  // 3. Update payment status and attach bill to database
   db.ref('carts/' + cartId).update({
     paymentStatus: "Paid",
     bill: billData
   });
 
-  // 3. Generate PDF and send
-  generatePDF(cartItems, total);
-  sendWhatsAppBill(summary, phone);
+  // 4. Send to WhatsApp
+  sendWhatsAppBill(summary, phone, pdfUrl);
+
   clearCart();
 
   document.getElementById("checkoutBtn").disabled = false;
   document.getElementById("loading").style.display = "none";
-},
+}
+
         prefill: { contact: phone },
         theme: { color: "#00bcd4" }
       };
