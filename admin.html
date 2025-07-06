@@ -317,8 +317,6 @@
   list.classList.toggle("visible");
 }
 
-// ✅ Place these two outside of any other function
-
 function markAsPaid(cartId) {
   if (confirm("Mark this cart as Paid?")) {
     db.ref("carts/" + cartId + "/paymentStatus").set("Paid")
