@@ -269,6 +269,7 @@
     <ul id="items-${index}" class="item-list">${itemList.join("")}</ul>
 
     ${cart.bill ? `<p><strong>🧾 Bill Summary:</strong><br/><pre style="white-space:pre-wrap; font-size:12px;">${cart.bill.summary}</pre></p>` : ''}
+    ${cart.bill?.pdfUrl ? `<p><a href="${cart.bill.pdfUrl}" target="_blank" style="color:var(--accent); font-size:13px;">📄 View Full PDF Bill</a></p>` : ''}
 
     <div style="margin-top:10px;">
       <button onclick="event.stopPropagation(); markAsPaid('${cart.cartId}')" style="margin-right:8px; padding:5px 10px;">✅ Mark as Paid</button>
