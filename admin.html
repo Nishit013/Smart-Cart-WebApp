@@ -241,7 +241,7 @@
       if ((filter === "today" && !isToday) || (filter === "week" && !isWeek)) return;
 
       const itemList = cart.items.map(i =>
-        `<li>${i.name} - ₹${i.price} × ${i.qty} = ₹${i.price * i.qty}</li>`
+        <li>${i.name} - ₹${i.price} × ${i.qty} = ₹${i.price * i.qty}</li>
       );
       const matchesSearch =
         cart.cartId.toLowerCase().includes(search) ||
@@ -259,7 +259,7 @@
       barLabels.push(cart.cartId);
       barData.push(cart.total || 0);
 
-      cardsHTML.push(`
+      cardsHTML.push(
   <div class="card" onclick="toggleDetails(${index})">
     <h4>🛒 ${cart.cartId}</h4>
     <div class="tag ${cart.paymentStatus || 'Pending'}">${cart.paymentStatus || 'Pending'}</div>
@@ -268,15 +268,14 @@
     <p><strong>Updated:</strong> ${updatedAt.toLocaleString()}</p>
     <ul id="items-${index}" class="item-list">${itemList.join("")}</ul>
 
-    ${cart.bill ? `<p><strong>🧾 Bill Summary:</strong><br/><pre style="white-space:pre-wrap; font-size:12px;">${cart.bill.summary}</pre></p>` : ''}
-    ${cart.bill?.pdfUrl ? `<p><a href="${cart.bill.pdfUrl}" target="_blank" style="color:var(--accent); font-size:13px;">📄 View Full PDF Bill</a></p>` : ''}
+    ${cart.bill ? <p><strong>🧾 Bill Summary:</strong><br/><pre style="white-space:pre-wrap; font-size:12px;">${cart.bill.summary}</pre></p> : ''}
 
     <div style="margin-top:10px;">
       <button onclick="event.stopPropagation(); markAsPaid('${cart.cartId}')" style="margin-right:8px; padding:5px 10px;">✅ Mark as Paid</button>
       <button onclick="event.stopPropagation(); deleteCart('${cart.cartId}')" style="padding:5px 10px;">🗑️ Delete</button>
     </div>
   </div>
-`);
+);
 
 
     });
@@ -287,7 +286,7 @@
     document.getElementById("paidCarts").innerText = paid;
     document.getElementById("totalRevenue").innerText = "₹" + revenue;
     document.getElementById("cartList").innerHTML =
-      cardsHTML.length > 0 ? cardsHTML.join("") : `<div style="padding:20px;">🕒 No active cart now</div>`;
+      cardsHTML.length > 0 ? cardsHTML.join("") : <div style="padding:20px;">🕒 No active cart now</div>;
 
     if (chart1) chart1.destroy();
     chart1 = new Chart(document.getElementById("statusChart"), {
@@ -313,9 +312,11 @@
   }
 
   function toggleDetails(index) {
-  const list = document.getElementById(`items-${index}`);
+  const list = document.getElementById(items-${index});
   list.classList.toggle("visible");
 }
+
+// ✅ Place these two outside of any other function
 
 function markAsPaid(cartId) {
   if (confirm("Mark this cart as Paid?")) {
