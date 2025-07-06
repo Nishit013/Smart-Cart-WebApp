@@ -176,12 +176,12 @@
     messagingSenderId: "823504170326",
     appId: "1:823504170326:web:0b9e24b85e8f40ba8dfaf7"
   };
- 
+
   // Initialize Firebase
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database(); // This lets you use db.ref(...) later
 </script>
- 
+
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -283,8 +283,8 @@
         await bleCharacteristic.startNotifications();
         bleCharacteristic.addEventListener('characteristicvaluechanged', handleData);
  
-        document.getElementById("connectionStatus").textContent = `✅ Connected to ${bleName}`;
-        showToast(`✅ Connected to ${bleName}`);
+        document.getElementById("connectionStatus").textContent = ✅ Connected to ${bleName};
+        showToast(✅ Connected to ${bleName});
       } catch (error) {
         document.getElementById("connectionStatus").textContent = "❌ Connection failed: " + error.message;
         showToast("❌ Connection failed");
@@ -321,22 +321,22 @@
       let total = 0;
       cartItems.forEach((item, i) => {
         const subtotal = item.price * item.qty;
-        html += `<li>
+        html += <li>
           <span>${i + 1}. ${item.name} - ₹${item.price} = ₹${subtotal}</span>
- 
+
           <span style="display: flex; align-items: center; gap: 4px; margin-top: 6px;">
            <button class="qty-btn" onclick="changeQty(${i}, -1)">➖</button>
            <span style="padding: 4px 8px; background: #333; border-radius: 5px;">${item.qty}</span>
            <button class="qty-btn" onclick="changeQty(${i}, 1)">➕</button>
            <button class="remove-btn" onclick="removeItem(${i})">Remove</button>
         </span>
- 
-        </li>`;
+
+        </li>;
         total += subtotal;
       });
       html += "</ul>";
       container.innerHTML = html;
-      totalContainer.textContent = `₹${total}`;
+      totalContainer.textContent = ₹${total};
     }
  
     function changeQty(index, change) {
@@ -376,11 +376,11 @@
   };
   db.ref('carts/' + cartId).set(cartData);
 }
- 
+
     async function generatePDF(cartItems, total) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
- 
+
   // Header
   doc.setFontSize(14);
   doc.text("Smart Cart Pro", 20, 20);
@@ -388,15 +388,15 @@
   doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, 26);
   doc.text("GSTIN: 24XXXXXXX1Z9", 20, 31);
   doc.text("TAX INVOICE", 150, 20);
- 
+
   // Date and time
   const now = new Date();
-  doc.text(`Date: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`, 150, 26);
- 
+  doc.text(Date: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}, 150, 26);
+
   // Line
   doc.setLineWidth(0.1);
   doc.line(20, 34, 190, 34);
- 
+
   // Table header
   doc.setFontSize(11);
   let y = 40;
@@ -405,44 +405,44 @@
   doc.text("Qty", 120, y);
   doc.text("Amount", 150, y);
   y += 6;
- 
+
   doc.setLineWidth(0.05);
   cartItems.forEach(item => {
     const subtotal = item.price * item.qty;
     doc.text(item.name, 20, y);
-    doc.text(`₹${item.price.toFixed(2)}`, 90, y);
-    doc.text(`${item.qty}`, 120, y);
-    doc.text(`₹${subtotal.toFixed(2)}`, 150, y);
+    doc.text(₹${item.price.toFixed(2)}, 90, y);
+    doc.text(${item.qty}, 120, y);
+    doc.text(₹${subtotal.toFixed(2)}, 150, y);
     y += 6;
   });
- 
+
   // Line before total
   y += 4;
   doc.line(20, y, 190, y);
   y += 6;
- 
+
   // Total
   doc.setFontSize(12);
   doc.text("Total Invoice Amount:", 90, y);
-  doc.text(`₹${total.toFixed(2)}`, 150, y);
+  doc.text(₹${total.toFixed(2)}, 150, y);
   y += 10;
- 
+
   // Footer notes
   doc.setFontSize(9);
   doc.text("This is a computer-generated invoice and doesn't require a signature.", 20, y);
   y += 5;
   doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
- 
+
   // Save the file
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
+doc.save(SmartCart_Receipt_${timestamp}.pdf);
 }
- 
+
  
     function sendWhatsAppBill(summary, phoneNumber) {
       const customerNumber = "91" + phoneNumber;
       const message = encodeURIComponent(" Smart Cart Bill\n\n" + summary);
-      const url = `https://wa.me/${customerNumber}?text=${message}`;
+      const url = https://wa.me/${customerNumber}?text=${message};
       window.open(url, "_blank");
     }
  
@@ -458,10 +458,10 @@ doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
       let total = 0;
       cartItems.forEach((item, i) => {
         const subtotal = item.price * item.qty;
-        summary += `${i + 1}. ${item.name} - ₹${item.price} × ${item.qty} = ₹${subtotal}\n`;
+        summary += ${i + 1}. ${item.name} - ₹${item.price} × ${item.qty} = ₹${subtotal}\n;
         total += subtotal;
       });
-      summary += `\nTotal: ₹${total}`;
+      summary += \nTotal: ₹${total};
  
       const options = {
         key: "rzp_live_es0XjKaI61byUK",
@@ -470,16 +470,28 @@ doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
         name: "Smart Cart Pro",
         description: "Smart Cart Payment",
         handler: function (response) {
-          showToast("✅ Payment Successful");
-          generatePDF(cartItems, total);
-          sendWhatsAppBill(summary, phone);
- 
-          db.ref('carts/' + cartId + '/paymentStatus').set("Paid");
- 
-          clearCart();
-          document.getElementById("checkoutBtn").disabled = false;
-          document.getElementById("loading").style.display = "none";
-        },
+  showToast("✅ Payment Successful");
+
+  // 1. Prepare bill summary
+  const billData = {
+    summary,
+    generatedAt: new Date().toISOString()
+  };
+
+  // 2. Update payment status and attach bill
+  db.ref('carts/' + cartId).update({
+    paymentStatus: "Paid",
+    bill: billData
+  });
+
+  // 3. Generate PDF and send
+  generatePDF(cartItems, total);
+  sendWhatsAppBill(summary, phone);
+  clearCart();
+
+  document.getElementById("checkoutBtn").disabled = false;
+  document.getElementById("loading").style.display = "none";
+},
         prefill: { contact: phone },
         theme: { color: "#00bcd4" }
       };
