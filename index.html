@@ -474,7 +474,12 @@ doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
           generatePDF(cartItems, total);
           sendWhatsAppBill(summary, phone);
  
-          db.ref('carts/' + cartId + '/paymentStatus').set("Paid");
+          db.ref('carts/' + cartId).update({
+          paymentStatus: "Paid",
+          bill: {
+         summary: summary
+         }
+       });
  
           clearCart();
           document.getElementById("checkoutBtn").disabled = false;
