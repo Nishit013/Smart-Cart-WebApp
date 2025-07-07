@@ -165,7 +165,6 @@
   <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script>
   // Your Firebase configuration object
   const firebaseConfig = {
@@ -181,7 +180,6 @@
   // Initialize Firebase
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database(); // This lets you use db.ref(...) later
-  const storage = firebase.storage();
 </script>
  
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
@@ -439,13 +437,6 @@
   // Save the file
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
 doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
-
-const pdfBlob = doc.output('blob');
-const storageRef = firebase.storage().ref();
-const pdfRef = storageRef.child(`bills/${cartId}.pdf`);
-await pdfRef.put(pdfBlob);
-const downloadURL = await pdfRef.getDownloadURL();
-return downloadURL;
 }
  
  
@@ -479,18 +470,16 @@ return downloadURL;
         currency: "INR",
         name: "Smart Cart Pro",
         description: "Smart Cart Payment",
-        handler: async function (response) {
+        handler: function (response) {
           showToast("✅ Payment Successful");
-          const downloadURL = await generatePDF(cartItems, total);
-
+          generatePDF(cartItems, total);
           sendWhatsAppBill(summary, phone);
  
           db.ref('carts/' + cartId).update({
           paymentStatus: "Paid",
           bill: {
-    summary: summary,
-    pdfUrl: downloadURL
-  }
+         summary: summary
+         }
        });
  
           clearCart();
