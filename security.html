@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Security Panel - Smart Cart Pro</title>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
     :root {
@@ -29,147 +30,6 @@
       --card: #ffffff;
     }
 
-    .topbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 14px 20px;
-      background: var(--card);
-      border-bottom: 1px solid #333;
-    }
-
-    .topbar h2 {
-      margin: 0;
-      font-size: 20px;
-    }
-
-    .menu-toggle {
-      font-size: 24px;
-      background: none;
-      border: none;
-      color: var(--text);
-      cursor: pointer;
-    }
-
-    .sidebar {
-      position: fixed;
-      top: 0;
-      left: -240px;
-      width: 240px;
-      height: 100%;
-      background: var(--card);
-      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
-      padding: 20px;
-      transition: left 0.3s ease;
-      z-index: 1000;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-    }
-
-    .sidebar.active {
-      left: 0;
-    }
-
-    .sidebar button,
-    .sidebar .toggle-switch {
-      margin-top: 20px;
-      width: 100%;
-    }
-
-    .toggle-switch {
-      position: relative;
-      width: 48px;
-      height: 24px;
-    }
-
-    .toggle-switch input {
-      display: none;
-    }
-
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: #ccc;
-      border-radius: 24px;
-      transition: 0.4s;
-    }
-
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 18px; width: 18px;
-      left: 3px; bottom: 3px;
-      background-color: white;
-      transition: 0.4s;
-      border-radius: 50%;
-    }
-
-    input:checked + .slider {
-      background: var(--primary);
-    }
-
-    input:checked + .slider:before {
-      transform: translateX(24px);
-    }
-
-    .logout-btn {
-      padding: 12px;
-      background: var(--primary);
-      border: none;
-      border-radius: 6px;
-      color: white;
-      font-size: 16px;
-      cursor: pointer;
-    }
-
-    .content {
-      padding: 20px;
-      max-width: 500px;
-      margin: auto;
-    }
-
-    input[type="text"] {
-      width: 100%;
-      padding: 14px;
-      margin: 12px 0;
-      border-radius: 8px;
-      border: none;
-      background: #2a2a2a;
-      color: white;
-      font-size: 16px;
-    }
-
-    button.check-btn {
-      width: 100%;
-      padding: 14px;
-      font-size: 16px;
-      background: var(--primary);
-      border: none;
-      border-radius: 8px;
-      color: white;
-      cursor: pointer;
-    }
-    
-    .theme-btn {
-  padding: 12px;
-  background: #444;
-  border: none;
-  border-radius: 6px;
-  color: white;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-    .card {
-      background-color: var(--card);
-      border: 1px solid #444;
-      border-radius: 8px;
-      padding: 20px;
-      margin-top: 20px;
-    }
-
     .login-screen {
       display: flex;
       align-items: center;
@@ -180,35 +40,40 @@
     }
 
     .login-card {
-      background: rgba(30, 30, 30, 0.9);
+      background: rgba(30, 30, 30, 0.95);
       backdrop-filter: blur(8px);
       border-radius: 16px;
-      padding: 40px 30px;
+      padding: 30px 25px;
       width: 100%;
-      max-width: 400px;
+      max-width: 420px;
       box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
       text-align: center;
-      color: white;
     }
 
-    .login-card input {
-      width: 100%;
-      padding: 12px;
-      margin-bottom: 16px;
-      border-radius: 8px;
-      border: none;
-      background: #2a2a2a;
-      color: white;
-      font-size: 15px;
+    .login-card h2 {
+      font-size: 24px;
+      margin-bottom: 20px;
     }
 
+    .login-card input,
+    .login-card select,
     .login-card button {
       width: 100%;
       padding: 12px;
       font-size: 16px;
-      background: var(--accent);
-      border: none;
+      margin-bottom: 14px;
       border-radius: 8px;
+      border: none;
+    }
+
+    .login-card input,
+    .login-card select {
+      background: #2a2a2a;
+      color: white;
+    }
+
+    .login-card button {
+      background: var(--accent);
       color: white;
       cursor: pointer;
     }
@@ -216,43 +81,157 @@
     #loginError {
       color: red;
       font-size: 14px;
-      margin-top: 10px;
       display: none;
+    }
+
+    .topbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: var(--card);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 20px;
+      border-bottom: 1px solid #333;
+      z-index: 101;
+    }
+
+    .topbar h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .menu-btn {
+      font-size: 24px;
+      background: none;
+      border: none;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .sidebar {
+      width: 0;
+      background: var(--card);
+      transition: width 0.3s ease;
+      overflow: hidden;
+      height: 100vh;
+      border-left: 1px solid #333;
+      position: fixed;
+      right: 0;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      padding: 20px 0;
+    }
+
+    .sidebar.open {
+      width: 200px;
+    }
+
+    .sidebar button {
+      width: 80%;
+      margin: 10px 0;
+      padding: 10px;
+      background: var(--primary);
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    .content {
+      flex: 1;
+      padding: 80px 20px 20px 20px;
+      width: 100%;
+      max-width: 600px;
+      margin: auto;
+    }
+
+    .content input,
+    .check-btn {
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+      margin-bottom: 10px;
+    }
+
+    .content input {
+      background: #2a2a2a;
+      color: white;
+    }
+
+    .check-btn {
+      background: var(--primary);
+      color: white;
+      cursor: pointer;
+    }
+
+    .card {
+      margin-top: 20px;
+      padding: 20px;
+      background: var(--card);
+      border-radius: 8px;
+      border: 1px solid #333;
+    }
+
+    ul {
+      padding-left: 20px;
+    }
+
+    @media (max-width: 600px) {
+      .topbar h2 {
+        font-size: 16px;
+      }
+      .login-card {
+        padding: 25px 20px;
+      }
     }
   </style>
 </head>
 <body>
 
-<div class="sidebar" id="sidebar">
-  <button class="theme-btn" onclick="toggleTheme()">Toggle Theme</button>
-
-  <button class="logout-btn" onclick="logout()">Logout</button>
-</div>
-
 <div id="loginPage" class="login-screen">
   <div class="login-card">
-    <h2>Enter Security Code</h2>
-    <input type="password" id="securityCode" placeholder="Enter Code"/>
+    <h2>Security Panel Login</h2>
+    <input type="text" id="name" placeholder="Full Name" />
+    <input type="email" id="email" placeholder="Email Address" />
+    <input type="password" id="password" placeholder="Password" />
+    <select id="role">
+      <option value="Security Guard">Security Guard</option>
+    </select>
     <button onclick="login()">Login</button>
-    <p id="loginError">Invalid Code</p>
+    <p id="loginError">Invalid credentials</p>
   </div>
 </div>
 
 <div id="panel" style="display:none;">
   <div class="topbar">
-    <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
     <h2>Security Panel</h2>
+    <button class="menu-btn" onclick="toggleSidebar()">☰</button>
   </div>
+
+  <div class="sidebar" id="sidebar">
+    <button onclick="logout()">Logout</button>
+    <button onclick="toggleTheme()">Toggle Theme</button>
+  </div>
+
   <div class="content">
-    <input type="text" id="cartId" placeholder="Enter Cart ID"/>
+    <input type="text" id="cartIdInput" placeholder="Enter Cart ID" />
     <button class="check-btn" onclick="checkCart()">Check Bill</button>
-    <div class="card" id="result"></div>
+    <div class="card" id="cartDetails"></div>
   </div>
 </div>
 
 <script>
-  const SECURITY_CODE = "0000";
-
   const firebaseConfig = {
     apiKey: "AIzaSyCTLNpJB02VZ_-kjZaL_y-cHX74U4hzwvE",
     authDomain: "smartcartpro-367bf.firebaseapp.com",
@@ -262,77 +241,75 @@
     messagingSenderId: "823504170326",
     appId: "1:823504170326:web:0b9e24b85e8f40ba8dfaf7"
   };
+
   firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
   const db = firebase.database();
 
   function login() {
-    const code = document.getElementById("securityCode").value.trim();
-    if (code === SECURITY_CODE) {
-      document.getElementById("loginPage").style.display = "none";
-      document.getElementById("panel").style.display = "block";
-    } else {
-      document.getElementById("loginError").style.display = "block";
-    }
+    const name = document.getElementById("name").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value.trim();
+    const role = document.getElementById("role").value;
+
+    auth.signInWithEmailAndPassword(email, password)
+      .then(() => {
+        localStorage.setItem("role", role);
+        localStorage.setItem("theme", document.body.classList.contains("light") ? "light" : "dark");
+        document.getElementById("loginPage").style.display = "none";
+        document.getElementById("panel").style.display = "block";
+      })
+      .catch(() => {
+        document.getElementById("loginError").style.display = "block";
+      });
   }
 
   function logout() {
-    document.getElementById("panel").style.display = "none";
-    document.getElementById("loginPage").style.display = "flex";
-    document.getElementById("securityCode").value = "";
-    document.getElementById("loginError").style.display = "none";
-    toggleSidebar(false);
+    auth.signOut().then(() => {
+      document.getElementById("panel").style.display = "none";
+      document.getElementById("loginPage").style.display = "flex";
+    });
   }
 
   function toggleTheme() {
-  const isLight = document.body.classList.toggle("light");
-  localStorage.setItem("theme", isLight ? "light" : "dark");
-}
+    const body = document.body;
+    const isLight = body.classList.toggle("light");
+    localStorage.setItem("theme", isLight ? "light" : "dark");
+  }
 
-
-  function toggleSidebar(forceClose = null) {
-    const sidebar = document.getElementById("sidebar");
-    if (forceClose !== null) {
-      sidebar.classList.toggle("active", !forceClose);
-    } else {
-      sidebar.classList.toggle("active");
-    }
+  function toggleSidebar() {
+    document.getElementById("sidebar").classList.toggle("open");
   }
 
   function checkCart() {
-    const cartId = document.getElementById("cartId").value.trim();
-    if (!cartId) return alert("Please enter a Cart ID");
+    const cartId = document.getElementById("cartIdInput").value.trim();
+    const detailsDiv = document.getElementById("cartDetails");
+    if (!cartId) return;
 
-    const result = document.getElementById("result");
-    db.ref("carts/" + cartId).get().then(snapshot => {
-      if (!snapshot.exists()) {
-        result.innerHTML = `<p style='color: red;'>❌ Cart ID not found.</p>`;
-        return;
-      }
-
+    db.ref("carts/" + cartId).once("value", (snapshot) => {
       const data = snapshot.val();
-      if (data.paymentStatus !== "Paid") {
-        result.innerHTML = `<p style='color: orange;'>❗ Cart found but payment not completed.</p>`;
+      if (!data || data.paymentStatus !== "Paid") {
+        detailsDiv.innerHTML = `<p style='color: red;'>❌ Cart not found or not paid.</p>`;
         return;
       }
-
-      let html = `<p><strong>🛡️ Cart ID:</strong> ${cartId}</p>`;
-      html += `<p><strong>✅ Payment Status:</strong> ${data.paymentStatus}</p>`;
-      html += `<p><strong>📅 Paid At:</strong> ${new Date(data.lastUpdated).toLocaleString()}</p>`;
-      html += `<p><strong>🛒 Items:</strong></p><ul>`;
+      let html = `<p><strong>Cart ID:</strong> ${cartId}</p>`;
+      html += `<p><strong>Payment:</strong> ${data.paymentStatus}</p>`;
+      html += `<p><strong>Paid At:</strong> ${new Date(data.lastUpdated).toLocaleString()}</p>`;
+      html += `<p><strong>Items:</strong></p><ul>`;
       data.items.forEach((item, i) => {
-        html += `<li>${i + 1}. ${item.name} - ₹${item.price} × ${item.qty} = ₹${item.price * item.qty}</li>`;
+        html += `<li>${i+1}. ${item.name} - ₹${item.price} × ${item.qty}</li>`;
       });
-      html += `</ul><p><strong>Total:</strong> ₹${data.total}</p>`;
-      result.innerHTML = html;
+      html += `</ul><p><strong>Total:</strong> ₹${data.total || 0}</p>`;
+      if (data.billURL) {
+        html += `<p><a href="${data.billURL}" target="_blank">📄 View Bill PDF</a></p>`;
+      }
+      detailsDiv.innerHTML = html;
     });
   }
 
   window.onload = () => {
     const theme = localStorage.getItem("theme");
-    if (theme === "light") {
-      document.body.classList.add("light");
-      document.getElementById("themeToggle").checked = true;
-    }
+    if (theme === "light") document.body.classList.add("light");
   };
 </script>
 
