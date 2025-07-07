@@ -233,7 +233,13 @@
     <button onclick="logout()">Logout</button>
     <button onclick="toggleTheme()">Toggle Theme</button>
   </div>
-
+<div class="content">
+    <div class="form-row">
+      <input type="text" id="cartIdInput" placeholder="Enter Cart ID" />
+      <button onclick="checkCart()">Check Bill</button>
+    </div>
+    <div class="card" id="cartDetails"></div>
+  </div>
   
 </div>
 
@@ -320,12 +326,6 @@
 </script>
 
 
-  <div class="content">
-    <div class="form-row">
-      <input type="text" id="cartIdInput" placeholder="Enter Cart ID" />
-      <button onclick="checkCart()">Check Bill</button>
-    </div>
-    <div class="card" id="cartDetails"></div>
-  </div>
+  
 </body>
 </html>
