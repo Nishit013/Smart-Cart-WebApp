@@ -5,19 +5,53 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>🛡️ Security Panel - Smart Cart Pro</title>
   <style>
+    :root {
+      --bg-dark: #121212;
+      --bg-light: #ffffff;
+      --text-dark: #ffffff;
+      --text-light: #000000;
+      --primary: #00bcd4;
+      --accent: #00e5ff;
+      --success: #00e676;
+      --error: #ff5252;
+      --warning: #ffa000;
+    }
     body {
       font-family: 'Segoe UI', sans-serif;
-      background-color: #121212;
-      color: #fff;
+      background-color: var(--bg-dark);
+      color: var(--text-dark);
       margin: 0;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      padding: 0;
     }
-    h1 {
-      color: #00e5ff;
-      text-align: center;
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 20px;
+      background-color: #1f1f1f;
+      border-bottom: 1px solid #333;
+    }
+    .topbar h1 {
+      color: var(--accent);
+      font-size: 1.3em;
+    }
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .toggle-mode, .logout-btn {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .container {
+      max-width: 600px;
+      margin: 30px auto;
+      padding: 20px;
     }
     input, button {
       padding: 10px;
@@ -25,19 +59,16 @@
       border-radius: 6px;
       border: none;
       font-size: 1em;
+      width: 100%;
     }
     input {
-      width: 100%;
-      max-width: 350px;
       background-color: #1e1e1e;
       color: white;
     }
     button {
-      background-color: #00bcd4;
+      background-color: var(--primary);
       color: white;
       cursor: pointer;
-      width: 100%;
-      max-width: 350px;
     }
     button:hover {
       background-color: #0097a7;
@@ -47,35 +78,38 @@
       border: 1px solid #444;
       border-radius: 8px;
       padding: 15px;
-      width: 100%;
-      max-width: 500px;
       margin-top: 20px;
     }
     ul {
       padding-left: 20px;
     }
-    .error {
-      color: #ff5252;
-      font-weight: bold;
-    }
-    .warning {
-      color: #ffa000;
-    }
-    .success {
-      color: #00e676;
-    }
-    a {
-      color: #00e5ff;
-    }
+    .error { color: var(--error); font-weight: bold; }
+    .warning { color: var(--warning); }
+    .success { color: var(--success); }
+    a { color: var(--accent); }
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
 <body>
-  <h1>🔐 Security Check Panel</h1>
-  <input type="text" id="cartId" placeholder="Enter Cart ID (e.g. CART3245)" />
-  <button onclick="checkCart()">Check Bill</button>
-  <div class="card" id="result"></div>
+  <div class="topbar">
+    <h1>Security Panel</h1>
+    <div class="controls">
+      <button class="toggle-mode" onclick="toggleTheme()">🌗 Mode</button>
+      <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+    </div>
+  </div>
+
+  <div class="container" id="loginSection">
+    <input type="password" id="loginCode" placeholder="Enter Security Code" />
+    <button onclick="login()">🔐 Login</button>
+  </div>
+
+  <div class="container" id="mainPanel" style="display:none;">
+    <input type="text" id="cartId" placeholder="Enter Cart ID (e.g. CART3245)" />
+    <button onclick="checkCart()">Check Bill</button>
+    <div class="card" id="result"></div>
+  </div>
 
   <script>
     const firebaseConfig = {
@@ -89,6 +123,18 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+
+    const SECURE_CODE = "0000";
+
+    function login() {
+      const code = document.getElementById("loginCode").value.trim();
+      if (code === SECURE_CODE) {
+        document.getElementById("loginSection").style.display = "none";
+        document.getElementById("mainPanel").style.display = "block";
+      } else {
+        alert("❌ Invalid Security Code");
+      }
+    }
 
     function checkCart() {
       const cartId = document.getElementById("cartId").value.trim();
@@ -129,6 +175,19 @@
       }).catch((error) => {
         result.innerHTML = `<p class="error">⚠️ Error fetching cart data: ${error.message}</p>`;
       });
+    }
+
+    function toggleTheme() {
+      const root = document.documentElement;
+      const isDark = root.style.getPropertyValue('--bg-dark') === '#ffffff';
+      root.style.setProperty('--bg-dark', isDark ? '#121212' : '#ffffff');
+      root.style.setProperty('--text-dark', isDark ? '#ffffff' : '#000000');
+      document.body.style.backgroundColor = isDark ? '#121212' : '#ffffff';
+      document.body.style.color = isDark ? '#ffffff' : '#000000';
+    }
+
+    function logout() {
+      location.reload();
     }
   </script>
 </body>
