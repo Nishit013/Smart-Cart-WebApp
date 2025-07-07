@@ -358,6 +358,7 @@
       cartItems = [];
       document.getElementById("cartItemsList").textContent = "No items scanned.";
       document.getElementById("totalPrice").textContent = "₹0";
+      syncCartToFirebase(); 
     }
  
     function validatePhone() {
