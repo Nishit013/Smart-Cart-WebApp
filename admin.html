@@ -7,6 +7,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <style>
     :root {
       --bg: #0f0f0f;
@@ -152,56 +153,58 @@
   </style>
 </head>
 <body>
-<script>
-  const pass = prompt("Enter admin access code:");
-  if (pass !== "adminofcart") {
-    document.body.innerHTML = "<h2 style='text-align:center; padding: 50px;'>🔒 Unauthorized Access</h2>";
-    throw new Error("Unauthorized");
-  }
-</script>
-
-<div class="sidebar">
-  <h2>📊 Admin</h2>
-  <a href="#analytics">📈 Analytics</a>
-  <a href="#charts">📉 Graphs</a>
-  <a href="#carts">🛒 Cart Details</a>
+<div id="loginContainer" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh;">
+  <h2>🔐 Admin Login</h2>
+  <input type="email" id="email" placeholder="Email" style="padding:10px; margin:5px;">
+  <input type="password" id="password" placeholder="Password" style="padding:10px; margin:5px;">
+  <button onclick="login()" style="padding:10px 20px; margin-top:10px;">Login</button>
+  <p id="loginError" style="color:red; display:none;">❌ Invalid email or password</p>
 </div>
 
-<div class="content">
-  <div class="topbar">
-    <strong>Smart Cart Pro</strong>
-    <button onclick="document.body.classList.toggle('light-mode')">🌓 Toggle Mode</button>
+<div id="adminPanel" style="display:none;">
+  <div class="sidebar">
+    <h2>📊 Admin</h2>
+    <a href="#analytics">📈 Analytics</a>
+    <a href="#charts">📉 Graphs</a>
+    <a href="#carts">🛒 Cart Details</a>
   </div>
 
-  <div class="section" id="analytics">
-    <h2>📈 Realtime Analytics</h2>
-    <select id="filterSelect" onchange="renderData()"> 
-      <option value="all">All Time</option>
-      <option value="today">Today</option>
-      <option value="week">This Week</option>
-    </select>
-  </div>
-
-  <div class="analytics">
-    <div class="box"><h3 id="totalCarts">0</h3>Total Carts</div>
-    <div class="box"><h3 id="activeCarts">0</h3>Active</div>
-    <div class="box"><h3 id="inactiveCarts">0</h3>Disactive</div>
-    <div class="box"><h3 id="paidCarts">0</h3>Paid</div>
-    <div class="box"><h3 id="totalRevenue">₹0</h3>Revenue</div>
-  </div>
-
-  <div class="section" id="charts">
-    <h2>📊 Cart Status & Revenue</h2>
-    <div class="chart-grid">
-      <canvas id="statusChart"></canvas>
-      <canvas id="revenueChart"></canvas>
+  <div class="content">
+    <div class="topbar">
+      <strong>Smart Cart Pro</strong>
+      <button onclick="document.body.classList.toggle('light-mode')">🌓 Toggle Mode</button>
     </div>
-  </div>
 
-  <div class="section" id="carts">
-    <h2>🛒 Cart Details</h2>
-    <input type="text" id="cartSearch" placeholder="🔍 Search by cart ID or product..." oninput="renderData()"/>
-    <div class="cards" id="cartList"></div>
+    <div class="section" id="analytics">
+      <h2>📈 Realtime Analytics</h2>
+      <select id="filterSelect" onchange="renderData()"> 
+        <option value="all">All Time</option>
+        <option value="today">Today</option>
+        <option value="week">This Week</option>
+      </select>
+    </div>
+
+    <div class="analytics">
+      <div class="box"><h3 id="totalCarts">0</h3>Total Carts</div>
+      <div class="box"><h3 id="activeCarts">0</h3>Active</div>
+      <div class="box"><h3 id="inactiveCarts">0</h3>Disactive</div>
+      <div class="box"><h3 id="paidCarts">0</h3>Paid</div>
+      <div class="box"><h3 id="totalRevenue">₹0</h3>Revenue</div>
+    </div>
+
+    <div class="section" id="charts">
+      <h2>📊 Cart Status & Revenue</h2>
+      <div class="chart-grid">
+        <canvas id="statusChart"></canvas>
+        <canvas id="revenueChart"></canvas>
+      </div>
+    </div>
+
+    <div class="section" id="carts">
+      <h2>🛒 Cart Details</h2>
+      <input type="text" id="cartSearch" placeholder="🔍 Search by cart ID or product..." oninput="renderData()"/>
+      <div class="cards" id="cartList"></div>
+    </div>
   </div>
 </div>
 
@@ -382,6 +385,32 @@ function deleteCart(cartId) {
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
   }
+</script>
+<script>
+  const auth = firebase.auth();
+
+  function login() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    auth.signInWithEmailAndPassword(email, password)
+      .then((userCredential) => {
+        document.getElementById("loginContainer").style.display = "none";
+        document.getElementById("adminPanel").style.display = "block";
+      })
+      .catch((error) => {
+        console.error(error);
+        document.getElementById("loginError").style.display = "block";
+      });
+  }
+
+  // 🔁 Auto-login on page reload
+  auth.onAuthStateChanged((user) => {
+    if (user) {
+      document.getElementById("loginContainer").style.display = "none";
+      document.getElementById("adminPanel").style.display = "block";
+    }
+  });
 </script>
 
 </body>
