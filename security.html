@@ -117,28 +117,27 @@
       border-left: 1px solid #333;
       position: fixed;
       right: 0;
-      top: 0;
+      top: 60px;
       z-index: 100;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      align-items: center;
-      padding: 20px 0;
+      padding: 20px 16px;
     }
 
     .sidebar.open {
-      width: 220px;
+      width: 240px;
     }
 
     .sidebar button {
-      width: 80%;
+      width: 100%;
       margin: 10px 0;
-      padding: 10px;
+      padding: 14px;
       background: var(--primary);
       border: none;
-      border-radius: 6px;
+      border-radius: 8px;
       color: white;
-      font-size: 15px;
+      font-size: 16px;
       cursor: pointer;
     }
 
@@ -146,7 +145,24 @@
       font-size: 14px;
       color: #bbb;
       text-align: center;
-      padding: 20px;
+      padding: 20px 0;
+      border-bottom: 1px solid #444;
+    }
+
+    .sidebar .user-info p {
+      margin: 6px 0;
+    }
+
+    .sidebar .user-info p.name {
+      font-weight: bold;
+      font-size: 16px;
+      color: var(--text);
+    }
+
+    .sidebar .user-info p.email {
+      font-weight: bold;
+      font-size: 14px;
+      color: var(--text);
     }
 
     .content {
@@ -208,7 +224,6 @@
   </style>
 </head>
 <body>
-
 <div id="loginPage" class="login-screen">
   <div class="login-card">
     <h2>Security Panel Login</h2>
@@ -332,8 +347,9 @@
     const name = localStorage.getItem("userName");
     const email = localStorage.getItem("userEmail");
     document.getElementById("userInfo").innerHTML = `
-      <p><strong>${name}</strong></p>
-      <p>${email}</p>
+      <p class="name">${name}</p>
+      <hr style="border: 0.5px solid #555; width: 80%; margin: 10px auto;">
+      <p class="email">${email}</p>
     `;
   }
 
@@ -342,6 +358,5 @@
     if (theme === "light") document.body.classList.add("light");
   };
 </script>
-
 </body>
 </html>
