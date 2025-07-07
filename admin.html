@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Smart Cart Pro – Admin Panel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -26,13 +27,15 @@
       --border: #ccc;
     }
     body {
-      margin: 0;
-      padding: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Segoe UI', sans-serif;
-      overflow-x: hidden;
-    }
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Poppins', sans-serif;
+  overflow-x: hidden;
+  transition: background 0.3s, color 0.3s;
+}
+
     .sidebar {
       position: fixed;
       top: 0;
@@ -128,8 +131,18 @@
       transition: background 0.2s ease;
     }
     .card:hover {
-      background: rgba(0,188,212,0.1);
-    }
+  background: rgba(0,188,212,0.1);
+}
+
+/* 👇 New Enhancement #3 */
+.card, .box, button {
+  transition: transform 0.2s ease, background 0.3s ease;
+}
+
+.card:hover, .box:hover, button:hover {
+  transform: scale(1.02);
+}
+
     .card h4 {
       margin: 0 0 5px;
       font-size: 18px;
@@ -257,9 +270,12 @@
   <div class="content">
     <div class="topbar">
   <strong>Smart Cart Pro</strong>
-  <div>
-    <button onclick="document.body.classList.toggle('light-mode')">🌓 Toggle Mode</button>
-    <button onclick="logout()" style="margin-left: 10px;">🔓 Logout</button>
+  <div style="position: relative;">
+    <button onclick="toggleProfileDropdown()">👤</button>
+    <div id="profileDropdown" style="display: none; position: absolute; right: 0; top: 35px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; min-width: 180px;">
+      <p style="margin: 0 0 10px; font-size: 14px;" id="userEmail">admin@email.com</p>
+      <button onclick="logout()" style="padding: 6px 10px; width: 100%;">🔓 Logout</button>
+    </div>
   </div>
 </div>
 
@@ -524,6 +540,17 @@ function resetInactivityTimer() {
 
 resetInactivityTimer();
 </script>
+<script>
+  function toggleProfileDropdown() {
+    const dropdown = document.getElementById("profileDropdown");
+    dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+  }
 
+  auth.onAuthStateChanged((user) => {
+    if (user) {
+      document.getElementById("userEmail").innerText = user.email;
+    }
+  });
+</script>
 </body>
 </html>
