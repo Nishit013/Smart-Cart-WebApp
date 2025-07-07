@@ -37,24 +37,52 @@
 }
 
     .sidebar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 220px;
-      height: 100vh;
-      background: var(--card);
-      padding: 20px;
-      box-shadow: 2px 0 5px rgba(0,0,0,0.2);
-      overflow-y: auto;
-      z-index: 1000;
-    }
-    .sidebar h2 { color: var(--accent); }
-    .sidebar a {
-      display: block;
-      color: var(--text);
-      margin: 10px 0;
-      text-decoration: none;
-    }
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 220px;
+  height: 100vh;
+  background: linear-gradient(to bottom, #1f1f1f, #121212);
+  padding: 24px 16px;
+  box-shadow: 3px 0 12px rgba(0, 0, 0, 0.4);
+  overflow-y: auto;
+  z-index: 1000;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar h2 {
+  color: var(--accent);
+  font-size: 20px;
+  margin-bottom: 30px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidebar a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  padding: 10px 15px;
+  margin: 6px 0;
+  text-decoration: none;
+  border-radius: 8px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.sidebar a:hover {
+  background: rgba(0, 188, 212, 0.1);
+  color: var(--accent);
+}
+
+.sidebar a.active {
+  background: var(--accent);
+  color: #fff;
+}
+
     .content {
       margin-left: 240px;
       width: calc(100% - 240px);
@@ -261,11 +289,12 @@
 
 <div id="adminPanel" style="display:none;">
   <div class="sidebar">
-    <h2>📊 Admin</h2>
-    <a href="#analytics">📈 Analytics</a>
-    <a href="#charts">📉 Graphs</a>
-    <a href="#carts">🛒 Cart Details</a>
-  </div>
+  <h2>📊 <span>Admin</span></h2>
+  <a href="#analytics">📈 <span>Analytics</span></a>
+  <a href="#charts">📉 <span>Graphs</span></a>
+  <a href="#carts">🛒 <span>Cart Details</span></a>
+</div>
+
 
   <div class="content">
     <div class="topbar">
@@ -553,5 +582,18 @@ resetInactivityTimer();
     }
   });
 </script>
+<script>
+  // ✅ Highlight active sidebar link
+  window.addEventListener('DOMContentLoaded', () => {
+    const links = document.querySelectorAll('.sidebar a');
+    links.forEach(link => {
+      link.addEventListener('click', () => {
+        links.forEach(l => l.classList.remove('active'));
+        link.classList.add('active');
+      });
+    });
+  });
+</script>
+
 </body>
 </html>
