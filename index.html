@@ -482,19 +482,19 @@ return downloadURL;
   showToast("✅ Payment Successful");
 
   generateAndUploadPDF(cartItems, total, cartId).then((pdfUrl) => {
-    db.ref('carts/' + cartId).update({
-      paymentStatus: "Paid",
-      bill: {
-        summary: summary,
-        pdfUrl: pdfUrl
-      },
-      paymentTimestamp: new Date().toISOString()
-    });
-
-    sendWhatsAppBill(summary, phone);
-    clearCart();
-    document.getElementById("checkoutBtn").disabled = false;
-    document.getElementById("loading").style.display = "none";
+  return db.ref('carts/' + cartId).update({
+    paymentStatus: "Paid",
+    bill: {
+      summary: summary,
+      pdfUrl: pdfUrl
+    },
+    paymentTimestamp: new Date().toISOString()
+  });
+}).then(() => {
+  sendWhatsAppBill(summary, phone);
+  clearCart();
+  document.getElementById("checkoutBtn").disabled = false;
+  document.getElementById("loading").style.display = "none";
   });
 },
 
