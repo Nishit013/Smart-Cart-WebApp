@@ -165,7 +165,6 @@
   <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script>
   // Your Firebase configuration object
   const firebaseConfig = {
@@ -379,7 +378,7 @@
   db.ref('carts/' + cartId).set(cartData);
 }
  
-    async function generateAndUploadPDF(cartItems, total, cartId) {
+    async function generatePDF(cartItems, total) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
  
@@ -438,13 +437,6 @@
   // Save the file
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
 doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
-// Also upload to Firebase Storage
-const pdfBlob = doc.output('blob');
-const storageRef = firebase.storage().ref();
-const pdfRef = storageRef.child(`bills/${cartId}.pdf`);
-await pdfRef.put(pdfBlob);
-const downloadURL = await pdfRef.getDownloadURL();
-return downloadURL;
 }
  
  
@@ -479,25 +471,21 @@ return downloadURL;
         name: "Smart Cart Pro",
         description: "Smart Cart Payment",
         handler: function (response) {
-  showToast("✅ Payment Successful");
-
-  generateAndUploadPDF(cartItems, total, cartId).then((pdfUrl) => {
-  return db.ref('carts/' + cartId).update({
-    paymentStatus: "Paid",
-    bill: {
-      summary: summary,
-      pdfUrl: pdfUrl
-    },
-    paymentTimestamp: new Date().toISOString()
-  });
-}).then(() => {
-  sendWhatsAppBill(summary, phone);
-  clearCart();
-  document.getElementById("checkoutBtn").disabled = false;
-  document.getElementById("loading").style.display = "none";
-  });
-},
-
+          showToast("✅ Payment Successful");
+          generatePDF(cartItems, total);
+          sendWhatsAppBill(summary, phone);
+ 
+          db.ref('carts/' + cartId).update({
+          paymentStatus: "Paid",
+          bill: {
+         summary: summary
+         }
+       });
+ 
+          clearCart();
+          document.getElementById("checkoutBtn").disabled = false;
+          document.getElementById("loading").style.display = "none";
+        },
         prefill: { contact: phone },
         theme: { color: "#00bcd4" }
       };
