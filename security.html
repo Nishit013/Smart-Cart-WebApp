@@ -41,18 +41,13 @@
 
     .login-card {
       background: rgba(30, 30, 30, 0.95);
-      backdrop-filter: blur(8px);
       border-radius: 16px;
       padding: 30px 20px;
       width: 100%;
-      max-width: 380px;
+      max-width: 400px;
       box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
       text-align: center;
-    }
-
-    .login-card h2 {
-      font-size: 24px;
-      margin-bottom: 20px;
+      color: white;
     }
 
     .login-card input,
@@ -126,13 +121,13 @@
       z-index: 100;
       display: flex;
       flex-direction: column;
-      justify-content: flex-end;
+      justify-content: space-between;
       align-items: center;
       padding: 20px 0;
     }
 
     .sidebar.open {
-      width: 200px;
+      width: 220px;
     }
 
     .sidebar button {
@@ -147,8 +142,14 @@
       cursor: pointer;
     }
 
+    .sidebar .user-info {
+      font-size: 14px;
+      color: #bbb;
+      text-align: center;
+      padding: 20px;
+    }
+
     .content {
-      flex: 1;
       padding: 80px 20px 20px 20px;
       width: 100%;
       max-width: 600px;
@@ -158,6 +159,7 @@
     .form-row {
       display: flex;
       gap: 10px;
+      margin-bottom: 20px;
     }
 
     .form-row input {
@@ -182,11 +184,10 @@
     }
 
     .card {
-      margin-top: 20px;
-      padding: 20px;
       background: var(--card);
       border-radius: 8px;
       border: 1px solid #333;
+      padding: 20px;
     }
 
     ul {
@@ -197,17 +198,16 @@
       .topbar h2 {
         font-size: 16px;
       }
-      .login-card {
-        padding: 25px 16px;
-      }
       .form-row {
         flex-direction: column;
+      }
+      .sidebar {
+        padding-bottom: 50px;
       }
     }
   </style>
 </head>
 <body>
- 
 
 <div id="loginPage" class="login-screen">
   <div class="login-card">
@@ -230,17 +230,20 @@
   </div>
 
   <div class="sidebar" id="sidebar">
-    <button onclick="logout()">Logout</button>
-    <button onclick="toggleTheme()">Toggle Theme</button>
+    <div class="user-info" id="userInfo"></div>
+    <div>
+      <button onclick="logout()">Logout</button>
+      <button onclick="toggleTheme()">Toggle Theme</button>
+    </div>
   </div>
-<div class="content">
+
+  <div class="content">
     <div class="form-row">
       <input type="text" id="cartIdInput" placeholder="Enter Cart ID" />
       <button onclick="checkCart()">Check Bill</button>
     </div>
     <div class="card" id="cartDetails"></div>
   </div>
-  
 </div>
 
 <script>
@@ -266,10 +269,13 @@
 
     auth.signInWithEmailAndPassword(email, password)
       .then(() => {
-        localStorage.setItem("role", role);
         localStorage.setItem("theme", document.body.classList.contains("light") ? "light" : "dark");
+        localStorage.setItem("userName", name);
+        localStorage.setItem("userEmail", email);
+
         document.getElementById("loginPage").style.display = "none";
         document.getElementById("panel").style.display = "block";
+        updateSidebarInfo();
       })
       .catch(() => {
         document.getElementById("loginError").style.display = "block";
@@ -278,19 +284,22 @@
 
   function logout() {
     auth.signOut().then(() => {
+      localStorage.removeItem("userName");
+      localStorage.removeItem("userEmail");
+
       document.getElementById("panel").style.display = "none";
       document.getElementById("loginPage").style.display = "flex";
     });
+  }
+
+  function toggleSidebar() {
+    document.getElementById("sidebar").classList.toggle("open");
   }
 
   function toggleTheme() {
     const body = document.body;
     const isLight = body.classList.toggle("light");
     localStorage.setItem("theme", isLight ? "light" : "dark");
-  }
-
-  function toggleSidebar() {
-    document.getElementById("sidebar").classList.toggle("open");
   }
 
   function checkCart() {
@@ -319,13 +328,20 @@
     });
   }
 
+  function updateSidebarInfo() {
+    const name = localStorage.getItem("userName");
+    const email = localStorage.getItem("userEmail");
+    document.getElementById("userInfo").innerHTML = `
+      <p><strong>${name}</strong></p>
+      <p>${email}</p>
+    `;
+  }
+
   window.onload = () => {
     const theme = localStorage.getItem("theme");
     if (theme === "light") document.body.classList.add("light");
   };
 </script>
 
-
-  
 </body>
 </html>
