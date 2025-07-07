@@ -155,25 +155,30 @@
       margin: auto;
     }
 
-    .content input,
-    .check-btn {
-      width: 100%;
+    .form-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .form-row input {
+      flex: 1;
       padding: 14px;
       font-size: 16px;
       border-radius: 8px;
       border: none;
-      margin-bottom: 10px;
-    }
-
-    .content input {
       background: #2a2a2a;
       color: white;
     }
 
-    .check-btn {
+    .form-row button {
+      padding: 14px 20px;
+      font-size: 16px;
       background: var(--primary);
+      border: none;
+      border-radius: 8px;
       color: white;
       cursor: pointer;
+      white-space: nowrap;
     }
 
     .card {
@@ -195,10 +200,14 @@
       .login-card {
         padding: 25px 16px;
       }
+      .form-row {
+        flex-direction: column;
+      }
     }
   </style>
 </head>
 <body>
+ 
 
 <div id="loginPage" class="login-screen">
   <div class="login-card">
@@ -225,11 +234,7 @@
     <button onclick="toggleTheme()">Toggle Theme</button>
   </div>
 
-  <div class="content">
-    <input type="text" id="cartIdInput" placeholder="Enter Cart ID" />
-    <button class="check-btn" onclick="checkCart()">Check Bill</button>
-    <div class="card" id="cartDetails"></div>
-  </div>
+  
 </div>
 
 <script>
@@ -314,5 +319,13 @@
   };
 </script>
 
+
+  <div class="content">
+    <div class="form-row">
+      <input type="text" id="cartIdInput" placeholder="Enter Cart ID" />
+      <button onclick="checkCart()">Check Bill</button>
+    </div>
+    <div class="card" id="cartDetails"></div>
+  </div>
 </body>
 </html>
