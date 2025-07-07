@@ -468,59 +468,54 @@ doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
       summary += `\nTotal: ₹${total}`;
  
       const options = {
-        key: "rzp_live_es0XjKaI61byUK",
-        amount: total * 100,
-        currency: "INR",
-        name: "Smart Cart Pro",
-        description: "Smart Cart Payment",
-        handler: async function (response) {
-  showToast("✅ Payment Successful");
+  key: "rzp_live_es0XjKaI61byUK",
+  amount: total * 100,
+  currency: "INR",
+  name: "Smart Cart Pro",
+  description: "Smart Cart Payment",
+  handler: async function (response) {
+    showToast("✅ Payment Successful");
 
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
 
-  // (PDF generation logic same as before...)
+    // Generate PDF
+    const pdfBlob = doc.output("blob");
 
-  // Convert the PDF to a Blob
-  const pdfBlob = doc.output("blob");
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const filename = `SmartCart_Receipt_${cartId}_${timestamp}.pdf`;
 
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const filename = `SmartCart_Receipt_${cartId}_${timestamp}.pdf`;
+    const storageRef = firebase.storage().ref();
+    const pdfRef = storageRef.child("bills/" + filename);
 
-  const storageRef = firebase.storage().ref();
-  const pdfRef = storageRef.child("bills/" + filename);
+    try {
+      await pdfRef.put(pdfBlob);
+      const downloadURL = await pdfRef.getDownloadURL();
 
-  try {
-    // Upload PDF blob to Firebase Storage
-    await pdfRef.put(pdfBlob);
+      await db.ref("carts/" + cartId).update({
+        paymentStatus: "Paid",
+        bill: {
+          summary: summary,
+          pdfUrl: downloadURL
+        }
+      });
 
-    // Get the downloadable URL
-    const downloadURL = await pdfRef.getDownloadURL();
+      sendWhatsAppBill(summary, phone);
+      clearCart();
+      showToast("🧾 PDF Bill Saved to Firebase");
+    } catch (err) {
+      showToast("⚠️ PDF Upload Error: " + err.message);
+    }
 
-    // Store bill URL and summary to Firebase Realtime DB
-    await db.ref("carts/" + cartId).update({
-      paymentStatus: "Paid",
-      bill: {
-        summary: summary,
-        pdfUrl: downloadURL
-      }
-    });
+    document.getElementById("checkoutBtn").disabled = false;
+    document.getElementById("loading").style.display = "none";
+  },  // ✅ Correctly close the handler function here
 
-    // Send WhatsApp and Clear Cart
-    sendWhatsAppBill(summary, phone);
-    clearCart();
-    showToast("🧾 PDF Bill Saved to Firebase");
-  } catch (err) {
-    showToast("⚠️ PDF Upload Error: " + err.message);
-  }
+  // ✅ Now these are valid properties inside options
+  prefill: { contact: phone },
+  theme: { color: "#00bcd4" }
+};
 
-  document.getElementById("checkoutBtn").disabled = false;
-  document.getElementById("loading").style.display = "none";
-}
-
-        prefill: { contact: phone },
-        theme: { color: "#00bcd4" }
-      };
  
       const rzp1 = new Razorpay(options);
       rzp1.open();
