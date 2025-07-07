@@ -165,9 +165,6 @@
   <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<!-- Add this Firebase Storage script in <head> -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
-
 <script>
   // Your Firebase configuration object
   const firebaseConfig = {
@@ -468,54 +465,30 @@ doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
       summary += `\nTotal: ₹${total}`;
  
       const options = {
-  key: "rzp_live_es0XjKaI61byUK",
-  amount: total * 100,
-  currency: "INR",
-  name: "Smart Cart Pro",
-  description: "Smart Cart Payment",
-  handler: async function (response) {
-    showToast("✅ Payment Successful");
-
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    // Generate PDF
-    const pdfBlob = doc.output("blob");
-
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const filename = `SmartCart_Receipt_${cartId}_${timestamp}.pdf`;
-
-    const storageRef = firebase.storage().ref();
-    const pdfRef = storageRef.child("bills/" + filename);
-
-    try {
-      await pdfRef.put(pdfBlob);
-      const downloadURL = await pdfRef.getDownloadURL();
-
-      await db.ref("carts/" + cartId).update({
-        paymentStatus: "Paid",
-        bill: {
-          summary: summary,
-          pdfUrl: downloadURL
-        }
-      });
-
-      sendWhatsAppBill(summary, phone);
-      clearCart();
-      showToast("🧾 PDF Bill Saved to Firebase");
-    } catch (err) {
-      showToast("⚠️ PDF Upload Error: " + err.message);
-    }
-
-    document.getElementById("checkoutBtn").disabled = false;
-    document.getElementById("loading").style.display = "none";
-  },  // ✅ Correctly close the handler function here
-
-  // ✅ Now these are valid properties inside options
-  prefill: { contact: phone },
-  theme: { color: "#00bcd4" }
-};
-
+        key: "rzp_live_es0XjKaI61byUK",
+        amount: total * 100,
+        currency: "INR",
+        name: "Smart Cart Pro",
+        description: "Smart Cart Payment",
+        handler: function (response) {
+          showToast("✅ Payment Successful");
+          generatePDF(cartItems, total);
+          sendWhatsAppBill(summary, phone);
+ 
+          db.ref('carts/' + cartId).update({
+          paymentStatus: "Paid",
+          bill: {
+         summary: summary
+         }
+       });
+ 
+          clearCart();
+          document.getElementById("checkoutBtn").disabled = false;
+          document.getElementById("loading").style.display = "none";
+        },
+        prefill: { contact: phone },
+        theme: { color: "#00bcd4" }
+      };
  
       const rzp1 = new Razorpay(options);
       rzp1.open();
