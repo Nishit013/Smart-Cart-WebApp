@@ -171,9 +171,12 @@
 
   <div class="content">
     <div class="topbar">
-      <strong>Smart Cart Pro</strong>
-      <button onclick="document.body.classList.toggle('light-mode')">🌓 Toggle Mode</button>
-    </div>
+  <strong>Smart Cart Pro</strong>
+  <div>
+    <button onclick="document.body.classList.toggle('light-mode')">🌓 Toggle Mode</button>
+    <button onclick="logout()" style="margin-left: 10px;">🔓 Logout</button>
+  </div>
+</div>
 
     <div class="section" id="analytics">
       <h2>📈 Realtime Analytics</h2>
@@ -411,6 +414,30 @@ function deleteCart(cartId) {
       document.getElementById("adminPanel").style.display = "block";
     }
   });
+  // 🔓 Logout function
+function logout() {
+  firebase.auth().signOut().then(() => {
+    document.getElementById("adminPanel").style.display = "none";
+    document.getElementById("loginContainer").style.display = "flex";
+  });
+}
+
+// ⏱️ Auto logout after 10 mins of inactivity
+let inactivityTimer;
+
+function resetInactivityTimer() {
+  clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(() => {
+    alert("⏳ Session expired due to inactivity. Logging out...");
+    logout();
+  }, 10 * 60 * 1000); // 10 minutes
+}
+
+["mousemove", "keydown", "scroll", "click"].forEach(evt =>
+  document.addEventListener(evt, resetInactivityTimer)
+);
+
+resetInactivityTimer();
 </script>
 
 </body>
