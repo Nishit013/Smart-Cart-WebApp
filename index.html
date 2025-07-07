@@ -165,6 +165,9 @@
   <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<!-- Add this Firebase Storage script in <head> -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
 <script>
   // Your Firebase configuration object
   const firebaseConfig = {
@@ -470,22 +473,51 @@ doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
         currency: "INR",
         name: "Smart Cart Pro",
         description: "Smart Cart Payment",
-        handler: function (response) {
-          showToast("✅ Payment Successful");
-          generatePDF(cartItems, total);
-          sendWhatsAppBill(summary, phone);
- 
-          db.ref('carts/' + cartId).update({
-          paymentStatus: "Paid",
-          bill: {
-         summary: summary
-         }
-       });
- 
-          clearCart();
-          document.getElementById("checkoutBtn").disabled = false;
-          document.getElementById("loading").style.display = "none";
-        },
+        handler: async function (response) {
+  showToast("✅ Payment Successful");
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // (PDF generation logic same as before...)
+
+  // Convert the PDF to a Blob
+  const pdfBlob = doc.output("blob");
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const filename = `SmartCart_Receipt_${cartId}_${timestamp}.pdf`;
+
+  const storageRef = firebase.storage().ref();
+  const pdfRef = storageRef.child("bills/" + filename);
+
+  try {
+    // Upload PDF blob to Firebase Storage
+    await pdfRef.put(pdfBlob);
+
+    // Get the downloadable URL
+    const downloadURL = await pdfRef.getDownloadURL();
+
+    // Store bill URL and summary to Firebase Realtime DB
+    await db.ref("carts/" + cartId).update({
+      paymentStatus: "Paid",
+      bill: {
+        summary: summary,
+        pdfUrl: downloadURL
+      }
+    });
+
+    // Send WhatsApp and Clear Cart
+    sendWhatsAppBill(summary, phone);
+    clearCart();
+    showToast("🧾 PDF Bill Saved to Firebase");
+  } catch (err) {
+    showToast("⚠️ PDF Upload Error: " + err.message);
+  }
+
+  document.getElementById("checkoutBtn").disabled = false;
+  document.getElementById("loading").style.display = "none";
+}
+
         prefill: { contact: phone },
         theme: { color: "#00bcd4" }
       };
