@@ -37,10 +37,9 @@
     }
     .controls {
       display: flex;
-      align-items: center;
       gap: 10px;
     }
-    .toggle-mode, .logout-btn {
+    .controls button {
       background-color: var(--primary);
       color: white;
       border: none;
@@ -95,8 +94,8 @@
   <div class="topbar">
     <h1>Security Panel</h1>
     <div class="controls">
-      <button class="toggle-mode" onclick="toggleTheme()">🌗 Mode</button>
-      <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+      <button onclick="toggleTheme()">🌗 Mode</button>
+      <button onclick="logout()">🚪 Logout</button>
     </div>
   </div>
 
