@@ -370,7 +370,7 @@
   // ✅ Paid carts revenue tracking
   db.ref("paidCarts").on("value", snapshot => {
     paidCarts = snapshot.val() || {};
-    totalRevenue = 0;
+    calculateRevenue();
 
     Object.values(paidCarts).forEach(cart => {
       totalRevenue += cart.total || 0;
@@ -380,6 +380,14 @@
     const revEl = document.getElementById("totalRevenue");
     if (revEl) revEl.textContent = "₹" + totalRevenue;
   });
+  function calculateRevenue() {
+  totalRevenue = 0;
+  Object.values(paidCarts).forEach(cart => {
+    totalRevenue += cart.total || 0;
+  });
+  const revEl = document.getElementById("totalRevenue");
+  if (revEl) revEl.textContent = "₹" + totalRevenue;
+}
 
   function renderData() {
     const filter = document.getElementById("filterSelect").value;
@@ -482,11 +490,27 @@
 // ✅ Place these two outside of any other function
 
 function markAsPaid(cartId) {
+  if (!allCarts[cartId]) return;
+
   if (confirm("Mark this cart as Paid?")) {
-    db.ref("carts/" + cartId + "/paymentStatus").set("Paid")
-      .then(() => alert("✅ Cart marked as Paid!"));
+    const cart = allCarts[cartId];
+    const timestamp = Date.now();
+    const billData = {
+      cartId: cartId,
+      total: cart.total || 0,
+      phone: cart.phone || "-",
+      summary: cart.bill?.summary || generateSummary(cart.items)
+    };
+
+    // 1. Update status in main cart node
+    db.ref("carts/" + cartId + "/paymentStatus").set("Paid");
+
+    // 2. Add entry to paidCarts node (triggering real-time revenue update)
+    db.ref("paidCarts/bill_" + timestamp).set(billData)
+      .then(() => alert("✅ Cart marked as Paid & added to Revenue!"));
   }
 }
+
 
 function deleteCart(cartId) {
   if (confirm("Are you sure you want to delete this cart?")) {
