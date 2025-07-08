@@ -473,29 +473,30 @@ doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
   name: "Smart Cart Pro",
   description: "Smart Cart Payment",
   handler: function (response) {
-    showToast("✅ Payment Successful");
-    generatePDF(cartItems, total);
-    sendWhatsAppBill(summary, phone);
+  showToast("✅ Payment Successful");
+  generatePDF(cartItems, total);
+  sendWhatsAppBill(summary, phone);
 
-    // ✅ Archive paid cart before clearing
-    const paidCartData = {
-      cartId,
-      items: cartItems,
-      total,
-      phone,
-      paymentTime: new Date().toISOString(),
+  // ✅ Archive paid cart uniquely
+  const paidCartData = {
+    cartId,
+    items: cartItems,
+    total,
+    phone,
+    paymentTime: new Date().toISOString(),
+    bill: {
+      summary: summary
+    }
+  };
+
+  const paidKey = cartId + "_" + Date.now(); // 👈 unique key per payment
+  db.ref('paidCarts/' + paidKey).set(paidCartData).then(() => {
+    db.ref('carts/' + cartId).update({
+      paymentStatus: "Paid",
       bill: {
         summary: summary
       }
-    };
-
-    db.ref('paidCarts/' + cartId).set(paidCartData).then(() => {
-      db.ref('carts/' + cartId).update({
-        paymentStatus: "Paid",
-        bill: {
-          summary: summary
-        }
-      });
+    });
 
       clearCart(true); // Only clears UI
       document.getElementById("checkoutBtn").disabled = false;
