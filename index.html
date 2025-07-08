@@ -165,7 +165,6 @@
   <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script>
   // Your Firebase configuration object
   const firebaseConfig = {
@@ -382,7 +381,7 @@
     async function generatePDF(cartItems, total) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
-
+ 
   // Header
   doc.setFontSize(14);
   doc.text("Smart Cart Pro", 20, 20);
@@ -390,15 +389,15 @@
   doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, 26);
   doc.text("GSTIN: 24XXXXXXX1Z9", 20, 31);
   doc.text("TAX INVOICE", 150, 20);
-
+ 
   // Date and time
   const now = new Date();
   doc.text(`Date: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`, 150, 26);
-
+ 
   // Line
   doc.setLineWidth(0.1);
   doc.line(20, 34, 190, 34);
-
+ 
   // Table header
   doc.setFontSize(11);
   let y = 40;
@@ -407,7 +406,8 @@
   doc.text("Qty", 120, y);
   doc.text("Amount", 150, y);
   y += 6;
-
+ 
+  doc.setLineWidth(0.05);
   cartItems.forEach(item => {
     const subtotal = item.price * item.qty;
     doc.text(item.name, 20, y);
@@ -416,37 +416,28 @@
     doc.text(`₹${subtotal.toFixed(2)}`, 150, y);
     y += 6;
   });
-
+ 
+  // Line before total
   y += 4;
   doc.line(20, y, 190, y);
   y += 6;
+ 
+  // Total
   doc.setFontSize(12);
   doc.text("Total Invoice Amount:", 90, y);
   doc.text(`₹${total.toFixed(2)}`, 150, y);
   y += 10;
+ 
+  // Footer notes
   doc.setFontSize(9);
   doc.text("This is a computer-generated invoice and doesn't require a signature.", 20, y);
   y += 5;
   doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
-
-  // Save locally
+ 
+  // Save the file
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const fileName = `SmartCart_Receipt_${timestamp}.pdf`;
-  doc.save(fileName); // Local download
-
-  // Upload to Firebase Storage
-  const pdfBlob = doc.output("blob");
-  const storageRef = firebase.storage().ref().child(`bills/${cartId}.pdf`);
-  try {
-    await storageRef.put(pdfBlob);
-    const downloadURL = await storageRef.getDownloadURL();
-    return downloadURL;
-  } catch (error) {
-    console.error("❌ PDF upload failed:", error);
-    return null;
-  }
+doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
 }
-
  
  
     function sendWhatsAppBill(summary, phoneNumber) {
@@ -479,46 +470,22 @@
         currency: "INR",
         name: "Smart Cart Pro",
         description: "Smart Cart Payment",
-        handler: async function (response) {
-  showToast("✅ Payment Successful");
-  const phone = document.getElementById("phone").value.trim();
-
-  // Generate summary
-  let summary = '';
-  let total = 0;
-  cartItems.forEach((item, i) => {
-    const subtotal = item.price * item.qty;
-    summary += `${i + 1}. ${item.name} - ₹${item.price} × ${item.qty} = ₹${subtotal}\n`;
-    total += subtotal;
-  });
-  summary += `\nTotal: ₹${total}`;
-
-  // Generate + upload PDF
-  const downloadURL = await generatePDF(cartItems, total);
-
-  // Update Firebase with summary and bill URL
-  const updates = {
-    paymentStatus: "Paid",
-    bill: {
-      summary: summary
-    }
-  };
-  if (downloadURL) {
-    updates.billUrl = downloadURL;
-  }
-
-  await db.ref('carts/' + cartId).update(updates);
-
-  // Send WhatsApp bill
-  sendWhatsAppBill(summary, phone);
-
-  // Clear UI
-  clearCart();
-  document.getElementById("checkoutBtn").disabled = false;
-  document.getElementById("loading").style.display = "none";
-}
-
-,
+        handler: function (response) {
+          showToast("✅ Payment Successful");
+          generatePDF(cartItems, total);
+          sendWhatsAppBill(summary, phone);
+ 
+          db.ref('carts/' + cartId).update({
+          paymentStatus: "Paid",
+          bill: {
+         summary: summary
+         }
+       });
+ 
+          clearCart();
+          document.getElementById("checkoutBtn").disabled = false;
+          document.getElementById("loading").style.display = "none";
+        },
         prefill: { contact: phone },
         theme: { color: "#00bcd4" }
       };
