@@ -356,10 +356,27 @@
   const db = firebase.database();
 
   let allCarts = {}, chart1, chart2;
+  let paidCarts = {};
+  let totalRevenue = 0;
 
+  // 🔄 Live carts data
   db.ref("carts").on("value", snapshot => {
     allCarts = snapshot.val() || {};
     renderData();
+  });
+
+  // ✅ Paid carts revenue tracking
+  db.ref("paidCarts").on("value", snapshot => {
+    paidCarts = snapshot.val() || {};
+    totalRevenue = 0;
+
+    Object.values(paidCarts).forEach(cart => {
+      totalRevenue += cart.total || 0;
+    });
+
+    // Display revenue in dashboard
+    const revEl = document.getElementById("revenue");
+    if (revEl) revEl.textContent = "₹" + totalRevenue;
   });
 
   function renderData() {
