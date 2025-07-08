@@ -214,6 +214,16 @@
     ul {
       padding-left: 20px;
     }
+    .history-entry {
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 10px;
+  background: var(--card);
+  border: 1px solid #555;
+  color: var(--text);
+}
 
     @media (max-width: 600px) {
       .topbar h2 {
@@ -389,22 +399,15 @@
       // Show in Local History UI
       const historyList = document.getElementById("historyList");
       const entry = document.createElement("div");
-      entry.style = `
-        padding: 12px;
-        background: #2a2a2a;
-        border-radius: 6px;
-        border: 1px solid #555;
-        font-size: 14px;
-        line-height: 1.5;
-        margin-bottom: 10px;
-      `;
-      entry.innerHTML = `
-        ✅ <strong>${cartId}</strong> |
-        🛒 Items: ${itemCount} |
-        💰 ₹${total} |
-        🕒 ${checkoutTime} |
-        👤 ${approver}
-      `;
+entry.className = "history-entry";
+entry.innerHTML = `
+  ✅ <strong>${cartId}</strong> |
+  🛒 Items: ${itemCount} |
+  💰 ₹${total} |
+  🕒 ${checkoutTime} |
+  👤 ${approver}
+`;
+
       historyList.prepend(entry);
     });
   }
