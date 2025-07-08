@@ -165,6 +165,7 @@
   <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script>
   // Your Firebase configuration object
   const firebaseConfig = {
@@ -437,6 +438,21 @@
   // Save the file
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
 doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
+doc.save(fileName);
+
+  // Upload to Firebase Storage
+  const pdfBlob = doc.output("blob");
+  const storageRef = firebase.storage().ref().child(`bills/${cartId}.pdf`);
+  try {
+    await storageRef.put(pdfBlob);
+    const downloadURL = await storageRef.getDownloadURL();
+    await db.ref('carts/' + cartId).update({
+      billUrl: downloadURL
+    });
+    console.log("✅ Bill uploaded to Firebase:", downloadURL);
+  } catch (error) {
+    console.error("❌ Error uploading bill:", error);
+  }
 }
  
  
