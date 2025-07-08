@@ -354,12 +354,14 @@
       syncCartToFirebase();
     }
  
-    function clearCart() {
-      cartItems = [];
-      document.getElementById("cartItemsList").textContent = "No items scanned.";
-      document.getElementById("totalPrice").textContent = "₹0";
-      syncCartToFirebase(); 
-    }
+    function clearCart(skipFirebase = false) {
+  cartItems = [];
+  document.getElementById("cartItemsList").textContent = "No items scanned.";
+  document.getElementById("totalPrice").textContent = "₹0";
+  if (!skipFirebase) {
+    syncCartToFirebase(); // Only clear in Firebase if not paid
+  }
+}
  
     function validatePhone() {
       const phone = document.getElementById("phone").value;
@@ -465,33 +467,53 @@ doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
       summary += `\nTotal: ₹${total}`;
  
       const options = {
-        key: "rzp_live_es0XjKaI61byUK",
-        amount: total * 100,
-        currency: "INR",
-        name: "Smart Cart Pro",
-        description: "Smart Cart Payment",
-        handler: function (response) {
-          showToast("✅ Payment Successful");
-          generatePDF(cartItems, total);
-          sendWhatsAppBill(summary, phone);
- 
-          db.ref('carts/' + cartId).update({
-          paymentStatus: "Paid",
-          bill: {
-         summary: summary
-         }
-       });
- 
-          clearCart();
-          document.getElementById("checkoutBtn").disabled = false;
-          document.getElementById("loading").style.display = "none";
-        },
-        prefill: { contact: phone },
-        theme: { color: "#00bcd4" }
-      };
- 
-      const rzp1 = new Razorpay(options);
-      rzp1.open();
+  key: "rzp_live_es0XjKaI61byUK",
+  amount: total * 100,
+  currency: "INR",
+  name: "Smart Cart Pro",
+  description: "Smart Cart Payment",
+  handler: function (response) {
+    showToast("✅ Payment Successful");
+    generatePDF(cartItems, total);
+    sendWhatsAppBill(summary, phone);
+
+    // ✅ Archive paid cart before clearing
+    const paidCartData = {
+      cartId,
+      items: cartItems,
+      total,
+      phone,
+      paymentTime: new Date().toISOString(),
+      bill: {
+        summary: summary
+      }
+    };
+
+    db.ref('paidCarts/' + cartId).set(paidCartData).then(() => {
+      db.ref('carts/' + cartId).update({
+        paymentStatus: "Paid",
+        bill: {
+          summary: summary
+        }
+      });
+
+      clearCart(true); // Only clears UI
+      document.getElementById("checkoutBtn").disabled = false;
+      document.getElementById("loading").style.display = "none";
+    }).catch((error) => {
+      showToast("⚠️ Error storing bill in Firebase.");
+      console.error(error);
+      document.getElementById("checkoutBtn").disabled = false;
+      document.getElementById("loading").style.display = "none";
+    });
+  },
+  prefill: { contact: phone },
+  theme: { color: "#00bcd4" }
+};
+
+const rzp1 = new Razorpay(options);
+rzp1.open();
+
  
       rzp1.on('payment.failed', function (response) {
         showToast("❌ Payment Failed: " + response.error.description);
