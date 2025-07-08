@@ -165,6 +165,8 @@
   <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
 <script>
   // Your Firebase configuration object
   const firebaseConfig = {
@@ -436,7 +438,26 @@
  
   // Save the file
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
+const fileName = `SmartCart_Receipt_${cartId}_${timestamp}.pdf`;
+
+// Convert PDF to Blob
+const pdfBlob = doc.output('blob');
+
+// Upload to Firebase Storage
+const storageRef = firebase.storage().ref(`bills/${fileName}`);
+await storageRef.put(pdfBlob);
+
+// Get the download URL
+const downloadURL = await storageRef.getDownloadURL();
+
+// Save the URL in Firebase Realtime Database
+await db.ref('carts/' + cartId).update({
+  billUrl: downloadURL
+});
+
+// Optionally download locally as well
+doc.save(fileName);
+
 }
  
  
