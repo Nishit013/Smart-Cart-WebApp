@@ -436,23 +436,25 @@
   doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
  
   // Save the file
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
+  // Save locally
+const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+const fileName = `SmartCart_Receipt_${timestamp}.pdf`;
 doc.save(fileName);
 
-  // Upload to Firebase Storage
-  const pdfBlob = doc.output("blob");
-  const storageRef = firebase.storage().ref().child(`bills/${cartId}.pdf`);
-  try {
-    await storageRef.put(pdfBlob);
-    const downloadURL = await storageRef.getDownloadURL();
-    await db.ref('carts/' + cartId).update({
-      billUrl: downloadURL
-    });
-    console.log("✅ Bill uploaded to Firebase:", downloadURL);
-  } catch (error) {
-    console.error("❌ Error uploading bill:", error);
-  }
+// Upload to Firebase Storage
+const pdfBlob = doc.output("blob");
+const storageRef = firebase.storage().ref().child(`bills/${cartId}.pdf`);
+try {
+  await storageRef.put(pdfBlob);
+  const downloadURL = await storageRef.getDownloadURL();
+  await db.ref('carts/' + cartId).update({
+    billUrl: downloadURL
+  });
+  console.log("✅ PDF uploaded. URL:", downloadURL);
+} catch (error) {
+  console.error("❌ Error uploading PDF to storage:", error);
+}
+
 }
  
  
