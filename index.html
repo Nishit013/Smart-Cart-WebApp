@@ -182,6 +182,7 @@
   // Initialize Firebase
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database(); // This lets you use db.ref(...) later
+  const storage = firebase.storage();
 </script>
  
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
@@ -383,24 +384,19 @@
     async function generatePDF(cartItems, total) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
- 
-  // Header
+
   doc.setFontSize(14);
   doc.text("Smart Cart Pro", 20, 20);
   doc.setFontSize(10);
   doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, 26);
   doc.text("GSTIN: 24XXXXXXX1Z9", 20, 31);
   doc.text("TAX INVOICE", 150, 20);
- 
-  // Date and time
+
   const now = new Date();
   doc.text(`Date: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`, 150, 26);
- 
-  // Line
   doc.setLineWidth(0.1);
   doc.line(20, 34, 190, 34);
- 
-  // Table header
+
   doc.setFontSize(11);
   let y = 40;
   doc.text("Item", 20, y);
@@ -408,8 +404,7 @@
   doc.text("Qty", 120, y);
   doc.text("Amount", 150, y);
   y += 6;
- 
-  doc.setLineWidth(0.05);
+
   cartItems.forEach(item => {
     const subtotal = item.price * item.qty;
     doc.text(item.name, 20, y);
@@ -418,47 +413,44 @@
     doc.text(`₹${subtotal.toFixed(2)}`, 150, y);
     y += 6;
   });
- 
-  // Line before total
+
   y += 4;
   doc.line(20, y, 190, y);
   y += 6;
- 
-  // Total
+
   doc.setFontSize(12);
   doc.text("Total Invoice Amount:", 90, y);
   doc.text(`₹${total.toFixed(2)}`, 150, y);
   y += 10;
- 
-  // Footer notes
+
   doc.setFontSize(9);
   doc.text("This is a computer-generated invoice and doesn't require a signature.", 20, y);
   y += 5;
   doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
- 
-  // Save the file
+
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-const fileName = `SmartCart_Receipt_${cartId}_${timestamp}.pdf`;
+  const fileName = `SmartCart_Receipt_${cartId}_${timestamp}.pdf`;
+  const pdfBlob = doc.output('blob');
 
-// Convert PDF to Blob
-const pdfBlob = doc.output('blob');
+  try {
+    console.log("Uploading PDF to Firebase Storage...");
+    const storageRef = storage.ref(`bills/${fileName}`);
+    await storageRef.put(pdfBlob);
+    const downloadURL = await storageRef.getDownloadURL();
 
-// Upload to Firebase Storage
-const storageRef = firebase.storage().ref(`bills/${fileName}`);
-await storageRef.put(pdfBlob);
+    console.log("PDF uploaded. Download URL:", downloadURL);
 
-// Get the download URL
-const downloadURL = await storageRef.getDownloadURL();
+    await db.ref('carts/' + cartId).update({
+      billUrl: downloadURL
+    });
 
-// Save the URL in Firebase Realtime Database
-await db.ref('carts/' + cartId).update({
-  billUrl: downloadURL
-});
-
-// Optionally download locally as well
-doc.save(fileName);
-
+    console.log("✅ URL saved in database.");
+    doc.save(fileName);
+  } catch (error) {
+    console.error("❌ Error uploading or saving bill URL:", error);
+  }
 }
+
  
  
     function sendWhatsAppBill(summary, phoneNumber) {
