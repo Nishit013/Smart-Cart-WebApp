@@ -488,22 +488,37 @@ try {
         currency: "INR",
         name: "Smart Cart Pro",
         description: "Smart Cart Payment",
-        handler: function (response) {
-          showToast("✅ Payment Successful");
-          generatePDF(cartItems, total);
-          sendWhatsAppBill(summary, phone);
- 
-          db.ref('carts/' + cartId).update({
-          paymentStatus: "Paid",
-          bill: {
-         summary: summary
-         }
-       });
- 
-          clearCart();
-          document.getElementById("checkoutBtn").disabled = false;
-          document.getElementById("loading").style.display = "none";
-        },
+        handler: async function (response) {
+  showToast("✅ Payment Successful");
+  const phone = document.getElementById("phone").value.trim();
+
+  // Generate summary
+  let summary = '';
+  let total = 0;
+  cartItems.forEach((item, i) => {
+    const subtotal = item.price * item.qty;
+    summary += `${i + 1}. ${item.name} - ₹${item.price} × ${item.qty} = ₹${subtotal}\n`;
+    total += subtotal;
+  });
+  summary += `\nTotal: ₹${total}`;
+
+  // 🧾 Generate + Upload PDF
+  await generatePDF(cartItems, total); // This should upload and write billUrl
+
+  // 📤 Update Realtime DB
+  await db.ref('carts/' + cartId).update({
+    paymentStatus: "Paid",
+    bill: { summary: summary }
+  });
+
+  // 📱 Send WhatsApp
+  sendWhatsAppBill(summary, phone);
+
+  clearCart();
+  document.getElementById("checkoutBtn").disabled = false;
+  document.getElementById("loading").style.display = "none";
+}
+,
         prefill: { contact: phone },
         theme: { color: "#00bcd4" }
       };
