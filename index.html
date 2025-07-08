@@ -163,24 +163,25 @@
     }
   </style>
   <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyCTLNpJB02VZ_-kjZaL_y-cHX74U4hzwvE",
-      authDomain: "smartcartpro-367bf.firebaseapp.com",
-      databaseURL: "https://smartcartpro-367bf-default-rtdb.firebaseio.com",
-      projectId: "smartcartpro-367bf",
-      storageBucket: "smartcartpro-367bf.appspot.com",
-      messagingSenderId: "823504170326",
-      appId: "1:823504170326:web:0b9e24b85e8f40ba8dfaf7"
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const storage = firebase.storage();
-  </script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+  // Your Firebase configuration object
+  const firebaseConfig = {
+    apiKey: "AIzaSyCTLNpJB02VZ_-kjZaL_y-cHX74U4hzwvE",
+    authDomain: "smartcartpro-367bf.firebaseapp.com",
+    databaseURL: "https://smartcartpro-367bf-default-rtdb.firebaseio.com",
+    projectId: "smartcartpro-367bf",
+    storageBucket: "smartcartpro-367bf.appspot.com",
+    messagingSenderId: "823504170326",
+    appId: "1:823504170326:web:0b9e24b85e8f40ba8dfaf7"
+  };
+ 
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database(); // This lets you use db.ref(...) later
+</script>
+ 
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -376,82 +377,84 @@
   };
   db.ref('carts/' + cartId).set(cartData);
 }
-  <script>
+ 
     async function generatePDF(cartItems, total) {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-
-      doc.setFontSize(14);
-      doc.text("Smart Cart Pro", 20, 20);
-      doc.setFontSize(10);
-      doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, 26);
-      doc.text("GSTIN: 24XXXXXXX1Z9", 20, 31);
-      doc.text("TAX INVOICE", 150, 20);
-
-      const now = new Date();
-      doc.text(`Date: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`, 150, 26);
-      doc.setLineWidth(0.1);
-      doc.line(20, 34, 190, 34);
-
-      let y = 40;
-      doc.setFontSize(11);
-      doc.text("Item", 20, y);
-      doc.text("Price", 90, y);
-      doc.text("Qty", 120, y);
-      doc.text("Amount", 150, y);
-      y += 6;
-
-      cartItems.forEach(item => {
-        const subtotal = item.price * item.qty;
-        doc.text(item.name, 20, y);
-        doc.text(`₹${item.price.toFixed(2)}`, 90, y);
-        doc.text(`${item.qty}`, 120, y);
-        doc.text(`₹${subtotal.toFixed(2)}`, 150, y);
-        y += 6;
-      });
-
-      y += 4;
-      doc.line(20, y, 190, y);
-      y += 6;
-
-      doc.setFontSize(12);
-      doc.text("Total Invoice Amount:", 90, y);
-      doc.text(`₹${total.toFixed(2)}`, 150, y);
-      y += 10;
-      doc.setFontSize(9);
-      doc.text("This is a computer-generated invoice and doesn't require a signature.", 20, y);
-      y += 5;
-      doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
-
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const fileName = `SmartCart_Receipt_${cartId}_${timestamp}.pdf`;
-      const pdfBlob = doc.output('blob');
-      const storageRef = firebase.storage().ref(`bills/${fileName}`);
-      await storageRef.put(pdfBlob);
-      const downloadURL = await storageRef.getDownloadURL();
-
-      await db.ref('carts/' + cartId).update({
-        billUrl: downloadURL
-      });
-
-      doc.save(fileName);
-      return downloadURL;
-    }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+ 
+  // Header
+  doc.setFontSize(14);
+  doc.text("Smart Cart Pro", 20, 20);
+  doc.setFontSize(10);
+  doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, 26);
+  doc.text("GSTIN: 24XXXXXXX1Z9", 20, 31);
+  doc.text("TAX INVOICE", 150, 20);
+ 
+  // Date and time
+  const now = new Date();
+  doc.text(`Date: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`, 150, 26);
+ 
+  // Line
+  doc.setLineWidth(0.1);
+  doc.line(20, 34, 190, 34);
+ 
+  // Table header
+  doc.setFontSize(11);
+  let y = 40;
+  doc.text("Item", 20, y);
+  doc.text("Price", 90, y);
+  doc.text("Qty", 120, y);
+  doc.text("Amount", 150, y);
+  y += 6;
+ 
+  doc.setLineWidth(0.05);
+  cartItems.forEach(item => {
+    const subtotal = item.price * item.qty;
+    doc.text(item.name, 20, y);
+    doc.text(`₹${item.price.toFixed(2)}`, 90, y);
+    doc.text(`${item.qty}`, 120, y);
+    doc.text(`₹${subtotal.toFixed(2)}`, 150, y);
+    y += 6;
+  });
+ 
+  // Line before total
+  y += 4;
+  doc.line(20, y, 190, y);
+  y += 6;
+ 
+  // Total
+  doc.setFontSize(12);
+  doc.text("Total Invoice Amount:", 90, y);
+  doc.text(`₹${total.toFixed(2)}`, 150, y);
+  y += 10;
+ 
+  // Footer notes
+  doc.setFontSize(9);
+  doc.text("This is a computer-generated invoice and doesn't require a signature.", 20, y);
+  y += 5;
+  doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
+ 
+  // Save the file
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
+}
+ 
+ 
     function sendWhatsAppBill(summary, phoneNumber) {
       const customerNumber = "91" + phoneNumber;
       const message = encodeURIComponent(" Smart Cart Bill\n\n" + summary);
       const url = `https://wa.me/${customerNumber}?text=${message}`;
       window.open(url, "_blank");
     }
-
+ 
     function checkout() {
       const phone = document.getElementById("phone").value.trim();
       if (!/^\d{10}$/.test(phone)) return showToast("📵 Invalid phone number.");
       if (cartItems.length === 0) return showToast("❌ Cart is empty. Please scan some items.");
-
+ 
       document.getElementById("checkoutBtn").disabled = true;
       document.getElementById("loading").style.display = "block";
-
+ 
       let summary = '';
       let total = 0;
       cartItems.forEach((item, i) => {
@@ -460,22 +463,25 @@
         total += subtotal;
       });
       summary += `\nTotal: ₹${total}`;
-
+ 
       const options = {
         key: "rzp_live_es0XjKaI61byUK",
         amount: total * 100,
         currency: "INR",
         name: "Smart Cart Pro",
         description: "Smart Cart Payment",
-        handler: async function () {
+        handler: function (response) {
           showToast("✅ Payment Successful");
-          const billUrl = await generatePDF(cartItems, total);
+          generatePDF(cartItems, total);
           sendWhatsAppBill(summary, phone);
-          await db.ref('carts/' + cartId).update({
-            paymentStatus: "Paid",
-            bill: { summary: summary },
-            billUrl: billUrl
-          });
+ 
+          db.ref('carts/' + cartId).update({
+          paymentStatus: "Paid",
+          bill: {
+         summary: summary
+         }
+       });
+ 
           clearCart();
           document.getElementById("checkoutBtn").disabled = false;
           document.getElementById("loading").style.display = "none";
@@ -483,16 +489,17 @@
         prefill: { contact: phone },
         theme: { color: "#00bcd4" }
       };
-
+ 
       const rzp1 = new Razorpay(options);
       rzp1.open();
-
+ 
       rzp1.on('payment.failed', function (response) {
         showToast("❌ Payment Failed: " + response.error.description);
         document.getElementById("checkoutBtn").disabled = false;
         document.getElementById("loading").style.display = "none";
       });
     }
+ 
     setInterval(() => {
       const now = new Date();
       document.getElementById("timeDisplay").textContent =
