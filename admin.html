@@ -580,38 +580,71 @@ button {
 }
 
   function renderData() {
-    const filter = document.getElementById("filterSelect").value;
-    const search = document.getElementById("cartSearch").value.toLowerCase();
-    const now = new Date();
-    let total = 0, active = 0, disactive = 0, paid = 0, revenue = 0;
-    const barLabels = [], barData = [], cardsHTML = [];
+  const filter = document.getElementById("filterSelect").value;
+  const search = document.getElementById("cartSearch").value.toLowerCase();
+  const now = new Date();
+  let total = 0, active = 0, disactive = 0;
 
-    Object.values(allCarts).forEach((cart, index) => {
-      const updatedAt = new Date(cart.lastUpdated);
-      const minsOld = (now - updatedAt) / 60000;
-      const isToday = now.toDateString() === updatedAt.toDateString();
-      const isWeek = (now - updatedAt) / 86400000 <= 7;
+  // ✅ Filter paidCarts for correct paid count and revenue
+  let revenue = 0;
+  let paid = 0;
 
-      if ((filter === "today" && !isToday) || (filter === "week" && !isWeek)) return;
+  Object.values(paidCarts).forEach(cart => {
+  const ts = cart.paidAt || cart.paymentTime || Date.now();
+  const paidDate = new Date(ts);
 
-      const itemList = cart.items.map(i =>
-        `<li>${i.name} - ₹${i.price} × ${i.qty} = ₹${i.price * i.qty}</li>`
-      );
-      const matchesSearch =
-        cart.cartId.toLowerCase().includes(search) ||
-        itemList.some(line => line.toLowerCase().includes(search));
+  // ✅ Use the updated logic here
+  const isToday = now.toDateString() === paidDate.toDateString();
 
-      if (!matchesSearch) return;
+  const dayOfWeek = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - ((dayOfWeek + 6) % 7));
+  monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
 
-      total++;
-      if (cart.paymentStatus === "Paid") {
-        paid++;
-        revenue += Number(cart.total) || 0;
-      } else if (minsOld <= 15) active++;
+  const isWeek = paidDate >= monday && paidDate <= sunday;
+
+  if (
+    filter === "all" ||
+    (filter === "today" && isToday) ||
+    (filter === "week" && isWeek)
+  ) {
+    revenue += Number(cart.total) || 0;
+    paid++;
+  }
+});
+
+
+  // ✅ Continue with live cart status and rendering
+  const barLabels = [], barData = [], cardsHTML = [];
+
+  Object.values(allCarts).forEach((cart, index) => {
+    const updatedAt = new Date(cart.lastUpdated);
+    const minsOld = (now - updatedAt) / 60000;
+    const isToday = now.toDateString() === updatedAt.toDateString();
+    const isWeek = (now - updatedAt) / 86400000 <= 7;
+
+    if ((filter === "today" && !isToday) || (filter === "week" && !isWeek)) return;
+
+    const itemList = cart.items.map(i =>
+      `<li>${i.name} - ₹${i.price} × ${i.qty} = ₹${i.price * i.qty}</li>`
+    );
+    const matchesSearch =
+      cart.cartId.toLowerCase().includes(search) ||
+      itemList.some(line => line.toLowerCase().includes(search));
+
+    if (!matchesSearch) return;
+
+    total++;
+    if (cart.paymentStatus !== "Paid") {
+      if (minsOld <= 15) active++;
       else disactive++;
+    }
 
-      barLabels.push(cart.cartId);
-      barData.push(cart.total || 0);
+    barLabels.push(cart.cartId);
+    barData.push(cart.total || 0);
 
       const recentClass = minsOld <= 1 ? "recent-update" : "";
 cardsHTML.push(`
@@ -653,7 +686,7 @@ cardsHTML.push(`
     document.getElementById("activeCarts").innerText = active;
     document.getElementById("inactiveCarts").innerText = disactive;
     document.getElementById("paidCarts").innerText = paid;
-    document.getElementById("totalRevenue").innerText = "₹" + totalRevenue;
+    document.getElementById("totalRevenue").innerText = "₹" + revenue;
     document.getElementById("cartList").innerHTML =
     
       cardsHTML.length > 0 ? cardsHTML.join("") : `<div style="padding:20px;">🕒 No active cart now</div>`;
