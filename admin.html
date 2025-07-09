@@ -390,6 +390,37 @@ button {
   color: #aaa;
 }
 
+.items-box {
+  max-height: 160px; /* Enough to show 5 items */
+  overflow-y: auto;
+  margin-top: 8px;
+  background: var(--card);
+  color: var(--text);
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.items-box::-webkit-scrollbar {
+  width: 6px;
+}
+
+.items-box::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 6px;
+}
+
+.toggle-items {
+  margin-top: 8px;
+  padding: 6px 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.toggle-items:hover {
+  background-color: #0056b3;
+}
 
 .login-card button {
   width: 100%;
@@ -809,21 +840,27 @@ cardsHTML.push(`
   const history = Object.values(paidCarts).filter(c => c.cartId === cartId);
   if (!history.length) return "<p>No previous bills.</p>";
 
-  return history.map(c => {
+  return history.map((c, index) => {
     const rawTime = c.paymentTime || c.paidAt || null;
     const paidTime = rawTime ? new Date(rawTime).toLocaleString() : "Unknown";
+    const itemsHTML = (c.items || [])
+      .map(i => `<li>${i.name} × ${i.qty} = ₹${i.qty * i.price}</li>`)
+      .join("");
 
     return `
       <div class="history-entry">
         <p><strong>Paid On:</strong> ${paidTime}</p>
         <p><strong>Total:</strong> ₹${c.total}</p>
         <p><strong>Phone:</strong> ${c.phone || "N/A"}</p>
-        <p><strong>Items:</strong></p>
-        <ul>${(c.items || []).map(i => `<li>${i.name} × ${i.qty} = ₹${i.qty * i.price}</li>`).join("")}</ul>
+        <button class="toggle-items" onclick="toggleItems('items-${index}')">📦 View Items</button>
+        <div id="items-${index}" class="items-box" style="display:none;">
+          <ul>${itemsHTML}</ul>
+        </div>
       </div>
     `;
   }).join("<hr>");
 }
+
 
 function exportCSV() {
   const rows = [["Cart ID", "Total", "Paid At", "Phone"]];
@@ -908,6 +945,10 @@ let chartType = "line";
 function toggleChartType(type) {
   chartType = type;
   renderData(); // Re-render charts using selected type
+}
+function toggleItems(id) {
+  const box = document.getElementById(id);
+  box.style.display = box.style.display === "none" ? "block" : "none";
 }
 
 
