@@ -653,7 +653,7 @@ cardsHTML.push(`
     document.getElementById("activeCarts").innerText = active;
     document.getElementById("inactiveCarts").innerText = disactive;
     document.getElementById("paidCarts").innerText = paid;
-    document.getElementById("totalRevenue").innerText = "₹" + revenue;
+    document.getElementById("totalRevenue").innerText = "₹" + totalRevenue;
     document.getElementById("cartList").innerHTML =
     
       cardsHTML.length > 0 ? cardsHTML.join("") : `<div style="padding:20px;">🕒 No active cart now</div>`;
