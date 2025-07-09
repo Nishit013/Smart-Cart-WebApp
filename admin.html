@@ -77,11 +77,16 @@
 .sidebar a:hover {
   background: rgba(0, 188, 212, 0.1);
   color: var(--accent);
+  transform: translateX(4px);
 }
+
 
 .sidebar a.active {
   background: var(--accent);
   color: #fff;
+}
+.topbar button:hover {
+  background: #00acc1;
 }
 
     .content {
@@ -147,6 +152,11 @@
       width: 100% !important;
     }
 
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 999;
+}
 
   .cart-header {
   padding: 6px 12px; /* Reduced from 10px 15px */
@@ -232,6 +242,10 @@ body.light-mode .tag.Pending {
   background: orange;
   color: white;
 }
+.sidebar a:hover {
+  transform: scale(1.05);
+  background: rgba(0, 188, 212, 0.15);
+}
 
 
   .history-entry {
@@ -312,6 +326,7 @@ body.light-mode .tag.Pending {
     width: 180px;
   }
 
+
   .content {
     margin-left: 180px;
     width: calc(100% - 180px);
@@ -345,6 +360,19 @@ body.light-mode .tag.Pending {
   margin-bottom: 20px;
   color: #fff;
 }
+button {
+  margin-right: 10px;
+  padding: 6px 12px;
+  background: var(--accent);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+}
+
+.card:hover, .box:hover {
+  box-shadow: 0 0 10px var(--accent);
+}
 
 .login-card input {
   width: 100%;
@@ -361,6 +389,7 @@ body.light-mode .tag.Pending {
 .login-card input::placeholder {
   color: #aaa;
 }
+
 
 .login-card button {
   width: 100%;
@@ -384,6 +413,47 @@ body.light-mode .tag.Pending {
   margin-top: 10px;
   font-size: 14px;
 }
+@keyframes glowPulse {
+  0% {
+    box-shadow: 0 0 8px rgba(0, 188, 212, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(0, 188, 212, 0.8);
+  }
+  100% {
+    box-shadow: 0 0 8px rgba(0, 188, 212, 0.4);
+  }
+}
+
+.cart-card:hover {
+  transform: scale(1.02);
+  box-shadow: 0 0 16px 2px rgba(0, 188, 212, 0.6); /* Glow effect */
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+  z-index: 2;
+}
+.cart-header h4::before {
+  content: " ";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 8px;
+  background: green; /* or red for inactive */
+}
+.recent-update {
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    background-color: var(--card);
+  }
+  50% {
+    background-color: rgba(0, 188, 212, 0.08);
+  }
+}
+
 
 </style>
 
@@ -439,12 +509,21 @@ body.light-mode .tag.Pending {
     </div>
 
     <div class="section" id="charts">
-      <h2>📊 Daily Revenue Trend</h2>
-      <div class="chart-grid">
-        <canvas id="statusChart"></canvas>
-        <canvas id="revenueChart"></canvas>
-      </div>
-    </div>
+  <h2>📊 Daily Revenue Trend</h2>
+
+  <!-- ✅ Add this below heading -->
+  <div style="margin-bottom: 10px;">
+    <button onclick="toggleChartType('line')">📈 Line Chart</button>
+    <button onclick="toggleChartType('bar')">📊 Bar Chart</button>
+    <button onclick="exportCSV()">📤 Export Paid Carts</button> <!-- ✅ Add this -->
+  </div>
+
+  <div class="chart-grid">
+    <canvas id="statusChart"></canvas>
+    <canvas id="revenueChart"></canvas>
+  </div>
+</div>
+
 
     <div class="section" id="carts">
       <h2>🛒 Cart Details</h2>
@@ -477,19 +556,28 @@ body.light-mode .tag.Pending {
     renderData();
   });
 
-  // ✅ Paid carts revenue tracking
   db.ref("paidCarts").on("value", snapshot => {
-    paidCarts = snapshot.val() || {};
-    totalRevenue = 0;
+  paidCarts = snapshot.val() || {};
+  totalRevenue = 0;
 
-    Object.values(paidCarts).forEach(cart => {
-      totalRevenue += cart.total || 0;
-    });
-
-    // Display revenue in dashboard
-    const revEl = document.getElementById("totalRevenue");
-    if (revEl) revEl.textContent = "₹" + totalRevenue;
+  Object.values(paidCarts).forEach(cart => {
+    totalRevenue += Number(cart.total) || 0;
   });
+
+  const revEl = document.getElementById("totalRevenue");
+  if (revEl) revEl.textContent = "₹" + totalRevenue;
+
+  renderData(); // ✅ Fix for today/week revenue not refreshing
+});
+  function timeAgo(date) {
+  const diff = Math.floor((Date.now() - new Date(date)) / 60000);
+  if (diff < 1) return "just now";
+  if (diff < 60) return `${diff} min${diff > 1 ? 's' : ''} ago`;
+  const hrs = Math.floor(diff / 60);
+  if (hrs < 24) return `${hrs} hour${hrs > 1 ? 's' : ''} ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days} day${days > 1 ? 's' : ''} ago`;
+}
 
   function renderData() {
     const filter = document.getElementById("filterSelect").value;
@@ -518,15 +606,16 @@ body.light-mode .tag.Pending {
       total++;
       if (cart.paymentStatus === "Paid") {
         paid++;
-        revenue += cart.total || 0;
+        revenue += Number(cart.total) || 0;
       } else if (minsOld <= 15) active++;
       else disactive++;
 
       barLabels.push(cart.cartId);
       barData.push(cart.total || 0);
 
-      cardsHTML.push(`
-  <div class="cart-card">
+      const recentClass = minsOld <= 1 ? "recent-update" : "";
+cardsHTML.push(`
+  <div class="cart-card ${recentClass}">
     <div class="cart-header" onclick="toggleCart('${cart.cartId}')">
       <h4>🛒 ${cart.cartId}</h4>
       <span class="tag ${cart.paymentStatus || 'Pending'}">${cart.paymentStatus || 'Pending'}</span>
@@ -536,7 +625,7 @@ body.light-mode .tag.Pending {
       <div class="live-box">
         <p><strong>Total:</strong> ₹${cart.total}</p>
         <p><strong>🧮 Items:</strong> ${(cart.items || []).reduce((sum, item) => sum + item.qty, 0)}</p>
-        <p><strong>Updated:</strong> ${updatedAt.toLocaleString()}</p>
+        <p><strong>Updated:</strong> ${timeAgo(updatedAt)}</p>
         <ul>${itemList.length > 0 ? itemList.join("") : "<li>No items in cart.</li>"}</ul>
         ${cart.bill ? `
           <p><strong>🧾 Bill Summary:</strong><br/>
@@ -566,49 +655,75 @@ body.light-mode .tag.Pending {
     document.getElementById("paidCarts").innerText = paid;
     document.getElementById("totalRevenue").innerText = "₹" + revenue;
     document.getElementById("cartList").innerHTML =
+    
       cardsHTML.length > 0 ? cardsHTML.join("") : `<div style="padding:20px;">🕒 No active cart now</div>`;
+
 
     if (chart1) chart1.destroy();
 
-// Group daily revenue from paidCarts
-const dailyRevenueMap = {};
-Object.values(paidCarts).forEach(cart => {
-  const date = new Date(cart.paidAt || cart.timestamp || Date.now())
-    .toLocaleDateString("en-GB");
-  dailyRevenueMap[date] = (dailyRevenueMap[date] || 0) + (cart.total || 0);
-});
+    // 📊 Last 7 days only for line chart
+    const dailyRevenueMap = {};
+    const currentTime = new Date();
 
-const sortedDates = Object.keys(dailyRevenueMap).sort((a, b) => {
-  const [da, ma, ya] = a.split("/").map(Number);
-  const [db, mb, yb] = b.split("/").map(Number);
-  return new Date(ya, ma - 1, da) - new Date(yb, mb - 1, db);
-});
+    Object.values(paidCarts).forEach(cart => {
+      const ts = cart.paidAt || cart.paymentTime || Date.now();
+      const dateObj = new Date(ts);
+      const daysAgo = (currentTime - dateObj) / (1000 * 60 * 60 * 24);
+      if (daysAgo <= 7) {
+        const date = dateObj.toLocaleDateString("en-GB");
+        dailyRevenueMap[date] = (dailyRevenueMap[date] || 0) + (Number(cart.total) || 0);
+      }
+    });
 
-const dailyRevenueData = sortedDates.map(date => dailyRevenueMap[date]);
+    const sortedDates = Object.keys(dailyRevenueMap).sort((a, b) => {
+      const [da, ma, ya] = a.split("/").map(Number);
+      const [db, mb, yb] = b.split("/").map(Number);
+      return new Date(ya, ma - 1, da) - new Date(yb, mb - 1, db);
+    });
 
-chart1 = new Chart(document.getElementById("statusChart"), {
-  type: "line",
+    const dailyRevenueData = sortedDates.map(date => dailyRevenueMap[date]);
+
+    chart1 = new Chart(document.getElementById("statusChart"), {
+  type: chartType,
   data: {
     labels: sortedDates,
     datasets: [{
-      label: "₹ Revenue per Day",
+      label: "₹ Revenue (Last 7 Days)",
       data: dailyRevenueData,
-      backgroundColor: "#00bcd4",
+      backgroundColor: "rgba(0,188,212,0.2)",
       borderColor: "#00bcd4",
-      borderWidth: 2,
-      tension: 0.3,
+      borderWidth: 3,
+      pointBackgroundColor: "#00bcd4",
+      tension: 0.4,
       fill: true
     }]
   },
   options: {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
-      legend: { display: true }
+      legend: {
+        labels: {
+          color: getComputedStyle(document.body).getPropertyValue('--text'),
+          font: { size: 13 }
+        }
+      },
+      tooltip: {
+        callbacks: {
+          label: (context) => `₹${context.raw}`
+        }
+      }
     },
     scales: {
+      x: {
+        ticks: {
+          color: getComputedStyle(document.body).getPropertyValue('--text'),
+        }
+      },
       y: {
         beginAtZero: true,
         ticks: {
+          color: getComputedStyle(document.body).getPropertyValue('--text'),
           callback: value => `₹${value}`
         }
       }
@@ -619,16 +734,43 @@ chart1 = new Chart(document.getElementById("statusChart"), {
 
     if (chart2) chart2.destroy();
     chart2 = new Chart(document.getElementById("revenueChart"), {
-      type: "bar",
-      data: {
-        labels: barLabels,
-        datasets: [{
-          label: "₹ Revenue per Cart",
-          data: barData,
-          backgroundColor: "#00bcd4"
-        }]
+  type: "bar",
+  data: {
+    labels: barLabels,
+    datasets: [{
+      label: "Revenue per Cart",
+      data: barData,
+      backgroundColor: "#00bcd4"
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (context) => `₹${context.raw}`
+        }
       }
-    });
+    },
+    scales: {
+      x: {
+        ticks: {
+          color: getComputedStyle(document.body).getPropertyValue('--text')
+        }
+      },
+      y: {
+        beginAtZero: true,
+        ticks: {
+          color: getComputedStyle(document.body).getPropertyValue('--text'),
+          callback: value => `₹${value}`
+        }
+      }
+    }
+  }
+});
+
   }
   function getCartHistoryHTML(cartId) {
   const history = Object.values(paidCarts).filter(c => c.cartId === cartId);
@@ -650,6 +792,19 @@ chart1 = new Chart(document.getElementById("statusChart"), {
   }).join("<hr>");
 }
 
+function exportCSV() {
+  const rows = [["Cart ID", "Total", "Paid At", "Phone"]];
+  Object.values(paidCarts).forEach(cart => {
+    const date = new Date(cart.paidAt || cart.paymentTime || "").toLocaleString();
+    rows.push([cart.cartId, cart.total, date, cart.phone || ""]);
+  });
+  const csv = rows.map(r => r.join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "paid_carts.csv";
+  link.click();
+}
 
 function toggleCart(cartId) {
   const cards = document.querySelectorAll(".cart-card");
@@ -704,16 +859,24 @@ function markAsPaid(cartId) {
       paidAt: timestamp
     };
 
-    // Save to /paidCarts
     db.ref("paidCarts/" + timestamp + "_" + cartId).set(paidData)
       .then(() => {
-        // Update status in carts/
         return db.ref("carts/" + cartId + "/paymentStatus").set("Paid");
       })
-      .then(() => alert("✅ Cart marked as Paid & saved to history!"))
+      .then(() => {
+        alert("✅ Cart marked as Paid & saved to history!");
+        renderData(); // ✅ Re-render after payment so filtered stats (today/week) update
+      })
       .catch(err => console.error("❌ Error saving paid cart:", err));
   }
 }
+let chartType = "line";
+
+function toggleChartType(type) {
+  chartType = type;
+  renderData(); // Re-render charts using selected type
+}
+
 
 
 function deleteCart(cartId) {
@@ -817,6 +980,19 @@ function resetInactivityTimer() {
 
 resetInactivityTimer();
 </script>
+<!-- Add this inside your <script> block -->
+<script>
+  document.querySelectorAll('.sidebar a').forEach(link => {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      const targetId = this.getAttribute('href').slice(1);
+      const section = document.getElementById(targetId);
+      if (section) {
+        section.scrollIntoView({ behavior: 'smooth' });
+      }
+    });
+  });
+</script>
 
 
 <script>
@@ -843,6 +1019,24 @@ resetInactivityTimer();
     });
   });
 </script>
+<script>
+  // ✅ Close profile dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('profileDropdown');
+    const button = document.querySelector('.topbar button[onclick="toggleProfileDropdown()"]');
+    if (dropdown && !dropdown.contains(e.target) && e.target !== button) {
+      dropdown.style.display = 'none';
+    }
+  });
+</script>
+<script>
+  window.addEventListener('DOMContentLoaded', () => {
+    if (window.matchMedia('(prefers-color-scheme: light)').matches) {
+      document.body.classList.add('light-mode');
+    }
+  });
+</script>
+
 
 </body>
 </html>
