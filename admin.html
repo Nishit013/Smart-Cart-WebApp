@@ -10,6 +10,9 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
   <style>
     * {
     box-sizing: border-box;
@@ -167,6 +170,15 @@
   justify-content: space-between;
   align-items: center;
   font-size: 18px; /* Optional: reduce text size slightly */
+}
+.cart-card {
+  width: 32%;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  box-sizing: border-box;
+  font-size: 15px;
 }
 
 
@@ -455,13 +467,24 @@ button {
     box-shadow: 0 0 8px rgba(0, 188, 212, 0.4);
   }
 }
+.scroll-box::-webkit-scrollbar {
+  height: 8px;
+  width: 6px;
+}
+.scroll-box::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 6px;
+}
+.security-table th, .security-table td {
+  font-size: 14px;
+}
 
 .cart-card:hover {
   transform: scale(1.02);
   box-shadow: 0 0 16px 2px rgba(0, 188, 212, 0.6); /* Glow effect */
   transition: transform 0.2s ease, box-shadow 0.3s ease;
   cursor: pointer;
-  z-index: 2;
+  z-index: 3;
 }
 .cart-header h4::before {
   content: " ";
@@ -485,6 +508,123 @@ button {
   }
 }
 
+.cart-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  max-height: 1550px; /* slightly increased to ensure 6-7 rows visible */
+  overflow-y: auto;
+}
+
+.cart-box h2 {
+  margin-top: 0;
+  font-size: 24px;
+}
+
+.cart-box input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 16px;
+}
+
+
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: space-between;
+}
+
+.section {
+  background: var(--card-bg);
+  padding: 20px;
+  border-radius: 16px;
+  box-shadow: 0 0 20px rgba(0, 200, 255, 0.1);
+  margin-top: 30px;
+}
+
+.section-title {
+  font-size: 1.5rem;
+  color: var(--text);
+  margin-bottom: 15px;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+.filters input {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text);
+}
+
+.filters button {
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: 0.3s ease;
+}
+
+.filters button:hover {
+  background: var(--accent-hover);
+}
+
+.security-table-container {
+  max-height: 320px;
+  overflow-y: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.security-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--text);
+}
+
+.security-table thead {
+  background: var(--accent-faint);
+  position: sticky;
+  top: 0;
+}
+
+.security-table th,
+.security-table td {
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.security-table tbody tr:nth-child(odd) {
+  background: var(--row-alt);
+}
+:root {
+  --calendar-icon-filter: invert(1); /* Dark = white icon */
+}
+
+body.light-mode {
+  --calendar-icon-filter: invert(0); /* Light = black icon */
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: var(--calendar-icon-filter);
+}
+
 
 </style>
 
@@ -506,6 +646,7 @@ button {
   <a href="#analytics">📈 <span>Analytics</span></a>
   <a href="#charts">📉 <span>Graphs</span></a>
   <a href="#carts">🛒 <span>Cart Details</span></a>
+  <a href="#security">🔐 <span>Security</span></a>
 </div>
 
 
@@ -557,10 +698,43 @@ button {
 
 
     <div class="section" id="carts">
-      <h2>🛒 Cart Details</h2>
-      <input type="text" id="cartSearch" placeholder="🔍 Search by cart ID or product..." oninput="renderData()"/>
-      <div class="cards" id="cartList"></div>
+  <div class="cart-box">
+    <h2>🛒 Cart Details</h2>
+    <input type="text" id="cartSearch" placeholder="🔍 Search by cart ID or product..." oninput="renderData()"/>
+    <div class="cards" id="cartList"></div>
+  </div>
+</div>
+
+<div class="section" id="security">
+  <h2 style="margin-bottom: 12px;">🔐 Security Approvals</h2>
+
+  <!-- 🔎 Filters & Exports -->
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+    <div class="filters" style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <input type="date" id="securityDateFilter" />
+      <input type="text" id="securityGuardFilter" placeholder="Search Guard Name" />
+      <input type="text" id="securityCartFilter" placeholder="Search Cart ID" />
     </div>
+    <div style="display: flex; gap: 10px;">
+      <button onclick="exportSecurityToCSV()" style="padding: 6px 12px; background: var(--accent); color: white; border: none; border-radius: 6px; cursor: pointer;">📄 Export CSV</button>
+      <button onclick="exportSecurityToPDF()" style="padding: 6px 12px; background: var(--accent); color: white; border: none; border-radius: 6px; cursor: pointer;">🧾 Export PDF</button>
+    </div>
+  </div>
+
+  <!-- 📋 Scrollable Table -->
+  <div class="scroll-box" style="max-height: 350px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--accent);">
+    <table class="security-table" style="width: 100%; border-collapse: collapse;">
+      <thead>
+        <tr style="background: var(--accent); color: white;">
+          <th>Cart ID</th>
+          <th>Items</th>
+          <th>Total</th>
+          <th>Time</th>
+          <th>Guard</th>
+        </tr>
+      </thead>
+      <tbody id="securityList"></tbody>
+    </table>
   </div>
 </div>
 
@@ -1069,6 +1243,7 @@ resetInactivityTimer();
 </script>
 
 
+
 <script>
   function toggleProfileDropdown() {
     const dropdown = document.getElementById("profileDropdown");
@@ -1109,8 +1284,141 @@ resetInactivityTimer();
       document.body.classList.add('light-mode');
     }
   });
-</script>
+  db.ref("approvedCarts").on("value", snapshot => {
+  const data = snapshot.val() || {};
+  renderSecurityTable(data);
+});
 
+function renderSecurityTable(data = approvedCartsData) {
+  const tbody = document.getElementById("securityList");
+  const filterDate = document.getElementById("securityDateFilter").value;
+  const filterGuard = document.getElementById("securityGuardFilter").value.toLowerCase();
+  const filterCart = document.getElementById("securityCartFilter").value.toLowerCase();
+
+  tbody.innerHTML = "";
+
+  const filteredRows = Object.values(data || {})
+  .sort((a, b) => b.timestamp - a.timestamp)
+  .filter(entry => {
+    const entryDate = entry.checkoutTime?.split(',')[0]?.trim();
+
+    const formattedInputDate = formatInputDate(filterDate); // "09/07/2025"
+
+    const matchesDate = !filterDate || entryDate === formattedInputDate;
+    const matchesGuard = !filterGuard || (entry.approvedBy || '').toLowerCase().includes(filterGuard);
+    const matchesCart = !filterCart || (entry.cartId || '').toLowerCase().includes(filterCart);
+
+    return matchesDate && matchesGuard && matchesCart;
+  });
+
+
+
+  const rows = filteredRows.map(entry => `
+    <tr style="border-bottom: 1px solid #ccc;">
+      <td style="padding: 8px;">${entry.cartId}</td>
+      <td style="padding: 8px; text-align: center;">${entry.itemCount}</td>
+      <td style="padding: 8px;">₹${entry.total}</td>
+      <td style="padding: 8px;">${entry.checkoutTime || formatTimestamp(entry.timestamp)}</td>
+      <td style="padding: 8px;">${entry.approvedBy || '-'}</td>
+    </tr>
+  `);
+
+  tbody.innerHTML = rows.length 
+    ? rows.join("") 
+    : `<tr><td colspan="5" style="padding: 20px; text-align:center;">❌ No approved carts found</td></tr>`;
+}
+
+function resetSecurityFilters() {
+  document.getElementById("securityDateFilter").value = "";
+  document.getElementById("securityGuardFilter").value = "";
+  document.getElementById("securityCartFilter").value = "";
+  renderSecurityTable(); // refresh full table
+}
+function formatInputDate(dateStr) {
+  const date = new Date(dateStr);
+  const day = String(date.getDate()).padStart(2, "0");      // → 09
+  const month = String(date.getMonth() + 1).padStart(2, "0"); // → 07
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`; // → "09/07/2025"
+}
+
+
+async function exportSecurityToPDF() {
+  const { jsPDF } = window.jspdf;
+  if (!jsPDF) return alert("jsPDF not loaded!");
+
+  const doc = new jsPDF();
+  const headers = ["Cart ID", "Items", "Total", "Time", "Guard"];
+  const rows = [];
+
+  // Get all table rows from #securityList
+  document.querySelectorAll("#securityList tr").forEach(row => {
+    const cols = row.querySelectorAll("td");
+    if (cols.length === 5) {
+      rows.push(Array.from(cols).map(td => td.innerText.trim()));
+    }
+  });
+
+  if (!rows.length) {
+    alert("Nothing to export!");
+    return;
+  }
+
+  doc.setFontSize(16);
+  doc.text("Security Approved Carts", 14, 16);
+  doc.autoTable({
+    head: [headers],
+    body: rows,
+    startY: 22,
+    styles: { fontSize: 10 },
+    theme: 'grid',
+  });
+
+  doc.save(`ApprovedCarts_${Date.now()}.pdf`);
+}
+function exportSecurityToCSV() {
+  const rows = [...document.querySelectorAll("#securityList tr")];
+  if (!rows.length) return alert("Nothing to export!");
+
+  let csv = "Cart ID,Total Items,Price,Payment Time,Approved By\n";
+
+  rows.forEach(row => {
+    const cols = [...row.querySelectorAll("td")];
+    csv += cols.map(td => `"${td.innerText.trim()}"`).join(",") + "\n";
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `Security_Approvals_${Date.now()}.csv`;
+  link.click();
+}
+
+function formatTimestamp(ts) {
+  const d = new Date(ts);
+  return d.toLocaleString();
+}
+
+function formatInputDate(dateStr) {
+  const [year, month, day] = dateStr.split("-");
+  return `${day}/${month}/${year}`; // match with "08/07/2025"
+}
+
+// 🔁 Filter update handlers
+document.getElementById("securityDateFilter").addEventListener("change", () => {
+  db.ref("approvedCarts").once("value").then(snapshot => renderSecurityTable(snapshot.val() || {}));
+});
+document.getElementById("securityGuardFilter").addEventListener("input", () => {
+  db.ref("approvedCarts").once("value").then(snapshot => renderSecurityTable(snapshot.val() || {}));
+});
+document.getElementById("securityCartFilter").addEventListener("input", () => {
+  db.ref("approvedCarts").once("value").then(snapshot => renderSecurityTable(snapshot.val() || {}));
+});
+
+
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
 </body>
 </html>
