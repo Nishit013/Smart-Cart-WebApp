@@ -355,7 +355,7 @@ function verifyCart() {
   }
 
   const detailsDiv = document.getElementById("cartDetails");
-  detailsDiv.innerHTML = `<p>🔄 Searching last 5 paid bills for <strong>${cartId}</strong>...</p>`;
+  detailsDiv.innerHTML = `<p>🔄 Searching latest paid bill for <strong>${cartId}</strong>...</p>`;
 
   // Check if cart currently in use
   db.ref('carts/' + cartId).once('value').then(cartSnapshot => {
@@ -368,95 +368,81 @@ function verifyCart() {
         return;
       }
 
-      // DEBUG: print all keys and cartIds
-      console.log("All paidCarts keys and cartIds:");
-      Object.entries(allBills).forEach(([key, val]) => {
-        console.log(key, val.bill?.cartId);
-      });
-
-      // Filter bills where the key ends with _{cartId} or bill.cartId matches cartId
-      let matchingBills = Object.entries(allBills)
+      // Filter bills where the key contains cartId or bill.cartId matches
+      const matchingBills = Object.entries(allBills)
         .filter(([key, val]) => {
-          return key.toUpperCase().endsWith(`_${cartId}`) || (val.bill?.cartId?.toUpperCase() === cartId);
+          const upperKey = key.toUpperCase();
+          return upperKey.includes(`_${cartId}`) || upperKey.startsWith(`${cartId}_`) || (val.bill?.cartId?.toUpperCase() === cartId);
         })
-        .map(([key, val]) => ({ key, ...val }));
+        .map(([key, val]) => ({ key, ...val }))
+        .sort((a, b) => {
+  const timeA = a.paidAt || (a.paymentTime ? new Date(a.paymentTime).getTime() : (a.bill?.paymentTime ? new Date(a.bill.paymentTime).getTime() : 0));
+  const timeB = b.paidAt || (b.paymentTime ? new Date(b.paymentTime).getTime() : (b.bill?.paymentTime ? new Date(b.bill.paymentTime).getTime() : 0));
+  return timeB - timeA;
+});
+
 
       if (matchingBills.length === 0) {
         detailsDiv.innerHTML = `<p>❌ No paid bill found for <strong>${cartId}</strong>.</p>`;
         return;
       }
 
-      // Sort descending by paidAt
-      matchingBills.sort((a, b) => (b.paidAt || 0) - (a.paidAt || 0));
-      const lastFiveBills = matchingBills.slice(0, 5);
+      const latestBill = matchingBills[0];
+      const paidTime =
+  latestBill.paidAt ||
+  (latestBill.paymentTime ? new Date(latestBill.paymentTime).getTime() : 0) ||
+  (latestBill.bill?.paymentTime ? new Date(latestBill.bill.paymentTime).getTime() : 0) ||
+  Date.now();
 
-     let html = `<p><strong>Cart ID:</strong> ${cartId}</p>`;
-html += `<p><strong>Status:</strong> ${cartInUse ? "🟡 In Use" : "✅ Not in Use"}</p>`;
-html += `<h3>Last 5 Paid Bills:</h3>`;
+      const totalItems = (latestBill.items || []).reduce((acc, item) => acc + (item.qty || 0), 0);
+      const itemsBoxId = `itemsBoxLatest`;
 
-// Wrap bills in scrollable container with max height 300px (adjust as needed)
-html += `<div style="max-height: 300px; overflow-y: auto; padding-right: 10px; margin-top: 10px;">`;
+      let html = `<p><strong>Cart ID:</strong> ${cartId}</p>`;
+      html += `<p><strong>Status:</strong> ${cartInUse ? "🟡 In Use" : "✅ Not in Use"}</p>`;
+      html += `<h3>🧾 Latest Paid Bill:</h3>`;
+      html += `<div style="max-height: 300px; overflow-y: auto; padding-right: 10px; margin-top: 10px;">`;
 
-lastFiveBills.forEach((bill, idx) => {
-  const totalItems = (bill.items || []).reduce((acc, item) => acc + (item.qty || 0), 0);
-  const itemsBoxId = `itemsBox${idx}`; // unique container ID
-
-  html += `<div style="margin-bottom:15px; padding:10px; border:1px solid #ccc; border-radius:6px; background-color: var(--card); color: var(--text);">`;
-  html += `<h4>Bill ${idx + 1} - Paid At: ${new Date(bill.paidAt).toLocaleString()}</h4>`;
-  html += `<p><strong>Total:</strong> ₹${bill.total || 0}</p>`;
-  html += `<p><strong>Total Items:</strong> ${totalItems}</p>`;
-  html += `<p><strong>Payment Status:</strong> ${bill.paymentStatus || 'Paid'}</p>`;
-
-  // Toggle button
-  html += `<button onclick="toggleItemsBox('${itemsBoxId}')" style="margin-bottom:8px; padding:6px 12px; border:none; border-radius:4px; background: var(--primary); color:#fff; cursor:pointer;">Show/Hide Items</button>`;
-
-  // Hidden scrollable box for items
-  html += `<div id="${itemsBoxId}" style="display:none; max-height:250px; overflow-y:auto; margin-top:10px; padding:10px; background:#2a2a2a; border-radius:6px;">`;
-
-  html += `<ul style="padding-left: 20px;">`;
-  (bill.items || []).forEach((item, i) => {
-    html += `<li>${i + 1}. ${item.name} - ₹${item.price} × ${item.qty}</li>`;
-  });
-  html += `</ul>`;
-  html += `</div>`;
-
-  html += `<p><strong>Last Updated:</strong> ${bill.lastUpdated ? new Date(bill.lastUpdated).toLocaleString() : ''}</p>`;
-  html += `</div>`;
-});
-
-
-
-html += `</div>`; // close scroll container
-
+      html += `<div style="margin-bottom:15px; padding:10px; border:1px solid #ccc; border-radius:6px; background-color: var(--card); color: var(--text);">`;
+      html += `<h4>Paid At: ${new Date(paidTime).toLocaleString()}</h4>`;
+      html += `<p><strong>Total:</strong> ₹${latestBill.total || 0}</p>`;
+      html += `<p><strong>Total Items:</strong> ${totalItems}</p>`;
+      html += `<p><strong>Payment Status:</strong> ${latestBill.paymentStatus || 'Paid'}</p>`;
+      html += `<button onclick="toggleItemsBox('${itemsBoxId}')" style="margin-bottom:8px; padding:6px 12px; border:none; border-radius:4px; background: var(--primary); color:#fff; cursor:pointer;">Show/Hide Items</button>`;
+      html += `<div id="${itemsBoxId}" style="display:none; max-height:250px; overflow-y:auto; margin-top:10px; padding:10px; background:#2a2a2a; border-radius:6px;">`;
+      html += `<ul style="padding-left: 20px;">`;
+      (latestBill.items || []).forEach((item, i) => {
+        html += `<li>${i + 1}. ${item.name} - ₹${item.price} × ${item.qty}</li>`;
+      });
+      html += `</ul></div>`;
+      html += `<p><strong>Last Updated:</strong> ${latestBill.lastUpdated ? new Date(latestBill.lastUpdated).toLocaleString() : ''}</p>`;
+      html += `</div></div>`; // close inner and outer container
 
       detailsDiv.innerHTML = html;
 
-      // Save approved carts and update history
+      // Save approved cart
+      const checkoutTime = new Date(paidTime).toLocaleString();
       const approver = localStorage.getItem("userName") || "Unknown";
-      lastFiveBills.forEach(bill => {
-        const checkoutTime = new Date(bill.paidAt).toLocaleString();
-        const approvedCart = {
-          cartId,
-          total: bill.total || 0,
-          itemCount: (bill.items || []).length,
-          approvedBy: approver,
-          checkoutTime,
-          timestamp: Date.now()
-        };
-        db.ref("approvedCarts").push(approvedCart);
+      const approvedCart = {
+        cartId,
+        total: latestBill.total || 0,
+        itemCount: (latestBill.items || []).length,
+        approvedBy: approver,
+        checkoutTime,
+        timestamp: Date.now()
+      };
+      db.ref("approvedCarts").push(approvedCart);
 
-        // Update history list
-        const historyList = document.getElementById("historyList");
-        const entryDiv = document.createElement("div");
-        entryDiv.className = "history-entry";
-        entryDiv.innerHTML = `
-          ✅ <strong>${cartId}</strong> |
-          💰 ₹${bill.total || 0} |
-          🕒 ${checkoutTime} |
-          👤 ${approver}
-        `;
-        historyList.prepend(entryDiv);
-      });
+      // Add to history panel
+      const historyList = document.getElementById("historyList");
+      const entryDiv = document.createElement("div");
+      entryDiv.className = "history-entry";
+      entryDiv.innerHTML = `
+        ✅ <strong>${cartId}</strong> |
+        💰 ₹${latestBill.total || 0} |
+        🕒 ${checkoutTime} |
+        👤 ${approver}
+      `;
+      historyList.prepend(entryDiv);
 
     }).catch(err => {
       detailsDiv.innerHTML = `<p>❌ Error fetching paid bills: ${err.message}</p>`;
@@ -466,8 +452,6 @@ html += `</div>`; // close scroll container
     detailsDiv.innerHTML = `<p>❌ Error fetching cart status: ${err.message}</p>`;
   });
 }
-
-
 function toggleItems(id) {
   const el = document.getElementById(id);
   if (!el) return;
