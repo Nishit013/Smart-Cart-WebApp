@@ -1011,7 +1011,14 @@ cardsHTML.push(`
 
   }
   function getCartHistoryHTML(cartId) {
-  const history = Object.values(paidCarts).filter(c => c.cartId === cartId);
+  const history = Object.values(paidCarts)
+    .filter(c => c.cartId === cartId)
+    .sort((a, b) => {
+      const timeA = new Date(a.paymentTime || a.paidAt || 0).getTime();
+      const timeB = new Date(b.paymentTime || b.paidAt || 0).getTime();
+      return timeB - timeA; // Descending order: latest first
+    });
+
   if (!history.length) return "<p>No previous bills.</p>";
 
   return history.map((c, index) => {
@@ -1034,7 +1041,6 @@ cardsHTML.push(`
     `;
   }).join("<hr>");
 }
-
 
 function exportCSV() {
   const rows = [["Cart ID", "Total", "Paid At", "Phone"]];
