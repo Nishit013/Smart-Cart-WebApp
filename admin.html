@@ -624,7 +624,14 @@ body.light-mode {
 input[type="date"]::-webkit-calendar-picker-indicator {
   filter: var(--calendar-icon-filter);
 }
-
+.tag.Inactive {
+  background-color: #ffeb3b;  /* Bright yellow */
+  color: #000;                /* Black text */
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+}
 
 </style>
 
@@ -856,7 +863,8 @@ cardsHTML.push(`
   <div class="cart-card ${recentClass}">
     <div class="cart-header" onclick="toggleCart('${cart.cartId}')">
       <h4>🛒 ${cart.cartId}</h4>
-      <span class="tag ${cart.paymentStatus || 'Pending'}">${cart.paymentStatus || 'Pending'}</span>
+      <span class="tag ${getCartStatus(cart)}">${getCartStatus(cart)}</span>
+
     </div>
     <div class="cart-body" id="cart-body-${cart.cartId}">
 
@@ -1139,8 +1147,13 @@ function deleteCart(cartId) {
       .then(() => alert("🗑️ Cart deleted successfully!"));
   }
 }
-
+function getCartStatus(cart) {
+  if (cart.paymentStatus === "Paid") return "Inactive";
+  return cart.paymentStatus || "Pending";
+}
 </script>
+
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
   async function downloadPDF(cartId) {
