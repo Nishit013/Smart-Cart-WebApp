@@ -649,12 +649,14 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 <div id="adminPanel" style="display:none;">
   <div class="sidebar">
-  <h2>📊 <span>Admin</span></h2>
-  <a href="#analytics">📈 <span>Analytics</span></a>
-  <a href="#charts">📉 <span>Graphs</span></a>
-  <a href="#carts">🛒 <span>Cart Details</span></a>
-  <a href="#security">🔐 <span>Security</span></a>
-</div>
+    <h2>📊 <span>Admin</span></h2>
+    <a href="#analytics">📈 <span>Analytics</span></a>
+    <a href="#charts">📉 <span>Graphs</span></a>
+    <a href="#carts">🛒 <span>Cart Details</span></a>
+    <a href="#security">🔐 <span>Security</span></a>
+    <a href="#productSales">📦 <span>Product Sales</span></a> <!-- ✅ New link added -->
+  </div>
+
 
 
   <div class="content">
@@ -744,6 +746,46 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     </table>
   </div>
 </div>
+<div class="section" id="productSales">
+  <h2>📦 Product Sales Analysis</h2>
+
+  <div style="margin-bottom: 10px; display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+  <select id="productSalesFilter" onchange="renderProductSales()">
+    <option value="all">All Time</option>
+    <option value="today">Today</option>
+    <option value="week">This Week</option>
+  </select>
+
+  <!-- 🔍 Add search input here -->
+  <input
+    type="text"
+    id="productSearchInput"
+    placeholder="🔍 Search product..."
+    oninput="renderProductSales()"
+    style="padding:6px; border-radius:6px; border:1px solid var(--border); background:var(--card); color:var(--text);"
+  />
+
+  <button onclick="exportProductSalesCSV()">📤 Export CSV</button>
+</div>
+
+
+  <div class="scroll-box" style="max-height: 350px; overflow-y: auto;">
+    <table class="security-table" style="width: 100%;">
+      <thead>
+        <tr style="background: var(--accent); color: white;">
+          <th>Product</th>
+          <th>Units Sold</th>
+          <th>Total Revenue</th>
+        </tr>
+      </thead>
+      <tbody id="productSalesList"></tbody>
+    </table>
+  </div>
+
+  <div class="chart-grid" style="margin-top: 20px;">
+    <canvas id="productSalesChart"></canvas>
+  </div>
+</div>
 
 <script>
   const firebaseConfig = {
@@ -780,6 +822,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   if (revEl) revEl.textContent = "₹" + totalRevenue;
 
   renderData(); // ✅ Fix for today/week revenue not refreshing
+  renderProductSales();
 });
   function timeAgo(date) {
   const diff = Math.floor((Date.now() - new Date(date)) / 60000);
@@ -851,11 +894,12 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
     total++;
     if (cart.paymentStatus === "Paid") {
-  disactive++;
+  disactive++; // ✅ Paid carts are also considered disactive
 } else {
   if (minsOld <= 15) active++;
   else disactive++;
 }
+
 
     barLabels.push(cart.cartId);
     barData.push(cart.total || 0);
@@ -1438,6 +1482,150 @@ document.getElementById("securityGuardFilter").addEventListener("input", () => {
 document.getElementById("securityCartFilter").addEventListener("input", () => {
   db.ref("approvedCarts").once("value").then(snapshot => renderSecurityTable(snapshot.val() || {}));
 });
+
+function renderProductSales() {
+  const filter = document.getElementById("productSalesFilter").value;
+  const search = document.getElementById("productSearchInput")?.value.toLowerCase() || "";
+  const now = new Date();
+
+  const salesMap = {};
+
+  Object.values(paidCarts).forEach(cart => {
+    const paidAt = new Date(cart.paidAt || cart.paymentTime || Date.now());
+
+    const isToday = paidAt.toDateString() === now.toDateString();
+
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+    monday.setHours(0, 0, 0, 0);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+
+    const isWeek = paidAt >= monday && paidAt <= sunday;
+
+    if (
+      filter === "all" ||
+      (filter === "today" && isToday) ||
+      (filter === "week" && isWeek)
+    ) {
+      (cart.items || []).forEach(item => {
+        if (!salesMap[item.name]) {
+          salesMap[item.name] = { qty: 0, revenue: 0 };
+        }
+        salesMap[item.name].qty += item.qty;
+        salesMap[item.name].revenue += item.qty * item.price;
+      });
+    }
+  });
+
+  // 🔍 Apply product name search filter
+  const filteredEntries = Object.entries(salesMap)
+    .filter(([name]) => name.toLowerCase().includes(search))
+    .sort((a, b) => b[1].qty - a[1].qty); // sort by qty sold descending
+
+  // 📝 Render Table
+  const tableHTML = filteredEntries.map(([name, data]) => `
+    <tr>
+      <td>${name}</td>
+      <td>${data.qty}</td>
+      <td>₹${data.revenue}</td>
+    </tr>
+  `).join("");
+
+  document.getElementById("productSalesList").innerHTML = tableHTML || `
+    <tr><td colspan="3" style="padding:10px;">No products found.</td></tr>
+  `;
+
+  // 📊 Render Chart
+  if (window.productChart) window.productChart.destroy();
+
+  const ctx = document.getElementById("productSalesChart").getContext("2d");
+  const labels = filteredEntries.map(([name]) => name);
+  const qtyData = filteredEntries.map(([_, data]) => data.qty);
+
+  window.productChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Units Sold",
+        data: qtyData,
+        backgroundColor: "#00bcd4"
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: context => `${context.raw} units`
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: getComputedStyle(document.body).getPropertyValue('--text')
+          }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            color: getComputedStyle(document.body).getPropertyValue('--text')
+          }
+        }
+      }
+    }
+  });
+}
+
+function exportProductSalesCSV() {
+  const rows = [["Product", "Units Sold", "Total Revenue"]];
+  const filter = document.getElementById("productSalesFilter").value;
+  const now = new Date();
+  const salesMap = {};
+
+  Object.values(paidCarts).forEach(cart => {
+    const paidAt = new Date(cart.paidAt || cart.paymentTime || Date.now());
+
+    const isToday = paidAt.toDateString() === now.toDateString();
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+    monday.setHours(0, 0, 0, 0);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+    const isWeek = paidAt >= monday && paidAt <= sunday;
+
+    if (
+      filter === "all" ||
+      (filter === "today" && isToday) ||
+      (filter === "week" && isWeek)
+    ) {
+      (cart.items || []).forEach(item => {
+        if (!salesMap[item.name]) {
+          salesMap[item.name] = { qty: 0, revenue: 0 };
+        }
+        salesMap[item.name].qty += item.qty;
+        salesMap[item.name].revenue += item.qty * item.price;
+      });
+    }
+  });
+
+  Object.entries(salesMap).forEach(([name, data]) => {
+    rows.push([name, data.qty, "₹" + data.revenue]);
+  });
+
+  const csv = rows.map(r => r.join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "product_sales.csv";
+  link.click();
+}
 
 
 </script>
