@@ -632,6 +632,21 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   font-size: 12px;
   font-weight: bold;
 }
+.scroll-box {
+  max-height: 350px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+}
+
+.scroll-box::-webkit-scrollbar {
+  width: 6px;
+}
+.scroll-box::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 6px;
+}
 
 </style>
 
@@ -1541,8 +1556,10 @@ function renderProductSales() {
   if (window.productChart) window.productChart.destroy();
 
   const ctx = document.getElementById("productSalesChart").getContext("2d");
-  const labels = filteredEntries.map(([name]) => name);
-  const qtyData = filteredEntries.map(([_, data]) => data.qty);
+  const top10Entries = filteredEntries.slice(0, 10); // 🔟 Top 10 products
+
+const labels = top10Entries.map(([name]) => name);
+const qtyData = top10Entries.map(([_, data]) => data.qty);
 
   window.productChart = new Chart(ctx, {
     type: "bar",
