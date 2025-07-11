@@ -874,7 +874,10 @@ cardsHTML.push(`
         <p><strong>Total:</strong> ₹${cart.total}</p>
         <p><strong>🧮 Items:</strong> ${(cart.items || []).reduce((sum, item) => sum + item.qty, 0)}</p>
         <p><strong>Updated:</strong> ${timeAgo(updatedAt)}</p>
-        <ul>${itemList.length > 0 ? itemList.join("") : "<li>No items in cart.</li>"}</ul>
+        <div class="items-box">
+  <ul>${itemList.length > 0 ? itemList.join("") : "<li>No items in cart.</li>"}</ul>
+</div>
+
         ${cart.bill ? `
           <p><strong>🧾 Bill Summary:</strong><br/>
           <pre style="white-space:pre-wrap; font-size:12px;">${cart.bill.summary}</pre></p>
