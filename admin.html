@@ -900,6 +900,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     if (minsOld <= 15) active++;
     else disactive++;
   }
+barLabels.push(cart.cartId);
+barData.push(cart.total || 0);
 
   const recentClass = minsOld <= 1 ? "recent-update" : "";
   
