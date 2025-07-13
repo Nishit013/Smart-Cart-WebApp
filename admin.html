@@ -879,73 +879,63 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   const barLabels = [], barData = [], cardsHTML = [];
 
   Object.values(allCarts).forEach((cart, index) => {
-    const updatedAt = new Date(cart.lastUpdated);
-    const minsOld = (now - updatedAt) / 60000;
-    const isToday = now.toDateString() === updatedAt.toDateString();
-    const isWeek = (now - updatedAt) / 86400000 <= 7;
+  const updatedAt = new Date(cart.lastUpdated || cart.createdAt || Date.now());
+  const minsOld = (now - updatedAt) / 60000;
 
-    if ((filter === "today" && !isToday) || (filter === "week" && !isWeek)) return;
+  const itemList = (cart.items || []).map(i =>
+    `<li>${i.name} - ₹${i.price} × ${i.qty} = ₹${i.price * i.qty}</li>`
+  );
 
-    const itemList = cart.items.map(i =>
-      `<li>${i.name} - ₹${i.price} × ${i.qty} = ₹${i.price * i.qty}</li>`
-    );
-    const matchesSearch =
-      cart.cartId.toLowerCase().includes(search) ||
-      itemList.some(line => line.toLowerCase().includes(search));
+  const trimmedSearch = search.trim();
+  const matchesSearch =
+    cart.cartId.toLowerCase().includes(trimmedSearch) ||
+    itemList.some(line => line.toLowerCase().includes(trimmedSearch));
 
-    if (!matchesSearch) return;
+  if (trimmedSearch && !matchesSearch) return;
 
-    total++;
-    if (cart.paymentStatus === "Paid") {
-  disactive++; // ✅ Paid carts are also considered disactive
-} else {
-  if (minsOld <= 15) active++;
-  else disactive++;
-}
+  total++;
+  if (cart.paymentStatus === "Paid") {
+    disactive++;
+  } else {
+    if (minsOld <= 15) active++;
+    else disactive++;
+  }
 
-
-    barLabels.push(cart.cartId);
-    barData.push(cart.total || 0);
-
-      const recentClass = minsOld <= 1 ? "recent-update" : "";
-cardsHTML.push(`
-  <div class="cart-card ${recentClass}">
-    <div class="cart-header" onclick="toggleCart('${cart.cartId}')">
-      <h4>🛒 ${cart.cartId}</h4>
-      <span class="tag ${getCartStatus(cart)}">${getCartStatus(cart)}</span>
-
-    </div>
-    <div class="cart-body" id="cart-body-${cart.cartId}">
-
-      <div class="live-box">
-        <p><strong>Total:</strong> ₹${cart.total}</p>
-        <p><strong>🧮 Items:</strong> ${(cart.items || []).reduce((sum, item) => sum + item.qty, 0)}</p>
-        <p><strong>Updated:</strong> ${timeAgo(updatedAt)}</p>
-        <div class="items-box">
-  <ul>${itemList.length > 0 ? itemList.join("") : "<li>No items in cart.</li>"}</ul>
-</div>
-
-        ${cart.bill ? `
-          <p><strong>🧾 Bill Summary:</strong><br/>
-          <pre style="white-space:pre-wrap; font-size:12px;">${cart.bill.summary}</pre></p>
-          <button onclick="event.stopPropagation(); downloadPDF('${cart.cartId}')" style="padding:5px 10px; margin-top:5px;">📥 Download PDF</button>
-        ` : ''}
-        <div style="margin-top:10px;">
-          <button onclick="event.stopPropagation(); markAsPaid('${cart.cartId}')" style="margin-right:8px; padding:5px 10px;">✅ Mark as Paid</button>
-          <button onclick="event.stopPropagation(); deleteCart('${cart.cartId}')" style="padding:5px 10px;">🗑️ Delete</button>
+  const recentClass = minsOld <= 1 ? "recent-update" : "";
+  
+  cardsHTML.push(`
+    <div class="cart-card ${recentClass}">
+      <div class="cart-header" onclick="toggleCart('${cart.cartId}')">
+        <h4>🛒 ${cart.cartId}</h4>
+        <span class="tag ${getCartStatus(cart)}">${getCartStatus(cart)}</span>
+      </div>
+      <div class="cart-body" id="cart-body-${cart.cartId}">
+        <div class="live-box">
+          <p><strong>Total:</strong> ₹${cart.total}</p>
+          <p><strong>🧮 Items:</strong> ${(cart.items || []).reduce((sum, item) => sum + item.qty, 0)}</p>
+          <p><strong>Updated:</strong> ${timeAgo(updatedAt)}</p>
+          <div class="items-box">
+            <ul>${itemList.length > 0 ? itemList.join("") : "<li>No items in cart.</li>"}</ul>
+          </div>
+          ${cart.bill ? `
+            <p><strong>🧾 Bill Summary:</strong><br/>
+            <pre style="white-space:pre-wrap; font-size:12px;">${cart.bill.summary}</pre></p>
+            <button onclick="event.stopPropagation(); downloadPDF('${cart.cartId}')" style="padding:5px 10px; margin-top:5px;">📥 Download PDF</button>
+          ` : ''}
+          <div style="margin-top:10px;">
+            <button onclick="event.stopPropagation(); markAsPaid('${cart.cartId}')" style="margin-right:8px; padding:5px 10px;">✅ Mark as Paid</button>
+            <button onclick="event.stopPropagation(); deleteCart('${cart.cartId}')" style="padding:5px 10px;">🗑️ Delete</button>
+          </div>
+        </div>
+        <div class="history-box" id="history-${cart.cartId}">
+          <p><strong>📜 Bill History:</strong></p>
+          ${getCartHistoryHTML(cart.cartId)}
         </div>
       </div>
-      <div class="history-box" id="history-${cart.cartId}">
-        <p><strong>📜 Bill History:</strong></p>
-        ${getCartHistoryHTML(cart.cartId)}
-      </div>
     </div>
-  </div>
-`);
+  `);
+});
 
-
-
-    });
 
     document.getElementById("totalCarts").innerText = total;
     document.getElementById("activeCarts").innerText = active;
