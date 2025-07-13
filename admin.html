@@ -636,17 +636,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   border-radius: 6px;
 }
 
-#cartList {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 20px;
-}
-
-.cart-card.expanded {
-  grid-column: 1 / -1; /* span full width in grid */
-  width: 100%;
-}
-
 </style>
 
 </head>
@@ -1136,22 +1125,22 @@ function toggleCart(cartId) {
 
   const alreadyExpanded = targetCard.classList.contains("expanded");
 
-  // First: Reset all cards
+  // Collapse all cards first
   cards.forEach(card => {
     card.classList.remove("expanded");
-    card.style.display = "block";
+    card.style.display = "block"; // Reset visibility
   });
 
+  // If it wasn't expanded, expand it and hide others
   if (!alreadyExpanded) {
-    // Expand selected cart and hide all others
+    targetCard.classList.add("expanded");
     cards.forEach(card => {
       if (card !== targetCard) card.style.display = "none";
     });
-    targetCard.classList.add("expanded");
+
     targetCard.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 }
-
 
 
   function toggleDetails(index) {
