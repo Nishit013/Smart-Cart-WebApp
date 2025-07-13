@@ -897,7 +897,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   if (cart.paymentStatus === "Paid") {
     disactive++;
   } else {
-    if (minsOld <= 15) active++;
+    if (minsOld <= 150) active++;
     else disactive++;
   }
 barLabels.push(cart.cartId);
