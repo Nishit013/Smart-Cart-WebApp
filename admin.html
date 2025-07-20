@@ -1168,14 +1168,24 @@ function markAsPaid(cartId) {
     };
 
     db.ref("paidCarts/" + timestamp + "_" + cartId).set(paidData)
+      .then(() => db.ref("carts/" + cartId + "/paymentStatus").set("Paid"))
+      .then(() => db.ref("carts/" + cartId + "/items").remove())
+      .then(() => db.ref("carts/" + cartId + "/total").set(0))
+      .then(() => db.ref("carts/" + cartId + "/isActive").set(false)) // ✅ Mark as inactive
       .then(() => {
-        return db.ref("carts/" + cartId + "/paymentStatus").set("Paid");
+        alert("✅ Cart marked as Paid, cleared, and made inactive!");
+        return Promise.all([
+          db.ref("carts").once("value"),
+          db.ref("paidCarts").once("value")
+        ]);
       })
-      .then(() => {
-        alert("✅ Cart marked as Paid & saved to history!");
-        renderData(); // ✅ Re-render after payment so filtered stats (today/week) update
+      .then(([snapCarts, snapPaid]) => {
+        allCarts = snapCarts.val() || {};
+        paidCarts = snapPaid.val() || {};
+        renderData();
+        renderProductSales();
       })
-      .catch(err => console.error("❌ Error saving paid cart:", err));
+      .catch(err => console.error("❌ Error marking as paid:", err));
   }
 }
 let chartType = "line";
