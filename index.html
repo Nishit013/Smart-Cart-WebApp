@@ -161,6 +161,69 @@
       margin: 10px 0;
       font-style: italic;
     }
+
+    .coupon-section {
+  background: #1e1e1e;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  color: #fff;
+}
+
+.coupon-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 5px;
+}
+
+.input-field {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #555;
+  background: #2a2a2a;
+  color: #fff;
+  flex: 1;
+}
+
+.input-field:focus {
+  border-color: #00bcd4;
+  outline: none;
+}
+
+.btn {
+  padding: 8px 20px;
+  border-radius: 6px;
+  border: none;
+  background: #00bcd4;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+  transition: 0.2s;
+}
+
+.btn:hover {
+  background: #0097a7;
+}
+
+.cart-summary {
+  background: #2a2a2a;
+  padding: 15px;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 16px;
+}
+
+.cart-summary p {
+  margin: 5px 0;
+}
+
+.cart-summary strong {
+  font-size: 18px;
+  color: #00e676;
+}
+
+
   </style>
   <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -221,19 +284,22 @@
  
 
 
-  <div id="couponSection">
-  <label for="couponDropdown">Select Coupon:</label>
-  <select id="couponDropdown">
-    <option value="">-- Choose a coupon --</option>
-  </select>
-  <button id="applyCoupon">Apply</button>
+  <div id="couponSection" class="coupon-section">
+  <label for="couponDropdown">🎁 Select Coupon:</label>
+  <div class="coupon-row">
+    <select id="couponDropdown" class="input-field">
+      <option value="">-- Choose a coupon --</option>
+    </select>
+    <button id="applyCoupon" class="btn">Apply</button>
+  </div>
 </div>
 
-<div>
-  <p>Cart Total: $<span id="cartTotal">100</span></p>
-  <p>Discount: $<span id="discountAmount">0</span></p>
-  <p>Final Total: $<span id="finalTotal">100</span></p>
+<div class="cart-summary">
+  <p>Cart Total: <span id="cartTotal">₹0.00</span></p>
+  <p>Discount: <span id="discountAmount">₹0.00</span></p>
+  <p><strong>Final Total: <span id="finalTotal">₹0.00</span></strong></p>
 </div>
+
 
 
 
@@ -594,10 +660,11 @@ rzp1.open();
 
 function updateCartTotalForCoupons() {
   cartTotal = cartItems.reduce((sum, item) => sum + item.price * item.qty, 0);
-  cartTotalEl.textContent = cartTotal.toFixed(2);
-  discountAmountEl.textContent = "0";
-  finalTotalEl.textContent = cartTotal.toFixed(2);
+  cartTotalEl.textContent = `₹${cartTotal.toFixed(2)}`;
+  discountAmountEl.textContent = `₹0.00`;
+  finalTotalEl.textContent = `₹${cartTotal.toFixed(2)}`;
 }
+
 
 // Call this at the end of renderCart()
 
@@ -610,14 +677,19 @@ db.ref("offers").on("value", function(snapshot) {
     const offer = childSnapshot.val();
     const start = new Date(offer.startDate);
     const end = new Date(offer.endDate);
+
     if (offer.status === "active" && today >= start && today <= end) {
       const option = document.createElement("option");
       option.value = childSnapshot.key;
-      option.textContent = `${offer.code} - ${offer.discountType === 'percentage' ? offer.discountValue + '%' : '₹' + offer.discountValue} off`;
+      const discountText = offer.discountType === 'percentage' 
+        ? `${offer.discountValue}%` 
+        : `₹${offer.discountValue}`;
+      option.textContent = `${offer.couponCode || offer.code} - ${discountText} off`;
       couponDropdown.appendChild(option);
     }
   });
 });
+
 
 // Apply coupon
 applyCouponBtn.addEventListener("click", function() {
@@ -640,12 +712,25 @@ applyCouponBtn.addEventListener("click", function() {
     }
 
     discount = Math.min(discount, cartTotal);
-    discountAmountEl.textContent = discount.toFixed(2);
-    finalTotalEl.textContent = (cartTotal - discount).toFixed(2);
 
-    alert(`Coupon "${offer.code}" applied!`);
+    // Show discount with ₹ symbol
+    discountAmountEl.textContent = `₹${discount.toFixed(2)}`;
+    finalTotalEl.textContent = `₹${(cartTotal - discount).toFixed(2)}`;
+
+    // Animation effect
+    discountAmountEl.style.transition = "0.3s";
+    finalTotalEl.style.transition = "0.3s";
+    discountAmountEl.style.color = "#00e676";
+    finalTotalEl.style.color = "#00e676";
+    setTimeout(() => {
+      discountAmountEl.style.color = "#fff";
+      finalTotalEl.style.color = "#fff";
+    }, 500);
+
+    alert(`Coupon "${offer.couponCode || offer.code}" applied!`);
   });
 });
+
 </script>
 </body>
 </html>
