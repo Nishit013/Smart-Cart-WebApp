@@ -798,53 +798,60 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 </div>
 
 
-<div class="main-content">
-    
-    <!-- Customer Offers Section -->
-    <div id="customerOffers" class="admin-section" style="display:none;">
-      <h2>Create New Discount Offer</h2>
-      <form id="offerForm">
-        <input type="text" id="couponCode" placeholder="Coupon Code" required><br>
-        <input type="number" id="minPurchase" placeholder="Min Purchase Value" required><br>
-        <select id="discountType" required>
-          <option value="">Select Discount Type</option>
-          <option value="flat">Flat</option>
-          <option value="percentage">Percentage</option>
-        </select><br>
-        <input type="number" id="discountValue" placeholder="Discount Value" required><br>
-        <input type="number" id="maxDiscount" placeholder="Max Discount (for %)" value="0"><br>
-        <label>Start Date:</label>
-        <input type="date" id="startDate" required><br>
-        <label>End Date:</label>
-        <input type="date" id="endDate" required><br>
-        <textarea id="description" placeholder="Description"></textarea><br>
-        <select id="status" required>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-        </select><br>
-        <button type="submit">Add Offer</button>
-      </form>
+<div class="section" id="customerOffers">
+  <h2>🎁 Customer Offers / Discounts</h2>
 
-      <h2>All Offers</h2>
-      <table id="offersTable">
-        <thead>
-          <tr>
-            <th>Coupon Code</th>
-            <th>Type</th>
-            <th>Value</th>
-            <th>Min Purchase</th>
-            <th>Max Discount</th>
-            <th>Start Date</th>
-            <th>End Date</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-
+  <!-- Filters & Actions (if needed) -->
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+    <!-- Optional filters or info -->
   </div>
+
+  <!-- Add New Offer Form -->
+  <div style="margin-bottom: 20px;">
+    <h3>Create New Discount Offer</h3>
+    <form id="offerForm">
+      <input type="text" id="couponCode" placeholder="Coupon Code" required><br>
+      <input type="number" id="minPurchase" placeholder="Min Purchase Value" required><br>
+      <select id="discountType" required>
+        <option value="">Select Discount Type</option>
+        <option value="flat">Flat</option>
+        <option value="percentage">Percentage</option>
+      </select><br>
+      <input type="number" id="discountValue" placeholder="Discount Value" required><br>
+      <input type="number" id="maxDiscount" placeholder="Max Discount (for %)" value="0"><br>
+      <label>Start Date:</label>
+      <input type="date" id="startDate" required><br>
+      <label>End Date:</label>
+      <input type="date" id="endDate" required><br>
+      <textarea id="description" placeholder="Description"></textarea><br>
+      <select id="status" required>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select><br>
+      <button type="submit">Add Offer</button>
+    </form>
+  </div>
+
+  <!-- All Offers Table -->
+  <div class="scroll-box" style="max-height: 350px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--accent);">
+    <table id="offersTable" style="width: 100%; border-collapse: collapse;">
+      <thead>
+        <tr style="background: var(--accent); color: white;">
+          <th>Coupon Code</th>
+          <th>Type</th>
+          <th>Value</th>
+          <th>Min Purchase</th>
+          <th>Max Discount</th>
+          <th>Start Date</th>
+          <th>End Date</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
 </div>
 
 
@@ -1753,7 +1760,7 @@ const offersRef = db.ref("offers");
   }
 
 
-  
+
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
