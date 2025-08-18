@@ -678,7 +678,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 <body>
 <div id="loginContainer" class="login-screen">
   <div class="login-card">
-    <h2>🔐 Admin Login</h2>
+    <h2> Admin Login</h2>
     <input type="email" id="email" placeholder="Email">
     <input type="password" id="password" placeholder="Password">
     <button onclick="login()">Login</button>
@@ -688,13 +688,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 <div id="adminPanel" style="display:none;">
   <div class="sidebar">
-    <h2>📊 <span>Admin</span></h2>
-    <a href="#analytics">📈 <span>Analytics</span></a>
-    <a href="#charts">📉 <span>Graphs</span></a>
-    <a href="#carts">🛒 <span>Cart Details</span></a>
-    <a href="#security">🔐 <span>Security</span></a>
-    <a href="#productSales">📦 <span>Product Sales</span></a> <!-- ✅ New link added -->
-    <a href="#customerOffers">🎁 <span>Customer Offers</span></a> <!-- New link -->
+    <h2> <span>Admin</span></h2>
+    <a href="#analytics"> <span>Analytics</span></a>
+    <a href="#charts"> <span>Graphs</span></a>
+    <a href="#carts"> <span>Cart Details</span></a>
+    <a href="#security"> <span>Security</span></a>
+    <a href="#productSales"> <span>Product Sales</span></a> <!-- ✅ New link added -->
+    <a href="#customerOffers"> <span>Customer Offers</span></a> <!-- New link -->
   </div>
 
 
@@ -703,17 +703,17 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     <div class="topbar">
   <strong>Smart Cart Pro</strong>
   <div style="position: relative;">
-    <button onclick="document.body.classList.toggle('light-mode')">🌓 Toggle Mode</button>
+    <button onclick="document.body.classList.toggle('light-mode')">Toggle Mode</button>
 <button onclick="toggleProfileDropdown()">👤</button>
     <div id="profileDropdown" style="display: none; position: absolute; right: 0; top: 35px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; min-width: 180px;">
       <p style="margin: 0 0 10px; font-size: 14px;" id="userEmail">admin@email.com</p>
-      <button onclick="logout()" style="padding: 6px 10px; width: 100%;">🔓 Logout</button>
+      <button onclick="logout()" style="padding: 6px 10px; width: 100%;">Logout</button>
     </div>
   </div>
 </div>
 
     <div class="section" id="analytics">
-      <h2>📈 Realtime Analytics</h2>
+      <h2>Realtime Analytics</h2>
       <select id="filterSelect" onchange="renderData()"> 
         <option value="all">All Time</option>
         <option value="today">Today</option>
@@ -730,7 +730,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     </div>
 
     <div class="section" id="charts">
-  <h2>📊 Daily Revenue Trend</h2>
+  <h2>Daily Revenue Trend</h2>
 
   <!-- ✅ Add this below heading -->
   <div style="margin-bottom: 10px;">
@@ -755,7 +755,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 </div>
 
 <div class="section" id="security">
-  <h2 style="margin-bottom: 12px;">🔐 Security Approvals</h2>
+  <h2 style="margin-bottom: 12px;">Security Approvals</h2>
 
   <!-- 🔎 Filters & Exports -->
   <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
@@ -787,7 +787,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   </div>
 </div>
 <div class="section" id="productSales">
-  <h2>📦 Product Sales Analysis</h2>
+  <h2>Product Sales Analysis</h2>
 
   <div style="margin-bottom: 10px; display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
   <select id="productSalesFilter" onchange="renderProductSales()">
@@ -829,7 +829,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 
 <div class="section" id="customerOffers">
-  <h2 class="section-title">🎁 Customer Offers</h2>
+  <h2 class="section-title">Customer Offers</h2>
 
   <!-- Filters & Form -->
   <form id="offerForm" class="filters">
@@ -1776,7 +1776,7 @@ offersRef.on('value', snapshot => {
       <td>${offer.endDate}</td>
       <td>${offer.status}</td>
       <td>
-        <button onclick="deleteOffer('${child.key}')">❌</button>
+        <button onclick="deleteOffer('${child.key}')">Delete</button>
       </td>
     `;
     offersTableBody.appendChild(tr);
