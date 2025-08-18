@@ -642,6 +642,36 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   text-align: center;
 }
 
+
+.input-field {
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-size: 14px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Hover effect for table rows */
+#offersTable tbody tr:hover {
+  background: rgba(0, 188, 212, 0.1);
+  transition: 0.3s;
+}
+
+/* Scrollbar styling */
+.scroll-box::-webkit-scrollbar {
+  width: 8px;
+}
+.scroll-box::-webkit-scrollbar-track {
+  background: var(--card);
+}
+.scroll-box::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 4px;
+}
+
 </style>
 
 </head>
@@ -799,44 +829,33 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 
 <div class="section" id="customerOffers">
-  <h2>🎁 Customer Offers / Discounts</h2>
+  <h2 class="section-title">🎁 Customer Offers</h2>
 
-  <!-- Filters & Actions (if needed) -->
-  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
-    <!-- Optional filters or info -->
+  <!-- Filters & Form -->
+  <div class="filters">
+    <input type="text" id="couponCode" placeholder="Coupon Code" class="input-field">
+    <input type="number" id="minPurchase" placeholder="Min Purchase Value" class="input-field">
+    <select id="discountType" class="input-field">
+      <option value="">Select Discount Type</option>
+      <option value="flat">Flat</option>
+      <option value="percentage">Percentage</option>
+    </select>
+    <input type="number" id="discountValue" placeholder="Discount Value" class="input-field">
+    <input type="number" id="maxDiscount" placeholder="Max Discount (for %)" class="input-field">
+    <input type="date" id="startDate" class="input-field">
+    <input type="date" id="endDate" class="input-field">
+    <select id="status" class="input-field">
+      <option value="active">Active</option>
+      <option value="inactive">Inactive</option>
+    </select>
+    <button type="submit">Add Offer</button>
   </div>
 
-  <!-- Add New Offer Form -->
-  <div style="margin-bottom: 20px;">
-    <h3>Create New Discount Offer</h3>
-    <form id="offerForm">
-      <input type="text" id="couponCode" placeholder="Coupon Code" required><br>
-      <input type="number" id="minPurchase" placeholder="Min Purchase Value" required><br>
-      <select id="discountType" required>
-        <option value="">Select Discount Type</option>
-        <option value="flat">Flat</option>
-        <option value="percentage">Percentage</option>
-      </select><br>
-      <input type="number" id="discountValue" placeholder="Discount Value" required><br>
-      <input type="number" id="maxDiscount" placeholder="Max Discount (for %)" value="0"><br>
-      <label>Start Date:</label>
-      <input type="date" id="startDate" required><br>
-      <label>End Date:</label>
-      <input type="date" id="endDate" required><br>
-      <textarea id="description" placeholder="Description"></textarea><br>
-      <select id="status" required>
-        <option value="active">Active</option>
-        <option value="inactive">Inactive</option>
-      </select><br>
-      <button type="submit">Add Offer</button>
-    </form>
-  </div>
-
-  <!-- All Offers Table -->
-  <div class="scroll-box" style="max-height: 350px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--accent);">
-    <table id="offersTable" style="width: 100%; border-collapse: collapse;">
+  <!-- Offers Table -->
+  <div class="scroll-box" style="margin-top: 15px;">
+    <table class="security-table" id="offersTable">
       <thead>
-        <tr style="background: var(--accent); color: white;">
+        <tr>
           <th>Coupon Code</th>
           <th>Type</th>
           <th>Value</th>
