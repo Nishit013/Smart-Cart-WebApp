@@ -832,24 +832,24 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   <h2 class="section-title">🎁 Customer Offers</h2>
 
   <!-- Filters & Form -->
-  <div class="filters">
-    <input type="text" id="couponCode" placeholder="Coupon Code" class="input-field">
-    <input type="number" id="minPurchase" placeholder="Min Purchase Value" class="input-field">
-    <select id="discountType" class="input-field">
+  <form id="offerForm" class="filters">
+    <input type="text" id="couponCode" placeholder="Coupon Code" class="input-field" required>
+    <input type="number" id="minPurchase" placeholder="Min Purchase Value" class="input-field" required>
+    <select id="discountType" class="input-field" required>
       <option value="">Select Discount Type</option>
       <option value="flat">Flat</option>
       <option value="percentage">Percentage</option>
     </select>
-    <input type="number" id="discountValue" placeholder="Discount Value" class="input-field">
+    <input type="number" id="discountValue" placeholder="Discount Value" class="input-field" required>
     <input type="number" id="maxDiscount" placeholder="Max Discount (for %)" class="input-field">
-    <input type="date" id="startDate" class="input-field">
-    <input type="date" id="endDate" class="input-field">
-    <select id="status" class="input-field">
+    <input type="date" id="startDate" class="input-field" required>
+    <input type="date" id="endDate" class="input-field" required>
+    <select id="status" class="input-field" required>
       <option value="active">Active</option>
       <option value="inactive">Inactive</option>
     </select>
     <button type="submit">Add Offer</button>
-  </div>
+  </form>
 
   <!-- Offers Table -->
   <div class="scroll-box" style="margin-top: 15px;">
@@ -870,7 +870,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
       <tbody></tbody>
     </table>
   </div>
-</div>
 </div>
 
 
