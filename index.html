@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🍚 Smart Cart Pro</title>
+  <title>🛒 Smart Cart Pro</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -219,6 +219,24 @@
     <div id="totalPrice">₹0</div>
   </div>
  
+
+
+  <div id="couponSection">
+  <label for="couponDropdown">Select Coupon:</label>
+  <select id="couponDropdown">
+    <option value="">-- Choose a coupon --</option>
+  </select>
+  <button id="applyCoupon">Apply</button>
+</div>
+
+<div>
+  <p>Cart Total: $<span id="cartTotal">100</span></p>
+  <p>Discount: $<span id="discountAmount">0</span></p>
+  <p>Final Total: $<span id="finalTotal">100</span></p>
+</div>
+
+
+
   <label for="phone">📱 Enter Your Phone Number:</label>
   <input type="tel" id="phone" placeholder="10-digit phone number" oninput="validatePhone()" />
   <div id="loading">⌛ Processing payment...</div>
@@ -330,35 +348,41 @@ function loadCartFromFirebase() {
     }
  
     function renderCart() {
-      const container = document.getElementById("cartItemsList");
-      const totalContainer = document.getElementById("totalPrice");
-      if (cartItems.length === 0) {
-        container.textContent = "No items scanned.";
-        totalContainer.textContent = "₹0";
-        return;
-      }
-      let html = "<ul style='padding-left: 15px;'>";
-      let total = 0;
-      cartItems.forEach((item, i) => {
-        const subtotal = item.price * item.qty;
-        html += `<li>
-          <span>${i + 1}. ${item.name} - ₹${item.price} = ₹${subtotal}</span>
- 
-          <span style="display: flex; align-items: center; gap: 4px; margin-top: 6px;">
-           <button class="qty-btn" onclick="changeQty(${i}, -1)">➖</button>
-           <span style="padding: 4px 8px; background: #333; border-radius: 5px;">${item.qty}</span>
-           <button class="qty-btn" onclick="changeQty(${i}, 1)">➕</button>
-           <button class="remove-btn" onclick="removeItem(${i})">Remove</button>
-        </span>
- 
-        </li>`;
-        total += subtotal;
-      });
-      html += "</ul>";
-      container.innerHTML = html;
-      totalContainer.textContent = `₹${total}`;
-    }
- 
+  const container = document.getElementById("cartItemsList");
+  const totalContainer = document.getElementById("totalPrice");
+  if (cartItems.length === 0) {
+    container.textContent = "No items scanned.";
+    totalContainer.textContent = "₹0";
+    updateCartTotalForCoupons(); // update coupon totals
+    return;
+  }
+
+  let html = "<ul style='padding-left: 15px;'>";
+  let total = 0;
+  cartItems.forEach((item, i) => {
+    const subtotal = item.price * item.qty;
+    html += `<li>
+      <span>${i + 1}. ${item.name} - ₹${item.price} = ₹${subtotal}</span>
+
+      <span style="display: flex; align-items: center; gap: 4px; margin-top: 6px;">
+       <button class="qty-btn" onclick="changeQty(${i}, -1)">➖</button>
+       <span style="padding: 4px 8px; background: #333; border-radius: 5px;">${item.qty}</span>
+       <button class="qty-btn" onclick="changeQty(${i}, 1)">➕</button>
+       <button class="remove-btn" onclick="removeItem(${i})">Remove</button>
+    </span>
+
+    </li>`;
+    total += subtotal;
+  });
+  html += "</ul>";
+  container.innerHTML = html;
+
+  totalContainer.textContent = `₹${total}`;
+  updateCartTotalForCoupons(); // ✅ update coupon totals after calculating total
+}
+
+
+
     function changeQty(index, change) {
       cartItems[index].qty += change;
       if (cartItems[index].qty <= 0) {
@@ -485,16 +509,24 @@ doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
         total += subtotal;
       });
       summary += `\nTotal: ₹${total}`;
+
+
+      let discount = parseFloat(discountAmountEl.textContent) || 0;
+let finalAmount = total - discount; 
+
+
  
       const options = {
   key: "rzp_live_es0XjKaI61byUK",
-  amount: total * 100,
+
+  amount: finalAmount * 100, // use discounted total
+
   currency: "INR",
   name: "Smart Cart Pro",
   description: "Smart Cart Payment",
   handler: function (response) {
   showToast("✅ Payment Successful");
-  generatePDF(cartItems, total);
+  generatePDF(cartItems, finalAmount);
   sendWhatsAppBill(summary, phone);
 
   // ✅ Archive paid cart uniquely
@@ -551,5 +583,69 @@ rzp1.open();
       document.getElementById("dateDisplay").textContent = now.toLocaleDateString();
     }, 1000);
   </script>
+  <script>
+  const couponDropdown = document.getElementById("couponDropdown");
+  const applyCouponBtn = document.getElementById("applyCoupon");
+  const cartTotalEl = document.getElementById("cartTotal");
+  const discountAmountEl = document.getElementById("discountAmount");
+  const finalTotalEl = document.getElementById("finalTotal");
+
+  let cartTotal = 0;
+
+function updateCartTotalForCoupons() {
+  cartTotal = cartItems.reduce((sum, item) => sum + item.price * item.qty, 0);
+  cartTotalEl.textContent = cartTotal.toFixed(2);
+  discountAmountEl.textContent = "0";
+  finalTotalEl.textContent = cartTotal.toFixed(2);
+}
+
+// Call this at the end of renderCart()
+
+
+// Dropdown population remains the same
+db.ref("offers").on("value", function(snapshot) {
+  couponDropdown.innerHTML = '<option value="">-- Choose a coupon --</option>';
+  const today = new Date();
+  snapshot.forEach(childSnapshot => {
+    const offer = childSnapshot.val();
+    const start = new Date(offer.startDate);
+    const end = new Date(offer.endDate);
+    if (offer.status === "active" && today >= start && today <= end) {
+      const option = document.createElement("option");
+      option.value = childSnapshot.key;
+      option.textContent = `${offer.code} - ${offer.discountType === 'percentage' ? offer.discountValue + '%' : '₹' + offer.discountValue} off`;
+      couponDropdown.appendChild(option);
+    }
+  });
+});
+
+// Apply coupon
+applyCouponBtn.addEventListener("click", function() {
+  const couponId = couponDropdown.value;
+  if (!couponId) return alert("Please select a coupon.");
+
+  db.ref("offers/" + couponId).once("value").then(snapshot => {
+    const offer = snapshot.val();
+    if (!offer) return alert("Coupon not found.");
+
+    if (cartTotal < offer.minPurchase) {
+      return alert(`Minimum purchase of ₹${offer.minPurchase} required.`);
+    }
+
+    let discount = 0;
+    if (offer.discountType === "flat") discount = offer.discountValue;
+    else if (offer.discountType === "percentage") {
+      discount = (cartTotal * offer.discountValue) / 100;
+      if (offer.maxDiscount > 0) discount = Math.min(discount, offer.maxDiscount);
+    }
+
+    discount = Math.min(discount, cartTotal);
+    discountAmountEl.textContent = discount.toFixed(2);
+    finalTotalEl.textContent = (cartTotal - discount).toFixed(2);
+
+    alert(`Coupon "${offer.code}" applied!`);
+  });
+});
+</script>
 </body>
 </html>
