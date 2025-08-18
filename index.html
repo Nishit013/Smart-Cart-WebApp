@@ -255,12 +255,32 @@
     };
  
     const urlParams = new URLSearchParams(window.location.search);
-    const cartId = urlParams.get('id') || "CART" + Math.floor(Math.random() * 10000);
-    const bleName = "ESP32-" + cartId.toUpperCase();
+const cartId = urlParams.get("id"); // ✅ Only QR-based cart, no default
+const bleName = cartId ? "ESP32-" + cartId.toUpperCase() : null;
+
+function loadCartFromFirebase() {
+  if (!cartId) {
+    console.warn("No cartId found in URL. No cart data will be loaded.");
+    return; // Stop if no QR ID
+  }
+
+  db.ref("carts/" + cartId).once("value").then(snapshot => {
+    if (snapshot.exists()) {
+      const cartData = snapshot.val();
+      cartItems = cartData.items || [];
+      renderCart();
+    }
+  }).catch(err => {
+    console.error("Error loading cart:", err);
+  });
+}
+
  
     document.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("cartNumber").textContent = "#" + cartId;
-    });
+  document.getElementById("cartNumber").textContent = "#" + cartId;
+  loadCartFromFirebase();
+});
+
  
     function showToast(message) {
       const toast = document.getElementById("toast");
