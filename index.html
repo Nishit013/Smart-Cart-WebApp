@@ -490,7 +490,7 @@ function loadCartFromFirebase() {
   db.ref('carts/' + cartId).set(cartData);
 }
  
-    async function generatePDF(cartItems, total) {
+    async function generatePDF(cartItems, total, discount, finalAmount) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
  
@@ -534,10 +534,27 @@ function loadCartFromFirebase() {
   doc.line(20, y, 190, y);
   y += 6;
  
-  // Total
+  // Subtotal
+  doc.setFontSize(11);
+  doc.text("Subtotal:", 120, y);
+  doc.text(`₹${total.toFixed(2)}`, 170, y, { align: "right" });
+  y += 6;
+
+  // Discount (only if applied)
+  if (discount > 0) {
+    doc.setTextColor(200, 0, 0); // red for discount
+    doc.text("Discount:", 120, y);
+    doc.text(`-₹${discount.toFixed(2)}`, 170, y, { align: "right" });
+    doc.setTextColor(0, 0, 0);
+    y += 6;
+  }
+
+  // Final total
   doc.setFontSize(12);
-  doc.text("Total Invoice Amount:", 90, y);
-  doc.text(`₹${total.toFixed(2)}`, 150, y);
+  doc.setFont(undefined, "bold");
+  doc.text("Final Invoice Amount:", 120, y);
+  doc.text(`₹${finalAmount.toFixed(2)}`, 170, y, { align: "right" });
+  doc.setFont(undefined, "normal");
   y += 10;
  
   // Footer notes
@@ -548,8 +565,9 @@ function loadCartFromFirebase() {
  
   // Save the file
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
+  doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
 }
+
  
  
     function sendWhatsAppBill(summary, phoneNumber) {
@@ -577,8 +595,9 @@ doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
       summary += `\nTotal: ₹${total}`;
 
 
-      let discount = parseFloat(discountAmountEl.textContent) || 0;
-let finalAmount = total - discount; 
+      let discount = parseFloat(discountAmountEl.textContent.replace(/[₹,]/g, "")) || 0;
+let finalAmount = total - discount;
+ 
 
 
  
@@ -592,29 +611,40 @@ let finalAmount = total - discount;
   description: "Smart Cart Payment",
   handler: function (response) {
   showToast("✅ Payment Successful");
-  generatePDF(cartItems, finalAmount);
-  sendWhatsAppBill(summary, phone);
+  // Update summary with discount
+let finalSummary = summary;
+if (discount > 0) {
+  finalSummary += `\nDiscount: -₹${discount.toFixed(2)}\n`;
+  finalSummary += `Final Amount: ₹${finalAmount.toFixed(2)}`;
+}
 
-  // ✅ Archive paid cart uniquely
-  const paidCartData = {
-    cartId,
-    items: cartItems,
-    total,
-    phone,
-    paymentTime: new Date().toISOString(),
-    bill: {
-      summary: summary
-    }
-  };
+// Generate PDF & WhatsApp with final amount
+// Generate PDF & WhatsApp with final amount
+generatePDF(cartItems, total, discount, finalAmount);
+sendWhatsAppBill(finalSummary, phone);
 
-  const paidKey = cartId + "_" + Date.now(); // 👈 unique key per payment
-  db.ref('paidCarts/' + paidKey).set(paidCartData).then(() => {
-    db.ref('carts/' + cartId).update({
-      paymentStatus: "Paid",
-      bill: {
-        summary: summary
-      }
-    });
+
+// Store discounted bill in Firebase
+const paidCartData = {
+  cartId,
+  items: cartItems,
+  total,          // original total before discount
+  discount,       // discount applied
+  finalAmount,    // actual paid amount
+  phone,
+  paymentTime: new Date().toISOString(),
+  bill: { summary: finalSummary }
+};
+
+const paidKey = cartId + "_" + Date.now();
+db.ref('paidCarts/' + paidKey).set(paidCartData).then(() => {
+  db.ref('carts/' + cartId).update({
+    paymentStatus: "Paid",
+    finalAmount: finalAmount,
+    discount: discount,
+    bill: { summary: finalSummary }
+  });
+
 
       clearCart(true); // Only clears UI
       document.getElementById("checkoutBtn").disabled = false;
