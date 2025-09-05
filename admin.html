@@ -902,7 +902,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   totalRevenue = 0;
 
   Object.values(paidCarts).forEach(cart => {
-    totalRevenue += Number(cart.total) || 0;
+    dailyRevenueMap[date] = (dailyRevenueMap[date] || 0) + (Number(cart.finalAmount) || 0);
+
   });
 
   const revEl = document.getElementById("totalRevenue");
@@ -997,7 +998,10 @@ barData.push(cart.total || 0);
       </div>
       <div class="cart-body" id="cart-body-${cart.cartId}">
         <div class="live-box">
-          <p><strong>Total:</strong> ₹${cart.total}</p>
+          <p><strong>Original Total:</strong> ₹${cart.total}</p>
+<p><strong>Discount:</strong> -₹${cart.discount || 0}</p>
+<p><strong>Final Paid:</strong> ₹${cart.finalAmount || cart.total}</p>
+
           <p><strong>🧮 Items:</strong> ${(cart.items || []).reduce((sum, item) => sum + item.qty, 0)}</p>
           <p><strong>Updated:</strong> ${timeAgo(updatedAt)}</p>
           <div class="items-box">
@@ -1167,7 +1171,10 @@ barData.push(cart.total || 0);
     return `
       <div class="history-entry">
         <p><strong>Paid On:</strong> ${paidTime}</p>
-        <p><strong>Total:</strong> ₹${c.total}</p>
+        <p><strong>Original Total:</strong> ₹${c.total}</p>
+<p><strong>Discount:</strong> -₹${c.discount || 0}</p>
+<p><strong>Final Paid:</strong> ₹${c.finalAmount || c.total}</p>
+
         <p><strong>Phone:</strong> ${c.phone || "N/A"}</p>
         <button class="toggle-items" onclick="toggleItems('items-${index}')">📦 View Items</button>
         <div id="items-${index}" class="items-box" style="display:none;">
