@@ -901,17 +901,20 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   paidCarts = snapshot.val() || {};
   totalRevenue = 0;
 
+  // Calculate total revenue safely
   Object.values(paidCarts).forEach(cart => {
-    dailyRevenueMap[date] = (dailyRevenueMap[date] || 0) + (Number(cart.finalAmount) || 0);
-
+    totalRevenue += Number(cart.finalAmount ?? cart.total) || 0;
   });
 
+  // Update revenue card
   const revEl = document.getElementById("totalRevenue");
   if (revEl) revEl.textContent = "₹" + totalRevenue;
 
-  renderData(); // ✅ Fix for today/week revenue not refreshing
+  // 🔄 Always re-render dashboards in real-time
+  renderData();
   renderProductSales();
 });
+
   function timeAgo(date) {
   const diff = Math.floor((Date.now() - new Date(date)) / 60000);
   if (diff < 1) return "just now";
@@ -954,7 +957,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     (filter === "today" && isToday) ||
     (filter === "week" && isWeek)
   ) {
-    revenue += Number(cart.total) || 0;
+    revenue += Number(cart.finalAmount ?? cart.total) || 0;
+
     paid++;
   }
 });
@@ -986,7 +990,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     else disactive++;
   }
 barLabels.push(cart.cartId);
-barData.push(cart.total || 0);
+barData.push(Number(cart.finalAmount ?? cart.total) || 0);
+
 
   const recentClass = minsOld <= 1 ? "recent-update" : "";
   
@@ -1049,7 +1054,8 @@ barData.push(cart.total || 0);
       const daysAgo = (currentTime - dateObj) / (1000 * 60 * 60 * 24);
       if (daysAgo <= 7) {
         const date = dateObj.toLocaleDateString("en-GB");
-        dailyRevenueMap[date] = (dailyRevenueMap[date] || 0) + (Number(cart.total) || 0);
+        dailyRevenueMap[date] = (dailyRevenueMap[date] || 0) + (Number(cart.finalAmount ?? cart.total) || 0);
+
       }
     });
 
