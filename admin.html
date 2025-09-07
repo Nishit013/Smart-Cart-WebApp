@@ -786,7 +786,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     <a href="#security"> <span>Security</span></a>
     <a href="#productSales"> <span>Product Sales</span></a> <!-- ✅ New link added -->
     <a href="#customerOffers"> <span>Customer Offers</span></a> <!-- New link -->
-    <a href="#products"> <span>Inventory</span></a>
+    <a href="#products"> <span>Product Management</span></a>
+    <a href="#inventory"><span>Inventory</span></a>
   </div>
 
 
@@ -971,7 +972,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
   <!-- Bulk Import -->
   <div class="card">
-    <h3>📥 Bulk Import Products (CSV/Excel)</h3>
+    <h3> Bulk Import Products (CSV/Excel)</h3>
     <div class="input-row">
       <input type="file" id="fileInput" accept=".csv,.xlsx" />
       <button class="btn-primary" onclick="uploadFile()">Upload</button>
@@ -980,7 +981,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
   <!-- Manual Add -->
   <div class="card">
-    <h3>➕ Add Single Product</h3>
+    <h3> Add Single Product</h3>
     <div class="form-grid">
       <input type="text" id="barcode" placeholder="Barcode">
       <input type="text" id="name" placeholder="Product Name">
@@ -996,7 +997,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
   <!-- Search + Edit -->
   <div class="card">
-    <h3>🔍 Search & Edit Product</h3>
+    <h3>Search & Edit Product</h3>
     <div class="input-row">
       <input type="text" id="searchBarcode" placeholder="Enter Barcode">
       <button class="btn-primary" onclick="searchProduct()">Search</button>
@@ -1039,17 +1040,15 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 
 
-<div class="inventory-section">
-  <h4>📦 Product Inventory</h4>
+<div class="section" id="inventory" style="display:none;">
+  <h2>Product Inventory</h2>
 
   <!-- Filter & Search Controls -->
   <div class="inventory-controls">
     <input type="text" id="searchInput" placeholder="🔍 Search by product name..." onkeyup="filterTable()">
-
     <select id="brandFilter" onchange="filterTable()">
       <option value="">Filter by Brand</option>
     </select>
-
     <select id="categoryFilter" onchange="filterTable()">
       <option value="">Filter by Category</option>
     </select>
@@ -1069,8 +1068,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     <tbody></tbody>
   </table>
 </div>
-
-
 
 <script>
   const firebaseConfig = {
