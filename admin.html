@@ -763,6 +763,86 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   color: #ff6b6b;
   font-weight: bold;
 }
+
+
+
+#inventory h2 {
+  font-size: 22px;
+  margin-bottom: 16px;
+  color: var(--text);
+}
+
+/* Controls */
+.inventory-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.inventory-controls input,
+.inventory-controls select {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+  transition: 0.2s;
+}
+
+.inventory-controls input:focus,
+.inventory-controls select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+}
+
+/* Table Container */
+.table-container {
+  overflow-x: auto;
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+}
+
+/* Table */
+#inventoryTable {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--text);
+}
+
+#inventoryTable thead {
+  background: var(--bg);
+}
+
+#inventoryTable th,
+#inventoryTable td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+#inventoryTable tbody tr:hover {
+  background: rgba(0, 188, 212, 0.1); /* subtle accent hover */
+  cursor: pointer;
+}
+
+/* Stock Highlight */
+.low-stock {
+  color: #ff4d4d;
+  font-weight: bold;
+}
+.medium-stock {
+  color: #ffcc00;
+  font-weight: bold;
+}
+.high-stock {
+  color: #4dff88;
+  font-weight: bold;
+}
+
 </style>
 
 </head>
@@ -1046,28 +1126,30 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
   <!-- Filter & Search Controls -->
   <div class="inventory-controls">
-    <input type="text" id="searchInput" placeholder="🔍 Search by product name..." onkeyup="filterTable()">
+    <input type="text" id="searchInput" placeholder="🔍 Search product name..." onkeyup="filterTable()">
     <select id="brandFilter" onchange="filterTable()">
-      <option value="">Filter by Brand</option>
+      <option value="">All Brands</option>
     </select>
     <select id="categoryFilter" onchange="filterTable()">
-      <option value="">Filter by Category</option>
+      <option value="">All Categories</option>
     </select>
   </div>
 
   <!-- Inventory Table -->
-  <table id="inventoryTable">
-    <thead>
-      <tr>
-        <th>Product</th>
-        <th>Brand</th>
-        <th>Category</th>
-        <th>Price (₹)</th>
-        <th>Stock</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <div class="table-container">
+    <table id="inventoryTable">
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Brand</th>
+          <th>Category</th>
+          <th>Price (₹)</th>
+          <th>Stock</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
 </div>
 
 
