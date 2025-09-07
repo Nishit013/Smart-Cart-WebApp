@@ -759,7 +759,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 
 
-
+.low-stock {
+  color: #ff6b6b;
+  font-weight: bold;
+}
 </style>
 
 </head>
@@ -964,7 +967,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 
 <div class="section" id="products">
-  <h2>📦 Product Management</h2>
+  <h2>Product Management</h2>
 
   <!-- Bulk Import -->
   <div class="card">
@@ -1034,6 +1037,38 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   <button class="btn-primary" onclick="updateProduct()">Update Product</button>
 </div>
 
+
+
+<div class="inventory-section">
+  <h4>📦 Product Inventory</h4>
+
+  <!-- Filter & Search Controls -->
+  <div class="inventory-controls">
+    <input type="text" id="searchInput" placeholder="🔍 Search by product name..." onkeyup="filterTable()">
+
+    <select id="brandFilter" onchange="filterTable()">
+      <option value="">Filter by Brand</option>
+    </select>
+
+    <select id="categoryFilter" onchange="filterTable()">
+      <option value="">Filter by Category</option>
+    </select>
+  </div>
+
+  <!-- Inventory Table -->
+  <table id="inventoryTable">
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Brand</th>
+        <th>Category</th>
+        <th>Price (₹)</th>
+        <th>Stock</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
 
 
 
@@ -2089,6 +2124,81 @@ function updateProduct() {
   alert("Product updated!");
 }
 
+
+
+
+// ✅ Firebase Reference (adjust your path if needed)
+const dbRef = db.ref("products");
+
+// Load products from Firebase
+dbRef.on("value", snapshot => {
+  const data = snapshot.val() || {};
+  const tbody = document.querySelector("#inventoryTable tbody");
+  tbody.innerHTML = "";
+
+  // For collecting unique brands & categories
+  const brands = new Set();
+  const categories = new Set();
+
+  Object.keys(data).forEach(key => {
+    const product = data[key];
+
+    // Append row
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${product.name || ""}</td>
+      <td>${product.brand || ""}</td>
+      <td>${product.category || ""}</td>
+      <td>${product.price || 0}</td>
+      <td class="${product.stock < 10 ? 'low-stock' : ''}">${product.stock || 0}</td>
+    `;
+    tbody.appendChild(row);
+
+    if (product.brand) brands.add(product.brand);
+    if (product.category) categories.add(product.category);
+  });
+
+  // Populate filter dropdowns dynamically
+  populateDropdown("brandFilter", brands);
+  populateDropdown("categoryFilter", categories);
+
+  filterTable(); // apply filters if any
+});
+
+function populateDropdown(id, items) {
+  const select = document.getElementById(id);
+  const currentValue = select.value; // keep selected filter
+  select.innerHTML = `<option value="">Filter by ${id.replace("Filter","")}</option>`;
+  items.forEach(item => {
+    const option = document.createElement("option");
+    option.value = item;
+    option.textContent = item;
+    select.appendChild(option);
+  });
+  select.value = currentValue; // restore selection
+}
+
+// Filter function
+function filterTable() {
+  const search = document.getElementById("searchInput").value.toLowerCase();
+  const brand = document.getElementById("brandFilter").value.toLowerCase();
+  const category = document.getElementById("categoryFilter").value.toLowerCase();
+  const rows = document.querySelectorAll("#inventoryTable tbody tr");
+
+  rows.forEach(row => {
+    const cells = row.querySelectorAll("td");
+    const product = cells[0].innerText.toLowerCase();
+    const rowBrand = cells[1].innerText.toLowerCase();
+    const rowCategory = cells[2].innerText.toLowerCase();
+
+    let match = true;
+    if (search && !product.includes(search)) match = false;
+    if (brand && rowBrand !== brand) match = false;
+    if (category && rowCategory !== category) match = false;
+
+    row.style.display = match ? "" : "none";
+  });
+}
 
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
