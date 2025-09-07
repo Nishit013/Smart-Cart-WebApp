@@ -674,6 +674,89 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   border-radius: 4px;
 }
 
+
+
+
+
+
+#products h2 {
+    color: #0ff;
+    margin-bottom: 20px;
+    font-size: 28px;
+    border-bottom: 1px solid #0ff33a55;
+    padding-bottom: 5px;
+  }
+
+  /* Cards */
+  .card {
+    background: #1a1d2b;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.5);
+  }
+
+  .card h3 {
+    margin-bottom: 15px;
+    color: #0ff;
+  }
+
+  .card h4 {
+    margin-top: 15px;
+    margin-bottom: 10px;
+    color: #0ff;
+  }
+
+  /* Input Grid */
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 15px;
+  }
+
+  input[type="text"], input[type="number"], input[type="file"] {
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    background: #22263a;
+    color: #eee;
+    width: 100%;
+    font-size: 14px;
+  }
+
+  input::placeholder {
+    color: #aaa;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    padding: 10px 20px;
+    background: #0ff;
+    border: none;
+    border-radius: 8px;
+    color: #111;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-primary:hover {
+    background: #0cc;
+  }
+
+  /* Input Row (for file + upload / search) */
+  .input-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 15px;
+  }
+
+  .input-row input {
+    flex: 1;
+  }
+</style>
 </style>
 
 </head>
@@ -883,40 +966,48 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   <!-- Bulk Import -->
   <div class="card">
     <h3>📥 Bulk Import Products (CSV/Excel)</h3>
-    <input type="file" id="fileInput" accept=".csv,.xlsx" />
-    <button onclick="uploadFile()">Upload</button>
+    <div class="input-row">
+      <input type="file" id="fileInput" accept=".csv,.xlsx" />
+      <button class="btn-primary" onclick="uploadFile()">Upload</button>
+    </div>
   </div>
 
   <!-- Manual Add -->
   <div class="card">
     <h3>➕ Add Single Product</h3>
-    <input type="text" id="barcode" placeholder="Barcode"><br>
-    <input type="text" id="name" placeholder="Product Name"><br>
-    <input type="text" id="brand" placeholder="Brand"><br>
-    <input type="text" id="category" placeholder="Category"><br>
-    <input type="number" id="price" placeholder="Price"><br>
-    <input type="number" id="gst" placeholder="GST %"><br>
-    <input type="number" id="stock" placeholder="Stock Qty"><br>
-    <input type="text" id="image" placeholder="Image URL"><br>
-    <button onclick="addProduct()">Add Product</button>
+    <div class="form-grid">
+      <input type="text" id="barcode" placeholder="Barcode">
+      <input type="text" id="name" placeholder="Product Name">
+      <input type="text" id="brand" placeholder="Brand">
+      <input type="text" id="category" placeholder="Category">
+      <input type="number" id="price" placeholder="Price">
+      <input type="number" id="gst" placeholder="GST %">
+      <input type="number" id="stock" placeholder="Stock Qty">
+      <input type="text" id="image" placeholder="Image URL">
+    </div>
+    <button class="btn-primary" onclick="addProduct()">Add Product</button>
   </div>
 
   <!-- Search + Edit -->
   <div class="card">
     <h3>🔍 Search & Edit Product</h3>
-    <input type="text" id="searchBarcode" placeholder="Enter Barcode">
-    <button onclick="searchProduct()">Search</button>
+    <div class="input-row">
+      <input type="text" id="searchBarcode" placeholder="Enter Barcode">
+      <button class="btn-primary" onclick="searchProduct()">Search</button>
+    </div>
 
     <div id="editSection" style="display:none;">
       <h4>Edit Product</h4>
-      <input type="text" id="editName" placeholder="Product Name"><br>
-      <input type="text" id="editBrand" placeholder="Brand"><br>
-      <input type="text" id="editCategory" placeholder="Category"><br>
-      <input type="number" id="editPrice" placeholder="Price"><br>
-      <input type="number" id="editGst" placeholder="GST %"><br>
-      <input type="number" id="editStock" placeholder="Stock Qty"><br>
-      <input type="text" id="editImage" placeholder="Image URL"><br>
-      <button onclick="updateProduct()">Update</button>
+      <div class="form-grid">
+        <input type="text" id="editName" placeholder="Product Name">
+        <input type="text" id="editBrand" placeholder="Brand">
+        <input type="text" id="editCategory" placeholder="Category">
+        <input type="number" id="editPrice" placeholder="Price">
+        <input type="number" id="editGst" placeholder="GST %">
+        <input type="number" id="editStock" placeholder="Stock Qty">
+        <input type="text" id="editImage" placeholder="Image URL">
+      </div>
+      <button class="btn-primary" onclick="updateProduct()">Update</button>
     </div>
   </div>
 </div>
