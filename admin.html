@@ -996,19 +996,42 @@ input[type="date"]::-webkit-calendar-picker-indicator {
       <button class="btn-primary" onclick="searchProduct()">Search</button>
     </div>
 
-    <div id="editSection" style="display:none;">
-      <h4>Edit Product</h4>
-      <div class="form-grid">
-        <input type="text" id="editName" placeholder="Product Name">
-        <input type="text" id="editBrand" placeholder="Brand">
-        <input type="text" id="editCategory" placeholder="Category">
-        <input type="number" id="editPrice" placeholder="Price">
-        <input type="number" id="editGst" placeholder="GST %">
-        <input type="number" id="editStock" placeholder="Stock Qty">
-        <input type="text" id="editImage" placeholder="Image URL">
-      </div>
-      <button class="btn-primary" onclick="updateProduct()">Update</button>
-    </div>
+    <<div id="editSection" style="display:none; padding:15px; background:#1a1a2e; border-radius:12px; margin-top:10px;">
+  <h4 style="color:#0ff;">Edit Product</h4>
+  
+  <!-- Product Name + Barcode Header -->
+  <p style="color:#0ff; font-weight:bold;">
+    Editing: <span id="editingProductName">-</span> | Barcode: <span id="editingProductBarcode">-</span>
+  </p>
+
+  <!-- Optional Product Image Preview -->
+  <img id="editingProductImage" src="" alt="Product Image" style="width:100px; height:100px; object-fit:contain; border-radius:8px; margin-bottom:10px; display:block;" />
+
+  <!-- Labeled Input Fields -->
+  <label style="color:#0ff;">Product Name</label>
+  <input type="text" id="editName" placeholder="Product Name"><br>
+
+  <label style="color:#0ff;">Brand</label>
+  <input type="text" id="editBrand" placeholder="Brand"><br>
+
+  <label style="color:#0ff;">Category</label>
+  <input type="text" id="editCategory" placeholder="Category"><br>
+
+  <label style="color:#0ff;">Price</label>
+  <input type="number" id="editPrice" placeholder="Price"><br>
+
+  <label style="color:#0ff;">GST %</label>
+  <input type="number" id="editGst" placeholder="GST %"><br>
+
+  <label style="color:#0ff;">Stock Qty</label>
+  <input type="number" id="editStock" placeholder="Stock Qty"><br>
+
+  <label style="color:#0ff;">Image URL</label>
+  <input type="text" id="editImage" placeholder="Image URL"><br>
+
+  <button onclick="updateProduct()" style="background:#0ff; color:#000; padding:10px 15px; margin-top:10px; border-radius:8px;">Update</button>
+</div>
+
   </div>
 </div>
 
