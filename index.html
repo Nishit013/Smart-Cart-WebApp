@@ -326,17 +326,7 @@
     let cartItems = [];
     let bleCharacteristic;
  
-    const productDB = {
-      "6001051002382": { name: "NIVEA", price: 2 },
-      "8901450012655": { name: "Denver Deo", price: 18 },
-      "8906053254150": { name: "PRO clean", price: 399 },
-      "8901526205561": { name: "GARNIER fash wash", price: 279 },
-      "8904035422054": { name: "JOY suns cream", price: 99 },
-      "5404017402072": { name: "creatine", price: 2199 },
-      "4005900181305": { name: "NIVEA Fashwash", price: 399 },
-      "088300178278": { name: "Calvin Klein", price: 1 },
-      "8901396476115": { name: "COLIN cleaner", price: 1 }
-    };
+    
  
     const urlParams = new URLSearchParams(window.location.search);
 const cartId = urlParams.get("id"); // ✅ Only QR-based cart, no default
@@ -397,21 +387,28 @@ function loadCartFromFirebase() {
     }
  
     function handleData(event) {
-      const barcode = new TextDecoder().decode(event.target.value).trim();
-      const product = productDB[barcode];
-      if (!product) {
-        showToast("❌ Unknown product scanned!");
-        return;
-      }
-      const existing = cartItems.find(item => item.name === product.name);
+  const barcode = new TextDecoder().decode(event.target.value).trim();
+
+  db.ref("products/" + barcode).once("value").then(snap => {
+    if (snap.exists()) {
+      const product = snap.val();
+      const existing = cartItems.find(item => item.barcode === barcode);
       if (existing) {
         existing.qty += 1;
       } else {
-        cartItems.push({ ...product, qty: 1 });
+        cartItems.push({ ...product, barcode, qty: 1 });
       }
       renderCart();
-      syncCartToFirebase();
+      syncCartToFirebase();  // (optional, if you want to sync)
+    } else {
+      showToast("❌ Product not found in database!");
     }
+  }).catch(err => {
+    console.error("Error fetching product:", err);
+    showToast("⚠️ Error fetching product data.");
+  });
+}
+
  
     function renderCart() {
   const container = document.getElementById("cartItemsList");
