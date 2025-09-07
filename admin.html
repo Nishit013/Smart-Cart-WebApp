@@ -688,23 +688,24 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   }
 
   /* Cards */
-  .card {
-    background: #1a1d2b;
-    padding: 20px;
-    border-radius: 12px;
-    margin-bottom: 25px;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.5);
-  }
+ .card {
+  background: var(--card);
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 25px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.5);
+  color: var(--text);
+}
 
   .card h3 {
     margin-bottom: 15px;
-    color: #0ff;
+    color: var(--accent);
   }
 
   .card h4 {
     margin-top: 15px;
     margin-bottom: 10px;
-    color: #0ff;
+    color: var(--accent);
   }
 
   /* Input Grid */
