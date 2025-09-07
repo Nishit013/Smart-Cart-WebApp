@@ -12,6 +12,8 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
   <style>
     * {
@@ -695,6 +697,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     <a href="#security"> <span>Security</span></a>
     <a href="#productSales"> <span>Product Sales</span></a> <!-- ✅ New link added -->
     <a href="#customerOffers"> <span>Customer Offers</span></a> <!-- New link -->
+    <a href="#products"> <span>Inventory</span></a>
   </div>
 
 
@@ -872,6 +875,51 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   </div>
 </div>
 
+
+
+<div class="section" id="products">
+  <h2>📦 Product Management</h2>
+
+  <!-- Bulk Import -->
+  <div class="card">
+    <h3>📥 Bulk Import Products (CSV/Excel)</h3>
+    <input type="file" id="fileInput" accept=".csv,.xlsx" />
+    <button onclick="uploadFile()">Upload</button>
+  </div>
+
+  <!-- Manual Add -->
+  <div class="card">
+    <h3>➕ Add Single Product</h3>
+    <input type="text" id="barcode" placeholder="Barcode"><br>
+    <input type="text" id="name" placeholder="Product Name"><br>
+    <input type="text" id="brand" placeholder="Brand"><br>
+    <input type="text" id="category" placeholder="Category"><br>
+    <input type="number" id="price" placeholder="Price"><br>
+    <input type="number" id="gst" placeholder="GST %"><br>
+    <input type="number" id="stock" placeholder="Stock Qty"><br>
+    <input type="text" id="image" placeholder="Image URL"><br>
+    <button onclick="addProduct()">Add Product</button>
+  </div>
+
+  <!-- Search + Edit -->
+  <div class="card">
+    <h3>🔍 Search & Edit Product</h3>
+    <input type="text" id="searchBarcode" placeholder="Enter Barcode">
+    <button onclick="searchProduct()">Search</button>
+
+    <div id="editSection" style="display:none;">
+      <h4>Edit Product</h4>
+      <input type="text" id="editName" placeholder="Product Name"><br>
+      <input type="text" id="editBrand" placeholder="Brand"><br>
+      <input type="text" id="editCategory" placeholder="Category"><br>
+      <input type="number" id="editPrice" placeholder="Price"><br>
+      <input type="number" id="editGst" placeholder="GST %"><br>
+      <input type="number" id="editStock" placeholder="Stock Qty"><br>
+      <input type="text" id="editImage" placeholder="Image URL"><br>
+      <button onclick="updateProduct()">Update</button>
+    </div>
+  </div>
+</div>
 
 
 <script>
@@ -1805,6 +1853,101 @@ function deleteOffer(key) {
 
 
 
+// 🔹 Bulk Import
+function uploadFile() {
+  const file = document.getElementById('fileInput').files[0];
+  if (!file) { alert("Please select a file"); return; }
+  const fileName = file.name.toLowerCase();
+
+  if (fileName.endsWith(".csv")) {
+    Papa.parse(file, {
+      header: true,
+      complete: function(results) {
+        results.data.forEach(row => saveProduct(row));
+        alert("CSV Imported Successfully!");
+      }
+    });
+  } else if (fileName.endsWith(".xlsx")) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet);
+      rows.forEach(row => saveProduct(row));
+      alert("Excel Imported Successfully!");
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    alert("Unsupported file format. Please upload CSV or Excel.");
+  }
+}
+
+function saveProduct(row) {
+  if (!row.barcode) return;
+  db.ref("products/" + row.barcode).set({
+    name: row.name || "",
+    brand: row.brand || "",
+    category: row.category || "",
+    price: Number(row.price) || 0,
+    gst: Number(row.gst) || 0,
+    stock: Number(row.stock) || 0,
+    image: row.image || ""
+  });
+}
+
+// 🔹 Add Single Product
+function addProduct() {
+  const barcode = document.getElementById("barcode").value;
+  if (!barcode) return alert("Barcode required");
+  db.ref("products/" + barcode).set({
+    name: document.getElementById("name").value,
+    brand: document.getElementById("brand").value,
+    category: document.getElementById("category").value,
+    price: Number(document.getElementById("price").value),
+    gst: Number(document.getElementById("gst").value),
+    stock: Number(document.getElementById("stock").value),
+    image: document.getElementById("image").value
+  });
+  alert("Product added!");
+}
+
+// 🔹 Search + Edit
+let currentBarcode = "";
+function searchProduct() {
+  const barcode = document.getElementById("searchBarcode").value;
+  if (!barcode) return;
+  db.ref("products/" + barcode).once("value").then(snap => {
+    if (snap.exists()) {
+      const p = snap.val();
+      currentBarcode = barcode;
+      document.getElementById("editSection").style.display = "block";
+      document.getElementById("editName").value = p.name;
+      document.getElementById("editBrand").value = p.brand;
+      document.getElementById("editCategory").value = p.category;
+      document.getElementById("editPrice").value = p.price;
+      document.getElementById("editGst").value = p.gst;
+      document.getElementById("editStock").value = p.stock;
+      document.getElementById("editImage").value = p.image;
+    } else {
+      alert("Product not found!");
+    }
+  });
+}
+
+function updateProduct() {
+  if (!currentBarcode) return;
+  db.ref("products/" + currentBarcode).update({
+    name: document.getElementById("editName").value,
+    brand: document.getElementById("editBrand").value,
+    category: document.getElementById("editCategory").value,
+    price: Number(document.getElementById("editPrice").value),
+    gst: Number(document.getElementById("editGst").value),
+    stock: Number(document.getElementById("editStock").value),
+    image: document.getElementById("editImage").value
+  });
+  alert("Product updated!");
+}
 
 
 </script>
