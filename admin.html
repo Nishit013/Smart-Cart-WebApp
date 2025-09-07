@@ -996,52 +996,33 @@ input[type="date"]::-webkit-calendar-picker-indicator {
       <button class="btn-primary" onclick="searchProduct()">Search</button>
     </div>
 
-    <div id="editSection" style="display:none; padding:15px; background:#1a1a2e; border-radius:12px; margin-top:10px;">
-  <h4 style="color:#0ff;">Edit Product</h4>
+    <div id="editSection" style="display:none;">
+  <h4>Edit Product</h4>
+  <div class="form-grid">
+    <label for="editName">Product Name</label>
+    <input type="text" id="editName" placeholder="Product Name">
 
-  <!-- Product Name + Barcode Header -->
-  <p style="color:#0ff; font-weight:bold;">
-    Editing: <span id="editingProductName">-</span> | Barcode: <span id="editingProductBarcode">-</span>
-  </p>
+    <label for="editBrand">Brand</label>
+    <input type="text" id="editBrand" placeholder="Brand">
 
-  <!-- Image Preview -->
-  <img id="editingProductImage" src="" alt="Product Image" 
-       style="width:100px; height:100px; object-fit:contain; border-radius:8px; margin-bottom:10px; display:block;" />
+    <label for="editCategory">Category</label>
+    <input type="text" id="editCategory" placeholder="Category">
 
-  <!-- Labeled Input Fields -->
-  <label style="color:#0ff;">Product Name</label>
-  <input type="text" id="editName" placeholder="Product Name"><br>
+    <label for="editPrice">Price</label>
+    <input type="number" id="editPrice" placeholder="Price">
 
-  <label style="color:#0ff;">Brand</label>
-  <input type="text" id="editBrand" placeholder="Brand"><br>
+    <label for="editGst">GST %</label>
+    <input type="number" id="editGst" placeholder="GST %">
 
-  <label style="color:#0ff;">Category</label>
-  <input type="text" id="editCategory" placeholder="Category"><br>
+    <label for="editStock">Stock Qty</label>
+    <input type="number" id="editStock" placeholder="Stock Qty">
 
-  <label style="color:#0ff;">Price</label>
-  <input type="number" id="editPrice" placeholder="Price"><br>
-
-  <label style="color:#0ff;">GST %</label>
-  <input type="number" id="editGst" placeholder="GST %"><br>
-
-  <label style="color:#0ff;">Stock Qty</label>
-  <input type="number" id="editStock" placeholder="Stock Qty"><br>
-
-  <label style="color:#0ff;">Barcode</label>
-  <input type="text" id="editBarcode" placeholder="Barcode" readonly style="background:#222; color:#0ff;"><br>
-
-  <label style="color:#0ff;">Image URL</label>
-  <input type="text" id="editImage" placeholder="Image URL" 
-         oninput="document.getElementById('editingProductImage').src=this.value"><br>
-
-  <button onclick="updateProduct()" 
-          style="background:#0ff; color:#000; padding:10px 15px; margin-top:10px; border-radius:8px;">
-    Update
-  </button>
-</div>
-
+    <label for="editImage">Image URL</label>
+    <input type="text" id="editImage" placeholder="Image URL">
   </div>
+  <button class="btn-primary" onclick="updateProduct()">Update</button>
 </div>
+
 
 
 <script>
