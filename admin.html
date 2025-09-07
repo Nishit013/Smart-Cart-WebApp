@@ -2010,31 +2010,46 @@ function addProduct() {
   document.getElementById("gst").value = "";
   document.getElementById("stock").value = "";
   document.getElementById("image").value = "";
-  
+
 }
 
 // 🔹 Search + Edit
 let currentBarcode = "";
 function searchProduct() {
-  const barcode = document.getElementById("searchBarcode").value;
-  if (!barcode) return;
-  db.ref("products/" + barcode).once("value").then(snap => {
-    if (snap.exists()) {
-      const p = snap.val();
-      currentBarcode = barcode;
-      document.getElementById("editSection").style.display = "block";
-      document.getElementById("editName").value = p.name;
-      document.getElementById("editBrand").value = p.brand;
-      document.getElementById("editCategory").value = p.category;
-      document.getElementById("editPrice").value = p.price;
-      document.getElementById("editGst").value = p.gst;
-      document.getElementById("editStock").value = p.stock;
-      document.getElementById("editImage").value = p.image;
-    } else {
+  const searchTerm = document.getElementById("searchBarcode").value.trim().toLowerCase();
+  if (!searchTerm) return alert("Enter a product name or barcode to search");
+
+  db.ref("products").once("value").then(snapshot => {
+    const products = snapshot.val();
+    let found = false;
+
+    for (const barcode in products) {
+      const p = products[barcode];
+      if (barcode.includes(searchTerm) || p.name.toLowerCase().includes(searchTerm)) {
+        found = true;
+        currentBarcode = barcode;
+
+        // Show edit section
+        document.getElementById("editSection").style.display = "block";
+        document.getElementById("editName").value = p.name;
+        document.getElementById("editBrand").value = p.brand;
+        document.getElementById("editCategory").value = p.category;
+        document.getElementById("editPrice").value = p.price;
+        document.getElementById("editGst").value = p.gst;
+        document.getElementById("editStock").value = p.stock;
+        document.getElementById("editImage").value = p.image;
+
+        break; // Stop at first match
+      }
+    }
+
+    if (!found) {
       alert("Product not found!");
+      document.getElementById("editSection").style.display = "none";
     }
   });
 }
+
 
 function updateProduct() {
   if (!currentBarcode) return;
