@@ -471,7 +471,29 @@ function loadCartFromFirebase() {
     syncCartToFirebase(); // Only clear in Firebase if not paid
   }
 }
- 
+
+
+
+
+
+function updateStockAfterPayment() {
+  cartItems.forEach(item => {
+    const productRef = db.ref("products/" + item.barcode);
+    productRef.once("value").then(snap => {
+      if (snap.exists()) {
+        const currentStock = snap.val().stock || 0;
+        const newStock = currentStock - item.qty;
+        productRef.update({ stock: newStock >= 0 ? newStock : 0 });
+      }
+    });
+  });
+}
+
+
+
+
+
+
     function validatePhone() {
       const phone = document.getElementById("phone").value;
       const button = document.getElementById("checkoutBtn");
@@ -609,6 +631,9 @@ let finalAmount = total - discount;
   name: "Smart Cart Pro",
   description: "Smart Cart Payment",
   handler: function (response) {
+
+    updateStockAfterPayment();
+    
   showToast("✅ Payment Successful");
   // Update summary with discount
 let finalSummary = summary;
