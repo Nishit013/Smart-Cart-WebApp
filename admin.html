@@ -1004,42 +1004,43 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     </div>
 
     <div id="editSection" class="edit-section" style="display:none;">
-  <h4>Edit Product</h4>
-  <div class="form-grid">
-    <div class="form-group">
-      <label for="editName">Product Name</label>
-      <input type="text" id="editName" placeholder="Enter product name">
-    </div>
-    <div class="form-group">
-      <label for="editBrand">Brand</label>
-      <input type="text" id="editBrand" placeholder="Enter brand">
-    </div>
-    <div class="form-group">
-      <label for="editCategory">Category</label>
-      <input type="text" id="editCategory" placeholder="Enter category">
-    </div>
-    <div class="form-group">
-      <label for="editPrice">Price</label>
-      <input type="number" id="editPrice" placeholder="Enter price">
-    </div>
-    <div class="form-group">
-      <label for="editGst">GST %</label>
-      <input type="number" id="editGst" placeholder="Enter GST %">
-    </div>
-    <div class="form-group">
-      <label for="editStock">Stock Qty</label>
-      <input type="number" id="editStock" placeholder="Enter stock quantity">
-    </div>
-    <div class="form-group">
-      <label for="editImage">Image URL</label>
-      <input type="text" id="editImage" placeholder="Enter image URL">
+      <h4>Edit Product</h4>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="editName">Product Name</label>
+          <input type="text" id="editName" placeholder="Enter product name">
+        </div>
+        <div class="form-group">
+          <label for="editBrand">Brand</label>
+          <input type="text" id="editBrand" placeholder="Enter brand">
+        </div>
+        <div class="form-group">
+          <label for="editCategory">Category</label>
+          <input type="text" id="editCategory" placeholder="Enter category">
+        </div>
+        <div class="form-group">
+          <label for="editPrice">Price</label>
+          <input type="number" id="editPrice" placeholder="Enter price">
+        </div>
+        <div class="form-group">
+          <label for="editGst">GST %</label>
+          <input type="number" id="editGst" placeholder="Enter GST %">
+        </div>
+        <div class="form-group">
+          <label for="editStock">Stock Qty</label>
+          <input type="number" id="editStock" placeholder="Enter stock quantity">
+        </div>
+        <div class="form-group">
+          <label for="editImage">Image URL</label>
+          <input type="text" id="editImage" placeholder="Enter image URL">
+        </div>
+      </div>
+      <button class="btn-primary" onclick="updateProduct()">Update Product</button>
     </div>
   </div>
-  <button class="btn-primary" onclick="updateProduct()">Update Product</button>
-</div>
+</div> <!-- ✅ Close products section properly -->
 
-
-
+<!-- ✅ Now start inventory section separately -->
 <div class="section" id="inventory" style="display:none;">
   <h2>Product Inventory</h2>
 
@@ -1068,6 +1069,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     <tbody></tbody>
   </table>
 </div>
+
 
 <script>
   const firebaseConfig = {
