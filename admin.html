@@ -756,7 +756,80 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   .input-row input {
     flex: 1;
   }
-</style>
+
+
+
+.edit-section {
+  background: #1a1d2b;
+  padding: 20px;
+  border-radius: 12px;
+  width: 450px;
+  margin: 20px auto;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+}
+
+.edit-section h4 {
+  margin-bottom: 20px;
+  font-size: 1.4rem;
+  border-bottom: 1px solid #444;
+  padding-bottom: 5px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 15px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  margin-bottom: 5px;
+  font-weight: 600;
+  color: #ccc;
+}
+
+.form-group input {
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #555;
+  background: #2a2d3e;
+  color: #fff;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border 0.2s, background 0.2s;
+}
+
+.form-group input:focus {
+  border: 1px solid #4f9fff;
+  background: #33364b;
+}
+
+.btn-primary {
+  margin-top: 15px;
+  width: 100%;
+  padding: 12px;
+  background: #4f9fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: #fff;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.btn-primary:hover {
+  background: #3b82d6;
+  transform: translateY(-2px);
+}
+
+
 </style>
 
 </head>
@@ -996,72 +1069,39 @@ input[type="date"]::-webkit-calendar-picker-indicator {
       <button class="btn-primary" onclick="searchProduct()">Search</button>
     </div>
 
-    <<div id="editSection" style="display:none; padding:20px; background:#1a1a2e; border-radius:12px; margin-top:20px; max-width:800px;">
-  <h3 style="color:#0ff; margin-bottom:20px;">Edit Product</h3>
-
-  <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
-
-    <!-- Product Name -->
-    <div>
-      <label style="color:#0ff; font-weight:600;">Product Name</label>
-      <input type="text" id="editName" placeholder="Product Name" style="width:100%; padding:10px; border-radius:8px; border:none; background:#222; color:#fff;">
+    <div id="editSection" class="edit-section" style="display:none;">
+  <h4>Edit Product</h4>
+  <div class="form-grid">
+    <div class="form-group">
+      <label for="editName">Product Name</label>
+      <input type="text" id="editName" placeholder="Enter product name">
     </div>
-
-    <!-- Brand -->
-    <div>
-      <label style="color:#0ff; font-weight:600;">Brand</label>
-      <input type="text" id="editBrand" placeholder="Brand" style="width:100%; padding:10px; border-radius:8px; border:none; background:#222; color:#fff;">
+    <div class="form-group">
+      <label for="editBrand">Brand</label>
+      <input type="text" id="editBrand" placeholder="Enter brand">
     </div>
-
-    <!-- Category -->
-    <div>
-      <label style="color:#0ff; font-weight:600;">Category</label>
-      <input type="text" id="editCategory" placeholder="Category" style="width:100%; padding:10px; border-radius:8px; border:none; background:#222; color:#fff;">
+    <div class="form-group">
+      <label for="editCategory">Category</label>
+      <input type="text" id="editCategory" placeholder="Enter category">
     </div>
-
-    <!-- Price -->
-    <div>
-      <label style="color:#0ff; font-weight:600;">Price</label>
-      <input type="number" id="editPrice" placeholder="Price" style="width:100%; padding:10px; border-radius:8px; border:none; background:#222; color:#fff;">
+    <div class="form-group">
+      <label for="editPrice">Price</label>
+      <input type="number" id="editPrice" placeholder="Enter price">
     </div>
-
-    <!-- GST -->
-    <div>
-      <label style="color:#0ff; font-weight:600;">GST %</label>
-      <input type="number" id="editGst" placeholder="GST %" style="width:100%; padding:10px; border-radius:8px; border:none; background:#222; color:#fff;">
+    <div class="form-group">
+      <label for="editGst">GST %</label>
+      <input type="number" id="editGst" placeholder="Enter GST %">
     </div>
-
-    <!-- Stock Qty -->
-    <div>
-      <label style="color:#0ff; font-weight:600;">Stock Qty</label>
-      <input type="number" id="editStock" placeholder="Stock Qty" style="width:100%; padding:10px; border-radius:8px; border:none; background:#222; color:#fff;">
+    <div class="form-group">
+      <label for="editStock">Stock Qty</label>
+      <input type="number" id="editStock" placeholder="Enter stock quantity">
     </div>
-
-    <!-- Barcode -->
-    <div>
-      <label style="color:#0ff; font-weight:600;">Barcode</label>
-      <input type="text" id="editBarcode" placeholder="Barcode" readonly style="width:100%; padding:10px; border-radius:8px; border:none; background:#333; color:#0ff;">
+    <div class="form-group">
+      <label for="editImage">Image URL</label>
+      <input type="text" id="editImage" placeholder="Enter image URL">
     </div>
-
-    <!-- Image URL -->
-    <div>
-      <label style="color:#0ff; font-weight:600;">Image URL</label>
-      <input type="text" id="editImage" placeholder="Image URL" 
-             oninput="document.getElementById('editingProductImage').src=this.value" 
-             style="width:100%; padding:10px; border-radius:8px; border:none; background:#222; color:#fff;">
-    </div>
-
-    <!-- Image Preview -->
-    <div style="grid-column:1 / -1; text-align:center;">
-      <img id="editingProductImage" src="" alt="Product Image" style="width:150px; height:150px; object-fit:contain; border-radius:12px; margin-top:10px; border:2px solid #0ff;">
-    </div>
-
   </div>
-
-  <button onclick="updateProduct()" 
-          style="margin-top:20px; background:#0ff; color:#000; font-weight:600; padding:12px 25px; border:none; border-radius:10px; cursor:pointer; transition:0.3s;">
-    Update
-  </button>
+  <button class="btn-primary" onclick="updateProduct()">Update Product</button>
 </div>
 
 
