@@ -1051,8 +1051,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 <h3>Category-wise Sales</h3>
 <div style="margin-bottom: 10px; display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
   <select id="categorySalesFilter" onchange="renderProductSales()">
-  <option value="all">All Categories</option>
-</select>
+    <!-- dynamically populated -->
+  </select>
 
   <select id="categorySalesTimeFilter" onchange="renderProductSales()">
     <option value="all">All Time</option>
@@ -1076,6 +1076,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     <tbody id="categorySalesList"></tbody>
   </table>
 </div>
+
 
 
 
@@ -2616,6 +2617,9 @@ function fetchCustomerBills() {
 
 
 
+window.addEventListener("DOMContentLoaded", () => {
+  populateCategoryFilter();
+});
 
 
 
