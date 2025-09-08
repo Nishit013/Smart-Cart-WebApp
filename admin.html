@@ -1046,6 +1046,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 <h3>Category-wise Sales</h3>
 <div style="margin-bottom: 10px; display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
   <select id="categorySalesFilter" onchange="renderProductSales()">
+    <option value="all">All Categories</option>
+    <option value="Beverages">Beverages</option>
+    <option value="Snacks">Snacks</option>
+    <option value="Others">Others</option>
+  </select>
+
+  <select id="categorySalesTimeFilter" onchange="renderProductSales()">
     <option value="all">All Time</option>
     <option value="today">Today</option>
     <option value="week">This Week</option>
@@ -1067,6 +1074,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     <tbody id="categorySalesList"></tbody>
   </table>
 </div>
+
 
 
 
@@ -1970,8 +1978,9 @@ document.getElementById("securityCartFilter").addEventListener("input", () => {
 });
 
 function renderProductSales() {
-  const productFilter = document.getElementById("productSalesFilter").value;
+  const productFilter = document.getElementById("productSalesFilter")?.value || "all";
   const categoryFilter = document.getElementById("categorySalesFilter")?.value || "all";
+  const categoryTimeFilter = document.getElementById("categorySalesTimeFilter")?.value || "all"; // new filter for category table
   const search = document.getElementById("productSearchInput")?.value.toLowerCase() || "";
   const now = new Date();
 
@@ -1986,36 +1995,49 @@ function renderProductSales() {
       const paidAt = new Date(cart.paidAt || cart.paymentTime || Date.now());
 
       const isToday = paidAt.toDateString() === now.toDateString();
-      const monday = new Date(now); monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+      const monday = new Date(now); 
+      monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
       monday.setHours(0, 0, 0, 0);
-      const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+      const sunday = new Date(monday); 
+      sunday.setDate(monday.getDate() + 6);
       sunday.setHours(23, 59, 59, 999);
       const isWeek = paidAt >= monday && paidAt <= sunday;
       const isMonth = paidAt.getMonth() === now.getMonth() && paidAt.getFullYear() === now.getFullYear();
 
-      if (
-        (productFilter === "all" || (productFilter === "today" && isToday) || (productFilter === "week" && isWeek) || (productFilter === "month" && isMonth))
-      ) {
-        (cart.items || []).forEach(item => {
-          const itemName = item.name;
+      (cart.items || []).forEach(item => {
+        const itemName = item.name;
 
-          // ✅ Item-wise aggregation
+        // 🔹 Product table aggregation
+        if (
+          productFilter === "all" ||
+          (productFilter === "today" && isToday) ||
+          (productFilter === "week" && isWeek) ||
+          (productFilter === "month" && isMonth)
+        ) {
           if (!salesMap[itemName]) salesMap[itemName] = { qty: 0, revenue: 0 };
           salesMap[itemName].qty += item.qty;
           salesMap[itemName].revenue += item.qty * item.price;
+        }
 
-          // ✅ Category-wise aggregation
-          const productInfo = Object.values(productsData).find(p => p.name === itemName);
-          const category = productInfo?.category || "Others";
+        // 🔹 Category table aggregation
+        const productInfo = Object.values(productsData).find(p => p.name === itemName);
+        const category = productInfo?.category || "Others";
 
+        let includeCategory = false;
+        if (categoryTimeFilter === "all") includeCategory = true;
+        else if (categoryTimeFilter === "today" && isToday) includeCategory = true;
+        else if (categoryTimeFilter === "week" && isWeek) includeCategory = true;
+        else if (categoryTimeFilter === "month" && isMonth) includeCategory = true;
+
+        if (includeCategory) {
           if (!categoryMap[category]) categoryMap[category] = { qty: 0, revenue: 0 };
           categoryMap[category].qty += item.qty;
           categoryMap[category].revenue += item.qty * item.price;
-        });
-      }
+        }
+      });
     });
 
-    // 🔹 Render Item-wise table
+    // 🔹 Render Product Table
     const filteredEntries = Object.entries(salesMap)
       .filter(([name]) => name.toLowerCase().includes(search))
       .sort((a, b) => b[1].qty - a[1].qty);
@@ -2028,7 +2050,7 @@ function renderProductSales() {
       </tr>
     `).join('') || `<tr><td colspan="3" style="padding:10px;">No products found.</td></tr>`;
 
-    // 🔹 Render Category-wise table with category filter
+    // 🔹 Render Category Table
     const categoryEntries = Object.entries(categoryMap)
       .filter(([cat]) => categoryFilter === "all" || cat === categoryFilter)
       .sort((a, b) => b[1].qty - a[1].qty);
@@ -2078,9 +2100,10 @@ function renderProductSales() {
 
 
 
+
 function exportCategorySalesCSV() {
-  const productFilter = document.getElementById("productSalesFilter").value;
   const categoryFilter = document.getElementById("categorySalesFilter")?.value || "all";
+  const categoryTimeFilter = document.getElementById("categorySalesTimeFilter")?.value || "all"; // new time filter for category table
   const now = new Date();
   const categoryMap = {};
 
@@ -2100,23 +2123,24 @@ function exportCategorySalesCSV() {
       const isWeek = paidAt >= monday && paidAt <= sunday;
       const isMonth = paidAt.getMonth() === now.getMonth() && paidAt.getFullYear() === now.getFullYear();
 
-      if (
-        productFilter === "all" ||
-        (productFilter === "today" && isToday) ||
-        (productFilter === "week" && isWeek) ||
-        (productFilter === "month" && isMonth)
-      ) {
-        (cart.items || []).forEach(item => {
-          const productInfo = Object.values(productsData).find(p => p.name === item.name);
-          const category = productInfo?.category || "Others";
+      (cart.items || []).forEach(item => {
+        const productInfo = Object.values(productsData).find(p => p.name === item.name);
+        const category = productInfo?.category || "Others";
 
-          if (categoryFilter !== "all" && category !== categoryFilter) return;
+        // 🔹 Apply category time filter
+        let includeCategory = false;
+        if (categoryTimeFilter === "all") includeCategory = true;
+        else if (categoryTimeFilter === "today" && isToday) includeCategory = true;
+        else if (categoryTimeFilter === "week" && isWeek) includeCategory = true;
+        else if (categoryTimeFilter === "month" && isMonth) includeCategory = true;
 
-          if (!categoryMap[category]) categoryMap[category] = { qty: 0, revenue: 0 };
-          categoryMap[category].qty += item.qty;
-          categoryMap[category].revenue += item.qty * item.price;
-        });
-      }
+        if (!includeCategory) return;
+        if (categoryFilter !== "all" && category !== categoryFilter) return;
+
+        if (!categoryMap[category]) categoryMap[category] = { qty: 0, revenue: 0 };
+        categoryMap[category].qty += item.qty;
+        categoryMap[category].revenue += item.qty * item.price;
+      });
     });
 
     const rows = [["Category", "Units Sold", "Total Revenue"]];
@@ -2132,7 +2156,6 @@ function exportCategorySalesCSV() {
     link.click();
   });
 }
-
 
 
 
