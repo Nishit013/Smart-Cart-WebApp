@@ -2429,15 +2429,22 @@ let itemHTML = `
 `;
 
 // ✅ 1. Show individual items first
+// ✅ 1. Show individual items first
 if (bill.bill?.items) {
   itemHTML += "<strong style='display:block; margin-bottom:6px;'>Items Purchased:</strong>";
-  itemHTML += "<ul style='margin:0 0 10px; padding-left:20px; list-style:disc;'>";
+
+  // Scrollable container for items
+  itemHTML += `<div style="max-height:calc(5 * 1.6em + 20px); overflow-y:auto; padding-left:10px; margin-bottom:10px;">`;
+  itemHTML += "<ul style='margin:0; padding-left:20px; list-style:disc;'>";
+
   Object.values(bill.bill.items).forEach(it => {
-    itemHTML += `<li>${it.name || "Item"} — Qty: ${it.qty || 1} × ₹${it.price || 0} = <strong>₹${(it.qty || 1) * (it.price || 0)}</strong></li>`;
+    itemHTML += `<li style="margin-bottom:4px;">${it.name || "Item"} — Qty: ${it.qty || 1} × ₹${it.price || 0} = <strong>₹${(it.qty || 1) * (it.price || 0)}</strong></li>`;
   });
-  itemHTML += "</ul>";
+
+  itemHTML += "</ul></div>";
 } else if (bill.bill?.summary) {
   itemHTML += `<p>${bill.bill.summary}</p>`;
+}
 }
 
 // ✅ 2. Total before discount
