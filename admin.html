@@ -1051,8 +1051,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 <h3>Category-wise Sales</h3>
 <div style="margin-bottom: 10px; display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
   <select id="categorySalesFilter" onchange="renderProductSales()">
-    <!-- dynamically populated -->
-  </select>
+  <option value="all">All Categories</option> <!-- Keep this always -->
+</select>
+
 
   <select id="categorySalesTimeFilter" onchange="renderProductSales()">
     <option value="all">All Time</option>
@@ -1982,24 +1983,30 @@ document.getElementById("securityCartFilter").addEventListener("input", () => {
 // 🔹 Populate Category Filter dynamically based on sold products
 function populateCategoryFilter() {
   const select = document.getElementById("categorySalesFilter");
-  select.innerHTML = `<option value="all">All Categories</option>`; // default option
+  if (!select) return;
 
-  db.ref("products").once("value").then(productsSnap => {
-    const productsData = productsSnap.val() || {};
-    const soldCategories = new Set();
+  db.ref("products").once("value").then(snapshot => {
+    const products = snapshot.val() || {};
+    const categoriesSet = new Set();
 
-    Object.values(paidCarts).forEach(cart => {
-      (cart.items || []).forEach(item => {
-        const productInfo = Object.values(productsData).find(p => p.name === item.name);
-        if (productInfo?.category) soldCategories.add(productInfo.category);
-      });
+    Object.keys(products).forEach(key => {
+      const product = products[key];
+      if (product.category && product.category.trim() !== "") {
+        categoriesSet.add(product.category.trim());
+      } else {
+        categoriesSet.add("Others");
+      }
     });
 
-    soldCategories.forEach(cat => {
-      const option = document.createElement("option");
-      option.value = cat;
-      option.textContent = cat;
-      select.appendChild(option);
+    // Append categories without removing "All Categories"
+    categoriesSet.forEach(cat => {
+      // Check if this option already exists
+      if (![...select.options].some(o => o.value === cat)) {
+        const option = document.createElement("option");
+        option.value = cat;
+        option.textContent = cat;
+        select.appendChild(option);
+      }
     });
   });
 }
