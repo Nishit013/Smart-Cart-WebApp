@@ -2419,37 +2419,43 @@ function fetchCustomerBills() {
       row.style.cursor = "pointer";
 
       // Hidden details row
-      const detailRow = document.createElement("tr");
-      detailRow.style.display = "none";
-      const col = document.createElement("td");
-      col.colSpan = 4;
+const detailRow = document.createElement("tr");
+detailRow.style.display = "none";
+const col = document.createElement("td");
+col.colSpan = 4;
 
-      let itemHTML = `<div style="padding:8px; background:var(--card); border-radius:6px;">`;
+let itemHTML = `
+  <div style="padding:12px; background:var(--surface-2,#1e2235); border-radius:8px; font-size:14px; line-height:1.6;">
+`;
 
-      // ✅ Show discount if applied
-      if (discount > 0) {
-        itemHTML += `<p style="color:red; margin:6px 0;">Discount Applied: ₹${discount}</p>`;
-      }
+// ✅ 1. Show individual items first
+if (bill.bill?.items) {
+  itemHTML += "<strong style='display:block; margin-bottom:6px;'>Items Purchased:</strong>";
+  itemHTML += "<ul style='margin:0 0 10px; padding-left:20px; list-style:disc;'>";
+  Object.values(bill.bill.items).forEach(it => {
+    itemHTML += `<li>${it.name || "Item"} — Qty: ${it.qty || 1} × ₹${it.price || 0} = <strong>₹${(it.qty || 1) * (it.price || 0)}</strong></li>`;
+  });
+  itemHTML += "</ul>";
+} else if (bill.bill?.summary) {
+  itemHTML += `<p>${bill.bill.summary}</p>`;
+}
 
-      itemHTML += `<p><strong>Total Before Discount:</strong> ₹${total}</p>`;
-      itemHTML += `<p><strong>Final Paid:</strong> ₹${finalAmount}</p>`;
+// ✅ 2. Total before discount
+itemHTML += `<p style="margin:6px 0;"><strong>Total Before Discount:</strong> ₹${total}</p>`;
 
-      // ✅ Show individual items from bill.items
-      if (bill.bill?.items) {
-        itemHTML += "<strong>Items:</strong><ul style='margin:8px 0; padding-left:18px;'>";
-        Object.values(bill.bill.items).forEach(it => {
-          itemHTML += `<li>${it.name || "Item"} - Qty: ${it.qty || 1} × ₹${it.price || 0} = ₹${(it.qty || 1) * (it.price || 0)}</li>`;
-        });
-        itemHTML += "</ul>";
-      } else if (bill.bill?.summary) {
-        // fallback if only summary exists
-        itemHTML += `<p>${bill.bill.summary}</p>`;
-      }
+// ✅ 3. Discount (if applied)
+if (discount > 0) {
+  itemHTML += `<p style="margin:6px 0; color:#e63946;"><strong>Discount Applied:</strong> -₹${discount}</p>`;
+}
 
-      itemHTML += "</div>";
+// ✅ 4. Final amount in bold highlight
+itemHTML += `<p style="margin-top:10px; font-size:15px; font-weight:600; color:#06d6a0;">Final Paid: ₹${finalAmount}</p>`;
 
-      col.innerHTML = itemHTML;
-      detailRow.appendChild(col);
+itemHTML += "</div>";
+
+col.innerHTML = itemHTML;
+detailRow.appendChild(col);
+
 
       row.addEventListener("click", () => {
         detailRow.style.display = detailRow.style.display === "none" ? "table-row" : "none";
