@@ -1588,11 +1588,30 @@ barData.push(Number(cart.finalAmount ?? cart.total) || 0);
 }
 
 function exportCSV() {
-  const rows = [["Cart ID", "Total", "Paid At", "Phone"]];
+  const rows = [["Cart ID", "Total Before Discount", "Discount Applied", "Final Paid", "Date", "Time", "Phone"]];
+  
   Object.values(paidCarts).forEach(cart => {
-    const date = new Date(cart.paidAt || cart.paymentTime || "").toLocaleString();
-    rows.push([cart.cartId, cart.total, date, cart.phone || ""]);
+    const paymentTimestamp = cart.paidAt || cart.paymentTime || Date.now();
+    const paymentDateObj = new Date(paymentTimestamp);
+    
+    const date = paymentDateObj.toLocaleDateString();   // only date
+    const time = paymentDateObj.toLocaleTimeString();   // only time
+
+    const totalBeforeDiscount = cart.total || 0;                // original total
+    const discountApplied = cart.discount || 0;                // discount if any
+    const finalPaid = cart.finalAmount || totalBeforeDiscount - discountApplied; // final amount
+
+    rows.push([
+      cart.cartId,
+      "₹" + totalBeforeDiscount,
+      "₹" + discountApplied,
+      "₹" + finalPaid,
+      date,
+      time,
+      cart.phone || ""
+    ]);
   });
+
   const csv = rows.map(r => r.join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv" });
   const link = document.createElement("a");
@@ -1600,6 +1619,7 @@ function exportCSV() {
   link.download = "paid_carts.csv";
   link.click();
 }
+
 
 function toggleCart(cartId) {
   const cards = document.querySelectorAll(".cart-card");
