@@ -2428,27 +2428,24 @@ let itemHTML = `
   <div style="padding:12px; background:var(--surface-2,#1e2235); border-radius:8px; font-size:14px; line-height:1.6;">
 `;
 
-// ✅ 1. Show individual items first
-// ✅ 1. Show individual items first
-if (bill.bill?.items) {
+// ✅ Show individual items first (scrollable, only items)
+if (bill.items && bill.items.length > 0) {
   itemHTML += "<strong style='display:block; margin-bottom:6px;'>Items Purchased:</strong>";
 
   // Scrollable container for items
   itemHTML += `<div style="max-height:calc(5 * 1.8em + 10px); overflow-y:auto; padding-left:10px; margin-bottom:10px;">`;
 
-  // Each item in a separate div for proper new line
-  Object.values(bill.bill.items).forEach(it => {
+  bill.items.forEach(it => {
     const name = it.name || "Item";
     const qty = it.qty || 1;
     const price = it.price || 0;
     const total = qty * price;
-
     itemHTML += `<div style="margin-bottom:4px;">${name} — Qty: ${qty} × ₹${price} = ₹${total}</div>`;
   });
 
   itemHTML += "</div>";
-} else if (bill.bill?.summary) {
-  itemHTML += `<p>${bill.bill.summary}</p>`;
+} else {
+  itemHTML += "<p>No items found</p>";
 }
 
 
