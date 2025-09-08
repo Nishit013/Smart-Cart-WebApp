@@ -1010,6 +1010,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     <option value="all">All Time</option>
     <option value="today">Today</option>
     <option value="week">This Week</option>
+    <option value="month">This Month</option>
   </select>
 
   <!-- 🔍 Add search input here -->
@@ -1964,19 +1965,21 @@ function renderProductSales() {
 
     const isWeek = paidAt >= monday && paidAt <= sunday;
 
-    if (
-      filter === "all" ||
-      (filter === "today" && isToday) ||
-      (filter === "week" && isWeek)
-    ) {
-      (cart.items || []).forEach(item => {
-        if (!salesMap[item.name]) {
-          salesMap[item.name] = { qty: 0, revenue: 0 };
-        }
-        salesMap[item.name].qty += item.qty;
-        salesMap[item.name].revenue += item.qty * item.price;
-      });
-    }
+    const isMonth = paidAt.getMonth() === now.getMonth() && paidAt.getFullYear() === now.getFullYear();
+
+if (
+  filter === "all" ||
+  (filter === "today" && isToday) ||
+  (filter === "week" && isWeek) ||
+  (filter === "month" && isMonth) // new
+) {
+  (cart.items || []).forEach(item => {
+    if (!salesMap[item.name]) salesMap[item.name] = { qty: 0, revenue: 0 };
+    salesMap[item.name].qty += item.qty;
+    salesMap[item.name].revenue += item.qty * item.price;
+  });
+}
+
   });
 
   // 🔍 Apply product name search filter
@@ -2062,11 +2065,14 @@ function exportProductSalesCSV() {
     sunday.setHours(23, 59, 59, 999);
     const isWeek = paidAt >= monday && paidAt <= sunday;
 
-    if (
-      filter === "all" ||
-      (filter === "today" && isToday) ||
-      (filter === "week" && isWeek)
-    ) {
+    const isMonth = paidAt.getMonth() === now.getMonth() && paidAt.getFullYear() === now.getFullYear();
+
+if (
+  filter === "all" ||
+  (filter === "today" && isToday) ||
+  (filter === "week" && isWeek) ||
+  (filter === "month" && isMonth) // new
+) {
       (cart.items || []).forEach(item => {
         if (!salesMap[item.name]) {
           salesMap[item.name] = { qty: 0, revenue: 0 };
