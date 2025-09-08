@@ -1043,6 +1043,19 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     <canvas id="productSalesChart"></canvas>
   </div>
 </div>
+<h3>Category-wise Sales</h3>
+<div class="scroll-box" style="max-height: 200px; overflow-y:auto;">
+  <table class="security-table" style="width: 100%;">
+    <thead>
+      <tr style="background: var(--accent); color: white;">
+        <th>Category</th>
+        <th>Units Sold</th>
+        <th>Total Revenue</th>
+      </tr>
+    </thead>
+    <tbody id="categorySalesList"></tbody>
+  </table>
+</div>
 
 
 <div class="section" id="customerOffers">
@@ -1949,103 +1962,111 @@ function renderProductSales() {
   const search = document.getElementById("productSearchInput")?.value.toLowerCase() || "";
   const now = new Date();
 
-  const salesMap = {};
+  const salesMap = {};      // Item-wise totals
+  const categoryMap = {};   // Category-wise totals
 
-  Object.values(paidCarts).forEach(cart => {
-    const paidAt = new Date(cart.paidAt || cart.paymentTime || Date.now());
+  // 🔹 Fetch products node first to get category info
+  db.ref("products").once("value").then(productsSnap => {
+    const productsData = productsSnap.val() || {}; // productName -> {category, price, ...}
 
-    const isToday = paidAt.toDateString() === now.toDateString();
+    Object.values(paidCarts).forEach(cart => {
+      const paidAt = new Date(cart.paidAt || cart.paymentTime || Date.now());
 
-    const monday = new Date(now);
-    monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-    monday.setHours(0, 0, 0, 0);
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    sunday.setHours(23, 59, 59, 999);
+      const isToday = paidAt.toDateString() === now.toDateString();
+      const monday = new Date(now);
+      monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+      monday.setHours(0, 0, 0, 0);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(23, 59, 59, 999);
+      const isWeek = paidAt >= monday && paidAt <= sunday;
+      const isMonth = paidAt.getMonth() === now.getMonth() && paidAt.getFullYear() === now.getFullYear();
 
-    const isWeek = paidAt >= monday && paidAt <= sunday;
+      if (
+        filter === "all" ||
+        (filter === "today" && isToday) ||
+        (filter === "week" && isWeek) ||
+        (filter === "month" && isMonth)
+      ) {
+        (cart.items || []).forEach(item => {
+          const itemName = item.name;
 
-    const isMonth = paidAt.getMonth() === now.getMonth() && paidAt.getFullYear() === now.getFullYear();
+          // ✅ Item-wise aggregation
+          if (!salesMap[itemName]) salesMap[itemName] = { qty: 0, revenue: 0 };
+          salesMap[itemName].qty += item.qty;
+          salesMap[itemName].revenue += item.qty * item.price;
 
-if (
-  filter === "all" ||
-  (filter === "today" && isToday) ||
-  (filter === "week" && isWeek) ||
-  (filter === "month" && isMonth) // new
-) {
-  (cart.items || []).forEach(item => {
-    if (!salesMap[item.name]) salesMap[item.name] = { qty: 0, revenue: 0 };
-    salesMap[item.name].qty += item.qty;
-    salesMap[item.name].revenue += item.qty * item.price;
-  });
-}
+          // ✅ Category-wise aggregation
+          const productInfo = Object.values(productsData).find(p => p.name === itemName);
+          const category = productInfo?.category || "Others";
 
-  });
+          if (!categoryMap[category]) categoryMap[category] = { qty: 0, revenue: 0 };
+          categoryMap[category].qty += item.qty;
+          categoryMap[category].revenue += item.qty * item.price;
+        });
+      }
+    });
 
-  // 🔍 Apply product name search filter
-  const filteredEntries = Object.entries(salesMap)
-    .filter(([name]) => name.toLowerCase().includes(search))
-    .sort((a, b) => b[1].qty - a[1].qty); // sort by qty sold descending
+    // 🔹 Render Item-wise table
+    const filteredEntries = Object.entries(salesMap)
+      .filter(([name]) => name.toLowerCase().includes(search))
+      .sort((a, b) => b[1].qty - a[1].qty);
 
-  // 📝 Render Table
-  const tableHTML = filteredEntries.map(([name, data]) => `
-    <tr>
-      <td>${name}</td>
-      <td>${data.qty}</td>
-      <td>₹${data.revenue}</td>
-    </tr>
-  `).join("");
+    document.getElementById("productSalesList").innerHTML = filteredEntries.map(([name, data]) => `
+      <tr>
+        <td>${name}</td>
+        <td>${data.qty}</td>
+        <td>₹${data.revenue}</td>
+      </tr>
+    `).join('') || `<tr><td colspan="3" style="padding:10px;">No products found.</td></tr>`;
 
-  document.getElementById("productSalesList").innerHTML = tableHTML || `
-    <tr><td colspan="3" style="padding:10px;">No products found.</td></tr>
-  `;
+    // 🔹 Render Category-wise table
+    const categoryEntries = Object.entries(categoryMap)
+      .sort((a, b) => b[1].qty - a[1].qty);
 
-  // 📊 Render Chart
-  if (window.productChart) window.productChart.destroy();
+    document.getElementById("categorySalesList").innerHTML = categoryEntries.map(([category, data]) => `
+      <tr>
+        <td>${category}</td>
+        <td>${data.qty}</td>
+        <td>₹${data.revenue}</td>
+      </tr>
+    `).join('') || `<tr><td colspan="3" style="padding:10px;">No categories found.</td></tr>`;
 
-  const ctx = document.getElementById("productSalesChart").getContext("2d");
-  const top10Entries = filteredEntries.slice(0, 10); // 🔟 Top 10 products
+    // 🔹 Render top-selling products chart
+    if (window.productChart) window.productChart.destroy();
 
-const labels = top10Entries.map(([name]) => name);
-const qtyData = top10Entries.map(([_, data]) => data.qty);
+    const ctx = document.getElementById("productSalesChart").getContext("2d");
+    const top10Entries = filteredEntries.slice(0, 10);
+    const labels = top10Entries.map(([name]) => name);
+    const qtyData = top10Entries.map(([_, data]) => data.qty);
 
-  window.productChart = new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels: labels,
-      datasets: [{
-        label: "Units Sold",
-        data: qtyData,
-        backgroundColor: "#00bcd4"
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: context => `${context.raw} units`
-          }
-        }
+    window.productChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [{
+          label: "Units Sold",
+          data: qtyData,
+          backgroundColor: "#00bcd4"
+        }]
       },
-      scales: {
-        x: {
-          ticks: {
-            color: getComputedStyle(document.body).getPropertyValue('--text')
-          }
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: context => `${context.raw} units` } }
         },
-        y: {
-          beginAtZero: true,
-          ticks: {
-            color: getComputedStyle(document.body).getPropertyValue('--text')
-          }
+        scales: {
+          x: { ticks: { color: getComputedStyle(document.body).getPropertyValue('--text') } },
+          y: { beginAtZero: true, ticks: { color: getComputedStyle(document.body).getPropertyValue('--text') } }
         }
       }
-    }
+    });
+
   });
 }
+
 
 function exportProductSalesCSV() {
   const rows = [["Product", "Units Sold", "Total Revenue"]];
