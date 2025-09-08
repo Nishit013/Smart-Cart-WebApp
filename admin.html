@@ -2468,7 +2468,16 @@ detailRow.appendChild(col);
 
 
       row.addEventListener("click", () => {
+        // ✅ Close previously open detail row if different
+        if (currentlyOpenDetail && currentlyOpenDetail !== detailRow) {
+          currentlyOpenDetail.style.display = "none";
+        }
+
+        // Toggle current row
         detailRow.style.display = detailRow.style.display === "none" ? "table-row" : "none";
+
+        // Update the tracker
+        currentlyOpenDetail = detailRow.style.display === "none" ? null : detailRow;
       });
 
       tbody.appendChild(row);
