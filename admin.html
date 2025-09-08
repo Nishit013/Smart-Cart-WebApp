@@ -1199,14 +1199,20 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 
 <!-- Customer Details Section -->
-<div id="customerDetailsPanel" class="customer-details-panel">
-  <h2>Customer Details</h2>
+<!-- Customer Details Panel -->
+<div id="customerDetailsPanel" class="customer-panel">
+  <div class="panel-header">
+    <h3>Customer Details</h3>
+    <button class="close-btn" onclick="toggleCustomerDetails()">✖</button>
+  </div>
 
+  <!-- Search -->
   <div class="input-row">
     <input type="text" id="customerPhoneInput" placeholder="Enter Phone Number">
     <button class="btn-primary" onclick="fetchCustomerBills()">Search</button>
   </div>
 
+  <!-- Bills List -->
   <div class="scroll-box" style="max-height: 400px; overflow-y: auto;">
     <table class="security-table" style="width:100%;">
       <thead>
@@ -1214,13 +1220,14 @@ input[type="date"]::-webkit-calendar-picker-indicator {
           <th>Date</th>
           <th>Bill Amount</th>
           <th>Items</th>
-          <th>Payment Status</th>
+          <th>Status</th>
         </tr>
       </thead>
       <tbody id="customerBillList"></tbody>
     </table>
   </div>
 </div>
+
 
 
 
@@ -2437,6 +2444,10 @@ function fetchCustomerBills() {
       tbody.appendChild(detailRow);
     });
   });
+}
+function toggleCustomerDetails() {
+  const panel = document.getElementById("customerDetailsPanel");
+  panel.classList.toggle("active");
 }
 
 
