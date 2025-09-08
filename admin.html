@@ -1044,6 +1044,17 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   </div>
 </div>
 <h3>Category-wise Sales</h3>
+<div style="margin-bottom: 10px; display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+  <select id="categorySalesFilter" onchange="renderProductSales()">
+    <option value="all">All Time</option>
+    <option value="today">Today</option>
+    <option value="week">This Week</option>
+    <option value="month">This Month</option>
+  </select>
+
+  <button onclick="exportCategorySalesCSV()">📤 Export CSV</button>
+</div>
+
 <div class="scroll-box" style="max-height: 200px; overflow-y:auto;">
   <table class="security-table" style="width: 100%;">
     <thead>
@@ -1056,6 +1067,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     <tbody id="categorySalesList"></tbody>
   </table>
 </div>
+
 
 
 <div class="section" id="customerOffers">
@@ -1958,7 +1970,8 @@ document.getElementById("securityCartFilter").addEventListener("input", () => {
 });
 
 function renderProductSales() {
-  const filter = document.getElementById("productSalesFilter").value;
+  const productFilter = document.getElementById("productSalesFilter").value;
+  const categoryFilter = document.getElementById("categorySalesFilter")?.value || "all";
   const search = document.getElementById("productSearchInput")?.value.toLowerCase() || "";
   const now = new Date();
 
@@ -1973,20 +1986,15 @@ function renderProductSales() {
       const paidAt = new Date(cart.paidAt || cart.paymentTime || Date.now());
 
       const isToday = paidAt.toDateString() === now.toDateString();
-      const monday = new Date(now);
-      monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+      const monday = new Date(now); monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
       monday.setHours(0, 0, 0, 0);
-      const sunday = new Date(monday);
-      sunday.setDate(monday.getDate() + 6);
+      const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
       sunday.setHours(23, 59, 59, 999);
       const isWeek = paidAt >= monday && paidAt <= sunday;
       const isMonth = paidAt.getMonth() === now.getMonth() && paidAt.getFullYear() === now.getFullYear();
 
       if (
-        filter === "all" ||
-        (filter === "today" && isToday) ||
-        (filter === "week" && isWeek) ||
-        (filter === "month" && isMonth)
+        (productFilter === "all" || (productFilter === "today" && isToday) || (productFilter === "week" && isWeek) || (productFilter === "month" && isMonth))
       ) {
         (cart.items || []).forEach(item => {
           const itemName = item.name;
@@ -2020,8 +2028,9 @@ function renderProductSales() {
       </tr>
     `).join('') || `<tr><td colspan="3" style="padding:10px;">No products found.</td></tr>`;
 
-    // 🔹 Render Category-wise table
+    // 🔹 Render Category-wise table with category filter
     const categoryEntries = Object.entries(categoryMap)
+      .filter(([cat]) => categoryFilter === "all" || cat === categoryFilter)
       .sort((a, b) => b[1].qty - a[1].qty);
 
     document.getElementById("categorySalesList").innerHTML = categoryEntries.map(([category, data]) => `
@@ -2068,53 +2077,62 @@ function renderProductSales() {
 }
 
 
-function exportProductSalesCSV() {
-  const rows = [["Product", "Units Sold", "Total Revenue"]];
-  const filter = document.getElementById("productSalesFilter").value;
+
+function exportCategorySalesCSV() {
+  const productFilter = document.getElementById("productSalesFilter").value;
+  const categoryFilter = document.getElementById("categorySalesFilter")?.value || "all";
   const now = new Date();
-  const salesMap = {};
+  const categoryMap = {};
 
-  Object.values(paidCarts).forEach(cart => {
-    const paidAt = new Date(cart.paidAt || cart.paymentTime || Date.now());
+  db.ref("products").once("value").then(productsSnap => {
+    const productsData = productsSnap.val() || {};
 
-    const isToday = paidAt.toDateString() === now.toDateString();
-    const monday = new Date(now);
-    monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-    monday.setHours(0, 0, 0, 0);
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    sunday.setHours(23, 59, 59, 999);
-    const isWeek = paidAt >= monday && paidAt <= sunday;
+    Object.values(paidCarts).forEach(cart => {
+      const paidAt = new Date(cart.paidAt || cart.paymentTime || Date.now());
 
-    const isMonth = paidAt.getMonth() === now.getMonth() && paidAt.getFullYear() === now.getFullYear();
+      const isToday = paidAt.toDateString() === now.toDateString();
+      const monday = new Date(now);
+      monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+      monday.setHours(0, 0, 0, 0);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(23, 59, 59, 999);
+      const isWeek = paidAt >= monday && paidAt <= sunday;
+      const isMonth = paidAt.getMonth() === now.getMonth() && paidAt.getFullYear() === now.getFullYear();
 
-if (
-  filter === "all" ||
-  (filter === "today" && isToday) ||
-  (filter === "week" && isWeek) ||
-  (filter === "month" && isMonth) // new
-) {
-      (cart.items || []).forEach(item => {
-        if (!salesMap[item.name]) {
-          salesMap[item.name] = { qty: 0, revenue: 0 };
-        }
-        salesMap[item.name].qty += item.qty;
-        salesMap[item.name].revenue += item.qty * item.price;
-      });
-    }
+      if (
+        productFilter === "all" ||
+        (productFilter === "today" && isToday) ||
+        (productFilter === "week" && isWeek) ||
+        (productFilter === "month" && isMonth)
+      ) {
+        (cart.items || []).forEach(item => {
+          const productInfo = Object.values(productsData).find(p => p.name === item.name);
+          const category = productInfo?.category || "Others";
+
+          if (categoryFilter !== "all" && category !== categoryFilter) return;
+
+          if (!categoryMap[category]) categoryMap[category] = { qty: 0, revenue: 0 };
+          categoryMap[category].qty += item.qty;
+          categoryMap[category].revenue += item.qty * item.price;
+        });
+      }
+    });
+
+    const rows = [["Category", "Units Sold", "Total Revenue"]];
+    Object.entries(categoryMap).forEach(([cat, data]) => {
+      rows.push([cat, data.qty, "₹" + data.revenue]);
+    });
+
+    const csv = rows.map(r => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "category_sales.csv";
+    link.click();
   });
-
-  Object.entries(salesMap).forEach(([name, data]) => {
-    rows.push([name, data.qty, "₹" + data.revenue]);
-  });
-
-  const csv = rows.map(r => r.join(",")).join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = "product_sales.csv";
-  link.click();
 }
+
 
 
 
