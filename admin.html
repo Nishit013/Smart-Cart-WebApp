@@ -2124,6 +2124,56 @@ function renderProductSales() {
   });
 }
 
+function exportProductSalesCSV() {
+  const productFilter = document.getElementById("productSalesFilter")?.value || "all";
+  const now = new Date();
+  const salesMap = {}; // item-wise totals
+
+  db.ref("products").once("value").then(productsSnap => {
+    const productsData = productsSnap.val() || {};
+
+    Object.values(paidCarts).forEach(cart => {
+      const paidAt = new Date(cart.paidAt || cart.paymentTime || Date.now());
+
+      const isToday = paidAt.toDateString() === now.toDateString();
+      const monday = new Date(now);
+      monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+      monday.setHours(0, 0, 0, 0);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(23, 59, 59, 999);
+      const isWeek = paidAt >= monday && paidAt <= sunday;
+      const isMonth = paidAt.getMonth() === now.getMonth() && paidAt.getFullYear() === now.getFullYear();
+
+      (cart.items || []).forEach(item => {
+        // ✅ Apply product time filter
+        if (
+          productFilter === "all" ||
+          (productFilter === "today" && isToday) ||
+          (productFilter === "week" && isWeek) ||
+          (productFilter === "month" && isMonth)
+        ) {
+          const itemName = item.name;
+          if (!salesMap[itemName]) salesMap[itemName] = { qty: 0, revenue: 0 };
+          salesMap[itemName].qty += item.qty;
+          salesMap[itemName].revenue += item.qty * item.price;
+        }
+      });
+    });
+
+    const rows = [["Product Name", "Units Sold", "Total Revenue"]];
+    Object.entries(salesMap).forEach(([name, data]) => {
+      rows.push([name, data.qty, "₹" + data.revenue]);
+    });
+
+    const csv = rows.map(r => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "product_sales.csv";
+    link.click();
+  });
+}
 
 
 
