@@ -2383,27 +2383,31 @@ function fetchCustomerBills() {
     // Sort by latest first
     const bills = Object.values(data).sort((a, b) => {
       return new Date(b.timestamp) - new Date(a.timestamp);
-    });
+    }).reverse();
 
     if (bills.length === 0) {
       tbody.innerHTML = "<tr><td colspan='4'>No bills found for this number</td></tr>";
       return;
     }
 
-    bills.forEach((bill, index) => {
-      // Format date
-      const date = bill.timestamp 
-        ? new Date(bill.timestamp).toLocaleString("en-IN", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true
-          })
-        : "N/A";
+    bills.forEach(bill => {
+      // ✅ Format date correctly
+      let date = "N/A";
+      if (bill.timestamp) {
+        const ts = typeof bill.timestamp === "string" 
+          ? bill.timestamp 
+          : new Date(bill.timestamp).toISOString();
+        date = new Date(ts).toLocaleString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true
+        });
+      }
 
-      // Main row (clickable)
+      // Main row
       const row = document.createElement("tr");
       row.innerHTML = `
         <td>${date}</td>
@@ -2413,13 +2417,12 @@ function fetchCustomerBills() {
       `;
       row.style.cursor = "pointer";
 
-      // Hidden row for item details
+      // Hidden detail row
       const detailRow = document.createElement("tr");
       detailRow.style.display = "none";
       const col = document.createElement("td");
       col.colSpan = 4;
 
-      // Items list
       let itemHTML = `<div style="padding:8px; background:var(--card); border-radius:6px;">`;
       if (bill.items) {
         itemHTML += "<strong>Items:</strong><ul style='margin:8px 0; padding-left:18px;'>";
@@ -2435,7 +2438,6 @@ function fetchCustomerBills() {
       col.innerHTML = itemHTML;
       detailRow.appendChild(col);
 
-      // Toggle expand/collapse
       row.addEventListener("click", () => {
         detailRow.style.display = detailRow.style.display === "none" ? "table-row" : "none";
       });
@@ -2445,10 +2447,7 @@ function fetchCustomerBills() {
     });
   });
 }
-function toggleCustomerDetails() {
-  const panel = document.getElementById("customerDetailsPanel");
-  panel.classList.toggle("active");
-}
+
 
 
 </script>
