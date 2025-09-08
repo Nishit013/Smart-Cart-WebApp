@@ -2390,13 +2390,17 @@ function fetchCustomerBills() {
   const tbody = document.getElementById("customerBillList");
   tbody.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
 
-  db.ref("paidCarts").orderByChild("phone").equalTo(phone).once("value", snap => {
+  db.ref("paidCarts").once("value", snap => {
     const data = snap.val() || {};
     tbody.innerHTML = "";
 
-    const bills = Object.values(data).sort((a, b) => {
-      return new Date(b.timestamp) - new Date(a.timestamp);
-    }).reverse();
+    // Filter bills by phone (inside items)
+    const bills = Object.values(data).filter(b => b.items?.phone === phone);
+
+    // Sort latest first (by paymentTime)
+    bills.sort((a, b) => {
+      return new Date(b.items.paymentTime) - new Date(a.items.paymentTime);
+    });
 
     if (bills.length === 0) {
       tbody.innerHTML = "<tr><td colspan='4'>No bills found for this number</td></tr>";
@@ -2404,48 +2408,50 @@ function fetchCustomerBills() {
     }
 
     bills.forEach(bill => {
-      const date = formatDate(bill.timestamp);
+      // ✅ Format date from paymentTime
+      let date = "N/A";
+      if (bill.items?.paymentTime) {
+        try {
+          date = new Date(bill.items.paymentTime).toLocaleString("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true
+          });
+        } catch (e) {
+          console.warn("Invalid paymentTime:", bill.items.paymentTime);
+        }
+      }
 
       // Main row
       const row = document.createElement("tr");
       row.innerHTML = `
         <td>${date}</td>
-        <td>₹${bill.total || 0}</td>
-        <td>${bill.items ? Object.keys(bill.items).length : 0}</td>
+        <td>₹${bill.bill?.finalAmount || 0}</td>
+        <td>${bill.items?.total || 0}</td>
         <td>${bill.status || "Paid"}</td>
       `;
       row.style.cursor = "pointer";
 
-      // Detail row
+      // Hidden detail row
       const detailRow = document.createElement("tr");
       detailRow.style.display = "none";
       const col = document.createElement("td");
       col.colSpan = 4;
 
-      // Items with discount
-      let itemHTML = `
-        <div style="padding:10px; background:var(--surface); border-radius:8px; margin-top:8px;">
-          <strong style="color:var(--accent);">Items:</strong>
-          <ul style="margin:10px 0; padding-left:18px; list-style:disc; line-height:1.6;">
-      `;
-      if (bill.items) {
-        Object.values(bill.items).forEach(it => {
-          const discountText = it.discount 
-            ? ` <span style="color:#f55;">(Discount: ${it.discount}%)</span>` 
-            : "";
-          const price = it.finalPrice || it.price || 0;
-          itemHTML += `
-            <li>
-              ${it.name || "Item"}  
-              - Qty: <strong>${it.qty || 1}</strong>  
-              × ₹${price} 
-              ${discountText}
-            </li>`;
-        });
-      } else {
-        itemHTML += "<li>No item details available</li>";
+      let itemHTML = `<div style="padding:8px; background:var(--card); border-radius:6px;">`;
+
+      // ✅ Show discount if applied
+      if (bill.bill?.discount && bill.bill.discount > 0) {
+        itemHTML += `<p style="color:red; margin:6px 0;">Discount Applied: ₹${bill.bill.discount}</p>`;
       }
-      itemHTML += "</ul></div>";
+
+      itemHTML += `<p><strong>Final Paid:</strong> ₹${bill.bill?.finalAmount || 0}</p>`;
+      itemHTML += `<p><strong>Total Before Discount:</strong> ₹${bill.items?.total || 0}</p>`;
+
+      itemHTML += "</div>";
 
       col.innerHTML = itemHTML;
       detailRow.appendChild(col);
@@ -2459,6 +2465,7 @@ function fetchCustomerBills() {
     });
   });
 }
+
 
 
 
