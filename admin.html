@@ -1199,29 +1199,25 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 
 <!-- Customer Details Section -->
-<div id="customerDetailsPanel" class="customer-panel">
-  <div class="panel-header">
-    <h3>Customer Details</h3>
-    <button class="close-btn" onclick="toggleCustomerDetails()">✖</button>
-  </div>
+<div id="customerDetailsPanel" class="customer-details-panel">
+  <h2>Customer Details</h2>
 
-  <!-- Search -->
   <div class="input-row">
-    <input type="text" id="customerPhone" placeholder="Enter Phone Number">
+    <input type="text" id="customerPhoneInput" placeholder="Enter Phone Number">
     <button class="btn-primary" onclick="fetchCustomerBills()">Search</button>
   </div>
 
-  <!-- Bills List -->
-  <div class="scroll-box">
-    <table class="security-table">
+  <div class="scroll-box" style="max-height: 400px; overflow-y: auto;">
+    <table class="security-table" style="width:100%;">
       <thead>
         <tr style="background: var(--accent); color: white;">
           <th>Date</th>
           <th>Bill Amount</th>
           <th>Items</th>
+          <th>Payment Status</th>
         </tr>
       </thead>
-      <tbody id="customerBillsList"></tbody>
+      <tbody id="customerBillList"></tbody>
     </table>
   </div>
 </div>
@@ -2367,36 +2363,82 @@ function toggleCustomerDetails() {
 
 // Fetch bills by phone number (from Firebase 'paidCarts')
 function fetchCustomerBills() {
-  const phone = document.getElementById("customerPhone").value.trim();
-  if (!phone) return;
+  const phone = document.getElementById("customerPhoneInput").value.trim();
+  if (!phone) return alert("Please enter a phone number");
 
-  const tbody = document.getElementById("customerBillsList");
-  tbody.innerHTML = "<tr><td colspan='3'>Loading...</td></tr>";
+  const tbody = document.getElementById("customerBillList");
+  tbody.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
 
   db.ref("paidCarts").orderByChild("phone").equalTo(phone).once("value", snap => {
     const data = snap.val() || {};
-    const bills = Object.values(data);
+    tbody.innerHTML = "";
 
     // Sort by latest first
-    bills.sort((a, b) => new Date(b.time) - new Date(a.time));
-
-    tbody.innerHTML = "";
-    bills.forEach(bill => {
-      const row = `
-        <tr>
-          <td>${new Date(bill.time).toLocaleString()}</td>
-          <td>₹${bill.total}</td>
-          <td>${bill.items ? Object.keys(bill.items).length : 0}</td>
-        </tr>
-      `;
-      tbody.innerHTML += row;
+    const bills = Object.values(data).sort((a, b) => {
+      return new Date(b.timestamp) - new Date(a.timestamp);
     });
 
     if (bills.length === 0) {
-      tbody.innerHTML = "<tr><td colspan='3'>No bills found</td></tr>";
+      tbody.innerHTML = "<tr><td colspan='4'>No bills found for this number</td></tr>";
+      return;
     }
+
+    bills.forEach((bill, index) => {
+      // Format date
+      const date = bill.timestamp 
+        ? new Date(bill.timestamp).toLocaleString("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true
+          })
+        : "N/A";
+
+      // Main row (clickable)
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${date}</td>
+        <td>₹${bill.total || 0}</td>
+        <td>${bill.items ? Object.keys(bill.items).length : 0}</td>
+        <td>${bill.status || "Paid"}</td>
+      `;
+      row.style.cursor = "pointer";
+
+      // Hidden row for item details
+      const detailRow = document.createElement("tr");
+      detailRow.style.display = "none";
+      const col = document.createElement("td");
+      col.colSpan = 4;
+
+      // Items list
+      let itemHTML = `<div style="padding:8px; background:var(--card); border-radius:6px;">`;
+      if (bill.items) {
+        itemHTML += "<strong>Items:</strong><ul style='margin:8px 0; padding-left:18px;'>";
+        Object.values(bill.items).forEach(it => {
+          itemHTML += `<li>${it.name || "Item"} - Qty: ${it.qty || 1} × ₹${it.price || 0}</li>`;
+        });
+        itemHTML += "</ul>";
+      } else {
+        itemHTML += "No item details available";
+      }
+      itemHTML += "</div>";
+
+      col.innerHTML = itemHTML;
+      detailRow.appendChild(col);
+
+      // Toggle expand/collapse
+      row.addEventListener("click", () => {
+        detailRow.style.display = detailRow.style.display === "none" ? "table-row" : "none";
+      });
+
+      tbody.appendChild(row);
+      tbody.appendChild(detailRow);
+    });
   });
 }
+
 
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
