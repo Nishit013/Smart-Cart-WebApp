@@ -2389,8 +2389,9 @@ function fetchCustomerBills() {
       return;
     }
 
+    let currentlyOpenDetail = null; // ✅ Track the currently open detail row
+
     bills.forEach(bill => {
-      // ✅ Format date
       let date = "N/A";
       if (bill.paymentTime) {
         date = new Date(bill.paymentTime).toLocaleString("en-IN", {
@@ -2403,12 +2404,10 @@ function fetchCustomerBills() {
         });
       }
 
-      // ✅ Use root-level finalAmount instead of bill.finalAmount
       const finalAmount = bill.finalAmount || 0;
       const discount = bill.discount || 0;
       const total = bill.total || 0;
 
-      // Main row
       const row = document.createElement("tr");
       row.innerHTML = `
         <td>${date}</td>
@@ -2418,65 +2417,50 @@ function fetchCustomerBills() {
       `;
       row.style.cursor = "pointer";
 
-      // Hidden details row
-const detailRow = document.createElement("tr");
-detailRow.style.display = "none";
-const col = document.createElement("td");
-col.colSpan = 4;
+      const detailRow = document.createElement("tr");
+      detailRow.style.display = "none";
+      const col = document.createElement("td");
+      col.colSpan = 4;
 
-let itemHTML = `
-  <div style="padding:12px; background:var(--surface-2,#1e2235); border-radius:8px; font-size:14px; line-height:1.6;">
-`;
+      let itemHTML = `<div style="padding:12px; background:var(--surface-2,#1e2235); border-radius:8px; font-size:14px; line-height:1.6;">`;
 
-// ✅ Show individual items first (scrollable, only items)
-if (bill.items && bill.items.length > 0) {
-  itemHTML += "<strong style='display:block; margin-bottom:6px;'>Items Purchased:</strong>";
+      if (bill.items && bill.items.length > 0) {
+        itemHTML += "<strong style='display:block; margin-bottom:6px;'>Items Purchased:</strong>";
+        itemHTML += `<div style="max-height:calc(5 * 1.8em + 10px); overflow-y:auto; padding-left:10px; margin-bottom:10px;">`;
 
-  // Scrollable container for items
-  itemHTML += `<div style="max-height:calc(5 * 1.8em + 10px); overflow-y:auto; padding-left:10px; margin-bottom:10px;">`;
+        bill.items.forEach(it => {
+          const name = it.name || "Item";
+          const qty = it.qty || 1;
+          const price = it.price || 0;
+          const totalItem = qty * price;
+          itemHTML += `<div style="margin-bottom:4px;">${name} — Qty: ${qty} × ₹${price} = ₹${totalItem}</div>`;
+        });
 
-  bill.items.forEach(it => {
-    const name = it.name || "Item";
-    const qty = it.qty || 1;
-    const price = it.price || 0;
-    const total = qty * price;
-    itemHTML += `<div style="margin-bottom:4px;">${name} — Qty: ${qty} × ₹${price} = ₹${total}</div>`;
-  });
+        itemHTML += "</div>";
+      } else {
+        itemHTML += "<p>No items found</p>";
+      }
 
-  itemHTML += "</div>";
-} else {
-  itemHTML += "<p>No items found</p>";
-}
+      itemHTML += `<p style="margin:6px 0;"><strong>Total Before Discount:</strong> ₹${total}</p>`;
+      if (discount > 0) {
+        itemHTML += `<p style="margin:6px 0; color:#e63946;"><strong>Discount Applied:</strong> -₹${discount}</p>`;
+      }
+      itemHTML += `<p style="margin-top:10px; font-size:15px; font-weight:600; color:#06d6a0;">Final Paid: ₹${finalAmount}</p>`;
+      itemHTML += "</div>";
 
-
-
-// ✅ 2. Total before discount
-itemHTML += `<p style="margin:6px 0;"><strong>Total Before Discount:</strong> ₹${total}</p>`;
-
-// ✅ 3. Discount (if applied)
-if (discount > 0) {
-  itemHTML += `<p style="margin:6px 0; color:#e63946;"><strong>Discount Applied:</strong> -₹${discount}</p>`;
-}
-
-// ✅ 4. Final amount in bold highlight
-itemHTML += `<p style="margin-top:10px; font-size:15px; font-weight:600; color:#06d6a0;">Final Paid: ₹${finalAmount}</p>`;
-
-itemHTML += "</div>";
-
-col.innerHTML = itemHTML;
-detailRow.appendChild(col);
-
+      col.innerHTML = itemHTML;
+      detailRow.appendChild(col);
 
       row.addEventListener("click", () => {
-        // ✅ Close previously open detail row if different
+        // Close previously open detail row if it's not the same one
         if (currentlyOpenDetail && currentlyOpenDetail !== detailRow) {
           currentlyOpenDetail.style.display = "none";
         }
 
-        // Toggle current row
+        // Toggle current detail row
         detailRow.style.display = detailRow.style.display === "none" ? "table-row" : "none";
 
-        // Update the tracker
+        // Update currently open detail
         currentlyOpenDetail = detailRow.style.display === "none" ? null : detailRow;
       });
 
@@ -2485,6 +2469,7 @@ detailRow.appendChild(col);
     });
   });
 }
+
 
 
 
