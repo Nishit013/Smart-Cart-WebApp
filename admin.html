@@ -844,6 +844,45 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   font-weight: bold;
 }
 
+
+
+
+
+.customer-panel {
+  position: fixed;
+  top: 0;
+  right: -400px; /* hidden */
+  width: 400px;
+  height: 100%;
+  background: var(--card);
+  color: var(--text);
+  box-shadow: -3px 0 10px rgba(0,0,0,0.5);
+  padding: 20px;
+  transition: right 0.3s ease;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+}
+
+.customer-panel.active {
+  right: 0; /* visible */
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 18px;
+  cursor: pointer;
+}
+
 </style>
 
 </head>
@@ -869,6 +908,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     <a href="#customerOffers"> <span>Customer Offers</span></a> <!-- New link -->
     <a href="#products"> <span>Product Management</span></a>
     <a href="#inventory"><span>Inventory</span></a>
+    <a href="javascript:void(0)" onclick="toggleCustomerDetails()">
+      <span>Customer Details</span>
+    </a>
   </div>
 
 
@@ -1152,6 +1194,38 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     </table>
   </div>
 </div>
+
+
+
+
+<!-- Customer Details Section -->
+<div id="customerDetailsPanel" class="customer-panel">
+  <div class="panel-header">
+    <h3>Customer Details</h3>
+    <button class="close-btn" onclick="toggleCustomerDetails()">✖</button>
+  </div>
+
+  <!-- Search -->
+  <div class="input-row">
+    <input type="text" id="customerPhone" placeholder="Enter Phone Number">
+    <button class="btn-primary" onclick="fetchCustomerBills()">Search</button>
+  </div>
+
+  <!-- Bills List -->
+  <div class="scroll-box">
+    <table class="security-table">
+      <thead>
+        <tr style="background: var(--accent); color: white;">
+          <th>Date</th>
+          <th>Bill Amount</th>
+          <th>Items</th>
+        </tr>
+      </thead>
+      <tbody id="customerBillsList"></tbody>
+    </table>
+  </div>
+</div>
+
 
 
 
@@ -2280,6 +2354,47 @@ function filterTable() {
     if (category && rowCategory !== category) match = false;
 
     row.style.display = match ? "" : "none";
+  });
+}
+
+
+
+
+function toggleCustomerDetails() {
+  document.getElementById("customerDetailsPanel")
+    .classList.toggle("active");
+}
+
+// Fetch bills by phone number (from Firebase 'paidCarts')
+function fetchCustomerBills() {
+  const phone = document.getElementById("customerPhone").value.trim();
+  if (!phone) return;
+
+  const tbody = document.getElementById("customerBillsList");
+  tbody.innerHTML = "<tr><td colspan='3'>Loading...</td></tr>";
+
+  db.ref("paidCarts").orderByChild("phone").equalTo(phone).once("value", snap => {
+    const data = snap.val() || {};
+    const bills = Object.values(data);
+
+    // Sort by latest first
+    bills.sort((a, b) => new Date(b.time) - new Date(a.time));
+
+    tbody.innerHTML = "";
+    bills.forEach(bill => {
+      const row = `
+        <tr>
+          <td>${new Date(bill.time).toLocaleString()}</td>
+          <td>₹${bill.total}</td>
+          <td>${bill.items ? Object.keys(bill.items).length : 0}</td>
+        </tr>
+      `;
+      tbody.innerHTML += row;
+    });
+
+    if (bills.length === 0) {
+      tbody.innerHTML = "<tr><td colspan='3'>No bills found</td></tr>";
+    }
   });
 }
 
