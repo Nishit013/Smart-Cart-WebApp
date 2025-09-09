@@ -894,36 +894,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 
 
-.low-stock-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-
-.low-stock-card {
-  flex: 1 1 200px; /* responsive cards */
-  background-color: #fff4f4;
-  border-left: 4px solid #ff4d4d;
-  border-radius: 8px;
-  padding: 10px 14px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 500;
-  transition: transform 0.2s;
-}
-
-.low-stock-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-.low-stock-icon {
-  font-size: 20px;
-  color: #ff4d4d;
-}
 
 </style>
 
@@ -1252,7 +1222,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
       <option value="">All Categories</option>
     </select>
   </div>
-<div id="lowStockAlerts" class="low-stock-grid"></div>
+
 
 
   <!-- Inventory Table with Flexible Scroll -->
@@ -1270,6 +1240,16 @@ input[type="date"]::-webkit-calendar-picker-indicator {
       <tbody></tbody>
     </table>
   </div>
+  <table id="lowStockTable" class="security-table">
+  <thead>
+    <tr>
+      <th>Product</th>
+      <th>Stock Left</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
 </div>
 
 
@@ -2701,26 +2681,22 @@ window.addEventListener("DOMContentLoaded", () => {
 
 
 function renderLowStockAlerts(products) {
-  const container = document.getElementById("lowStockAlerts");
-  container.innerHTML = ""; // clear old alerts
+  const tbody = document.querySelector("#lowStockTable tbody");
+  tbody.innerHTML = "";
 
   Object.keys(products).forEach(key => {
     const product = products[key];
     if (product.stock < 10) {
-      const card = document.createElement("div");
-      card.className = "low-stock-card";
-
-      card.innerHTML = `
-        <span class="low-stock-icon">⚠️</span>
-        <div>
-          <div>${product.name}</div>
-          <small>${product.stock} units left</small>
-        </div>
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${product.name}</td>
+        <td style="color:#ff4d4d; font-weight:bold;">${product.stock}</td>
       `;
-      container.appendChild(card);
+      tbody.appendChild(row);
     }
   });
 }
+
 
 
 </script>
