@@ -2759,8 +2759,15 @@ db.ref("products").on("value", snapshot => {
   const data = snapshot.val() || {};
   inventoryTbody.innerHTML = "";
 
+  const brands = new Set();
+  const categories = new Set();
+
   Object.keys(data).forEach(key => {
     const product = data[key];
+
+    // collect brand/category (only if present)
+    if (product.brand) brands.add(product.brand);
+    if (product.category) categories.add(product.category);
 
     // Supplier details
     let supplierName = "-";
@@ -2784,6 +2791,13 @@ db.ref("products").on("value", snapshot => {
     `;
     inventoryTbody.appendChild(row);
   });
+
+  // populate the filter dropdowns (must be before filterTable)
+  populateDropdown("brandFilter", brands);
+  populateDropdown("categoryFilter", categories);
+
+  // apply filters to the newly rendered rows
+  filterTable();
 });
 
 
@@ -2841,16 +2855,22 @@ window.addEventListener("click", (e) => {
 
 function populateDropdown(id, items) {
   const select = document.getElementById(id);
-  const currentValue = select.value; // keep selected filter
-  select.innerHTML = `<option value="">Filter by ${id.replace("Filter","")}</option>`;
-  items.forEach(item => {
+  const currentValue = (select.value || "").toLowerCase(); // keep selected filter (lowercased)
+  // Nice default label
+  const label = id === "brandFilter" ? "All Brands" : id === "categoryFilter" ? "All Categories" : `Filter by ${id}`;
+  select.innerHTML = `<option value="">${label}</option>`;
+
+  // items is a Set — convert to array, sort, then append
+  Array.from(items).sort((a,b) => a.localeCompare(b, undefined, {sensitivity: "base"})).forEach(item => {
     const option = document.createElement("option");
-    option.value = item;
+    option.value = item.toLowerCase();
     option.textContent = item;
     select.appendChild(option);
   });
-  select.value = currentValue; // restore selection
+
+  if (currentValue) select.value = currentValue;
 }
+
 
 // Filter function
 function filterTable() {
