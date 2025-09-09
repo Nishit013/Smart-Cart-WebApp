@@ -2795,31 +2795,36 @@ function renderLowStockTable() {
   db.ref("products").once("value").then(snapshot => {
     const products = snapshot.val() || {};
     lowStockTbody.innerHTML = "";
+
     let lowStockCount = 0;
 
     const promises = [];
 
-    Object.keys(products).forEach(key => {
-      const product = products[key];
-      if (product.stock < 10) {
+    Object.keys(products).forEach(barcode => {
+      const p = products[barcode];
+      if (p.stock < 10) {
         lowStockCount++;
 
-        const p = db.ref(`suppliers/${product.supplierId || ""}`).once("value").then(snap => {
-          const sup = snap.val() || {};
+        // Fetch supplier info if supplierId exists
+        const promise = (p.supplierId 
+          ? db.ref(`suppliers/${p.supplierId}`).once("value") 
+          : Promise.resolve({ val: () => ({ name: "", phone: "" }) })
+        ).then(snap => {
+          const sup = snap.val();
           const row = document.createElement("tr");
           row.innerHTML = `
-            <td>${product.name || ""}</td>
-            <td>${product.brand || ""}</td>
-            <td>${product.category || ""}</td>
-            <td>${product.price || 0}</td>
-            <td style="color:#ff4d4d; font-weight:bold;">${product.stock}</td>
+            <td>${p.name || ""}</td>
+            <td>${p.brand || ""}</td>
+            <td>${p.category || ""}</td>
+            <td>${p.price || 0}</td>
+            <td style="color:#ff4d4d; font-weight:bold;">${p.stock}</td>
             <td>${sup.name || ""}</td>
             <td>${sup.phone || ""}</td>
           `;
           lowStockTbody.appendChild(row);
         });
 
-        promises.push(p);
+        promises.push(promise);
       }
     });
 
