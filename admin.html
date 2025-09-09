@@ -1346,33 +1346,31 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     </select>
   </div>
 
-<div style="margin-bottom:10px; display:flex; justify-content:flex-end;">
-  <button id="lowStockBtn" class="btn-primary">Low Stock Products</button>
-</div>
+  <!-- Low Stock Button -->
+  <div style="margin-bottom:10px; display:flex; justify-content:flex-end;">
+    <button id="lowStockBtn" class="btn-primary">Low Stock Products</button>
+  </div>
 
-
-  <!-- Inventory Table with Flexible Scroll -->
+  <!-- Inventory Table -->
   <div class="scroll-box" style="max-height: 600px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--accent);">
     <table class="security-table" id="inventoryTable" style="width: 100%; border-collapse: collapse;">
-      <table class="security-table" id="lowStockTable" style="width:100%;">
-  <thead>
-    <tr style="background: var(--accent); color: white;">
-      <th>Product</th>
-      <th>Brand</th>
-      <th>Category</th>
-      <th>Price (₹)</th>
-      <th>Stock Left</th>
-      <th>Supplier</th> <!-- NEW -->
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
-
+      <thead>
+        <tr style="background: var(--accent); color: white;">
+          <th>Product</th>
+          <th>Brand</th>
+          <th>Category</th>
+          <th>Price (₹)</th>
+          <th>Stock Left</th>
+          <th>Supplier</th>
+          <th>Phone</th> <!-- ✅ Added -->
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   </div>
-  
-
 </div>
 
+<!-- Low Stock Modal -->
 <div id="lowStockModal" class="modal">
   <div class="modal-content">
     <span class="close-btn">&times;</span>
@@ -1391,6 +1389,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
             <th>Category</th>
             <th>Price (₹)</th>
             <th>Stock Left</th>
+            <th>Supplier</th> <!-- ✅ Added -->
+            <th>Phone</th>    <!-- ✅ Added -->
           </tr>
         </thead>
         <tbody></tbody>
@@ -1398,7 +1398,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     </div>
   </div>
 </div>
-
 
 
 <!-- Customer Details Section -->
@@ -2720,21 +2719,32 @@ function updateProduct() {
 
 
 // ✅ Firebase Reference (adjust your path if needed)
-// Load suppliers first
+// Inventory table tbody
+const inventoryTbody = document.querySelector("#inventoryTable tbody");
+
+// Low stock modal tbody
+const lowStockTbody = document.querySelector("#lowStockTable tbody");
+
+// Modal references
+const modal = document.getElementById("lowStockModal");
+const btn = document.getElementById("lowStockBtn");
+const closeBtn = modal.querySelector(".close-btn");
+
+
 let suppliersData = {};
 db.ref("suppliers").on("value", snap => {
   suppliersData = snap.val() || {};
 });
 
-// Inventory Table
-dbRef.on("value", snapshot => {
+
+db.ref("products").on("value", snapshot => {
   const data = snapshot.val() || {};
   inventoryTbody.innerHTML = "";
 
   Object.keys(data).forEach(key => {
     const product = data[key];
 
-    // Supplier details (if supplierId exists)
+    // Supplier details
     let supplierName = "-";
     let supplierPhone = "-";
     if (product.supplierId && suppliersData[product.supplierId]) {
@@ -2756,11 +2766,9 @@ dbRef.on("value", snapshot => {
     `;
     inventoryTbody.appendChild(row);
   });
-
-  filterTable();
 });
 
-// Low Stock Table
+
 function renderLowStockTable() {
   db.ref("products").once("value").then(snapshot => {
     const products = snapshot.val() || {};
@@ -2798,9 +2806,18 @@ function renderLowStockTable() {
   });
 }
 
+btn.addEventListener("click", () => {
+  renderLowStockTable();
+  modal.style.display = "block";
+});
 
+closeBtn.addEventListener("click", () => {
+  modal.style.display = "none";
+});
 
-
+window.addEventListener("click", (e) => {
+  if (e.target == modal) modal.style.display = "none";
+});
 
 
 
