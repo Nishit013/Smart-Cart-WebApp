@@ -2105,17 +2105,24 @@ function renderProductSales() {
     `).join('') || `<tr><td colspan="3" style="padding:10px;">No products found.</td></tr>`;
 
     // 🔹 Render Category Table
-    const categoryEntries = Object.entries(categoryMap)
-      .filter(([cat]) => categoryFilter === "all" || cat === categoryFilter)
-      .sort((a, b) => b[1].qty - a[1].qty);
+    // 🔹 Render Category Table
+const allCategories = [...document.getElementById("categorySalesFilter").options]
+  .map(opt => opt.value)
+  .filter(val => val !== "all"); // exclude "All Categories"
 
-    document.getElementById("categorySalesList").innerHTML = categoryEntries.map(([category, data]) => `
-      <tr>
-        <td>${category}</td>
-        <td>${data.qty}</td>
-        <td>₹${data.revenue}</td>
-      </tr>
-    `).join('') || `<tr><td colspan="3" style="padding:10px;">No categories found.</td></tr>`;
+const categoryEntries = allCategories
+  .filter(cat => categoryFilter === "all" || cat === categoryFilter)
+  .map(cat => [cat, categoryMap[cat] || { qty: 0, revenue: 0 }]) // default 0 if no sales
+  .sort((a, b) => b[1].qty - a[1].qty);
+
+document.getElementById("categorySalesList").innerHTML = categoryEntries.map(([category, data]) => `
+  <tr>
+    <td>${category}</td>
+    <td>${data.qty}</td>
+    <td>₹${data.revenue}</td>
+  </tr>
+`).join('') || `<tr><td colspan="3" style="padding:10px;">No categories found.</td></tr>`;
+
 
     // 🔹 Render top-selling products chart
     if (window.productChart) window.productChart.destroy();
