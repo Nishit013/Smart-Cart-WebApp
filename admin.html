@@ -2683,6 +2683,9 @@ function searchProduct() {
         document.getElementById("editStock").value = p.stock;
         document.getElementById("editImage").value = p.image;
 
+        // ✅ Preselect supplier
+        document.getElementById("editSupplier").value = p.supplierId || "";
+
         break; // Stop at first match
       }
     }
