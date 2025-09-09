@@ -1282,7 +1282,12 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 <div id="lowStockModal" class="modal">
   <div class="modal-content">
     <span class="close-btn">&times;</span>
-    <h3>Low Stock Products</h3>
+    <h3 style="display:flex; justify-content:space-between; align-items:center;">
+      Low Stock Products
+      <span id="lowStockCountBtn" class="low-stock-count-btn" style="background:#ff4d4d; color:white; padding:4px 10px; border-radius:6px; font-weight:600;">
+        0
+      </span>
+    </h3>
     <div class="scroll-box" style="max-height: 400px; overflow-y:auto;">
       <table class="security-table" id="lowStockTable" style="width:100%;">
         <thead>
@@ -1299,6 +1304,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     </div>
   </div>
 </div>
+
 
 
 <!-- Customer Details Section -->
@@ -2599,9 +2605,12 @@ function renderLowStockTable() {
     const products = snapshot.val() || {};
     tbody.innerHTML = ""; // clear table
 
+    let lowStockCount = 0; // counter
+
     Object.keys(products).forEach(key => {
       const product = products[key];
       if (product.stock < 10) {
+        lowStockCount++;
         const row = document.createElement("tr");
         row.innerHTML = `
           <td>${product.name || ""}</td>
@@ -2613,8 +2622,13 @@ function renderLowStockTable() {
         tbody.appendChild(row);
       }
     });
+
+    // Update count badge
+    const countBtn = document.getElementById("lowStockCountBtn");
+    countBtn.innerText = `Total: ${lowStockCount}`;
   });
 }
+
 
 
 
