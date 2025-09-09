@@ -2719,13 +2719,17 @@ function updateProduct() {
 
 
 
+// ✅ Firebase Reference (adjust your path if needed)
+// ✅ Firebase Reference
 const dbRef = db.ref("products");
 
-// Load products from Firebase
+// Inventory table tbody
+const inventoryTbody = document.querySelector("#inventoryTable tbody");
+
+// Load products into Inventory Table
 dbRef.on("value", snapshot => {
   const data = snapshot.val() || {};
-  const tbody = document.querySelector("#inventoryTable tbody");
-  tbody.innerHTML = "";
+  inventoryTbody.innerHTML = "";
 
   const brands = new Set();
   const categories = new Set();
@@ -2743,7 +2747,7 @@ dbRef.on("value", snapshot => {
         ${product.stock || 0} ${product.stock < 10 ? '⚠️' : ''}
       </td>
     `;
-    tbody.appendChild(row);
+    inventoryTbody.appendChild(row);
 
     if (product.brand) brands.add(product.brand);
     if (product.category) categories.add(product.category);
@@ -2752,18 +2756,20 @@ dbRef.on("value", snapshot => {
   populateDropdown("brandFilter", brands);
   populateDropdown("categoryFilter", categories);
 
-  filterTable(); // apply filters
+  filterTable();
 });
 
 // Modal references
 const modal = document.getElementById("lowStockModal");
 const btn = document.getElementById("lowStockBtn");
 const closeBtn = modal.querySelector(".close-btn");
-const tbody = document.querySelector("#lowStockTable tbody");
+
+// Low Stock table tbody
+const lowStockTbody = document.querySelector("#lowStockTable tbody");
 
 // Open modal
 btn.addEventListener("click", () => {
-  renderLowStockTable(); // populate table with current data
+  renderLowStockTable();
   modal.style.display = "block";
 });
 
@@ -2772,18 +2778,17 @@ closeBtn.addEventListener("click", () => {
   modal.style.display = "none";
 });
 
-// Close modal when clicking outside the content
 window.addEventListener("click", (e) => {
   if (e.target == modal) modal.style.display = "none";
 });
 
-// Populate low stock table
+// Render Low Stock Table
 function renderLowStockTable() {
   db.ref("products").once("value").then(snapshot => {
     const products = snapshot.val() || {};
-    tbody.innerHTML = ""; // clear table
+    lowStockTbody.innerHTML = ""; // ✅ use correct tbody
 
-    let lowStockCount = 0; // counter
+    let lowStockCount = 0;
 
     Object.keys(products).forEach(key => {
       const product = products[key];
@@ -2797,15 +2802,14 @@ function renderLowStockTable() {
           <td>${product.price || 0}</td>
           <td style="color:#ff4d4d; font-weight:bold;">${product.stock}</td>
         `;
-        tbody.appendChild(row);
+        lowStockTbody.appendChild(row);
       }
     });
 
-    // Update count badge
-    const countBtn = document.getElementById("lowStockCountBtn");
-    countBtn.innerText = `Total: ${lowStockCount}`;
+    document.getElementById("lowStockCountBtn").innerText = `Total: ${lowStockCount}`;
   });
 }
+
 
 
 
