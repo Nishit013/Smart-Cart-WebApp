@@ -927,6 +927,85 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 
+
+
+/* Modal Styles */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+  background-color: var(--card);
+  margin: 60px auto;
+  padding: 20px;
+  border-radius: 10px;
+  position: relative;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+}
+
+.close-btn {
+  color: #aaa;
+  float: right;
+  font-size: 24px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.close-btn:hover {
+  color: #000;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.card {
+  background: var(--card);
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.btn-primary {
+  padding: 8px 14px;
+  background: var(--accent);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background: #ff6f61;
+}
+
+.scroll-box table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.scroll-box th, .scroll-box td {
+  padding: 8px;
+  border-bottom: 1px solid #ccc;
+}
+
+.scroll-box th {
+  background: var(--accent);
+  color: #fff;
+  text-align: left;
+}
+
 </style>
 
 </head>
@@ -954,6 +1033,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     <a href="#inventory"><span>Inventory</span></a>
     <a href="javascript:void(0)" onclick="toggleCustomerDetails()">
       <span>Customer Details</span>
+      <a href="javascript:void(0)" onclick="openSupplierModal()">
+  <span>Supplier Management</span>
+</a>
+
     </a>
   </div>
 
@@ -1338,6 +1421,46 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 </div>
 
 
+<!-- Supplier Management Modal -->
+<div id="supplierModal" class="modal">
+  <div class="modal-content" style="width: 80%; max-width: 900px;">
+    <span class="close-btn">&times;</span>
+    <h3>Supplier Management</h3>
+
+    <!-- Add Supplier Form -->
+    <div class="card" style="margin-bottom: 15px;">
+      <h4>Add New Supplier</h4>
+      <div class="form-grid">
+        <input type="text" id="supplierName" placeholder="Supplier Name">
+        <input type="text" id="supplierPhone" placeholder="Phone Number">
+        <input type="email" id="supplierEmail" placeholder="Email">
+        <input type="text" id="supplierAddress" placeholder="Address">
+      </div>
+      <button class="btn-primary" onclick="addSupplier()">Add Supplier</button>
+    </div>
+
+    <!-- Search & Filter -->
+    <div class="form-grid" style="margin-bottom:10px;">
+      <input type="text" id="supplierSearch" placeholder="Search by name, phone or email" oninput="renderSuppliers()">
+    </div>
+
+    <!-- Supplier Table -->
+    <div class="scroll-box" style="max-height: 400px; overflow-y:auto;">
+      <table class="security-table" id="supplierTable" style="width:100%; text-align:left;">
+        <thead>
+          <tr style="background: var(--accent); color: white;">
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Email</th>
+            <th>Address</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
 
 
@@ -2788,6 +2911,102 @@ window.addEventListener("DOMContentLoaded", () => {
 
 
 
+// Firebase reference
+const suppliersRef = db.ref("suppliers");
+
+// Modal references
+const supplierModal = document.getElementById("supplierModal");
+const supplierCloseBtn = supplierModal.querySelector(".close-btn");
+
+// Open modal from sidebar link
+function openSupplierModal() {
+  supplierModal.style.display = "block";
+  renderSuppliers();
+}
+
+// Close modal
+supplierCloseBtn.addEventListener("click", () => {
+  supplierModal.style.display = "none";
+});
+
+// Close when clicking outside
+window.addEventListener("click", (e) => {
+  if(e.target === supplierModal) supplierModal.style.display = "none";
+});
+
+// Add Supplier
+function addSupplier(){
+  const name = document.getElementById("supplierName").value.trim();
+  const phone = document.getElementById("supplierPhone").value.trim();
+  const email = document.getElementById("supplierEmail").value.trim();
+  const address = document.getElementById("supplierAddress").value.trim();
+
+  if(!name || !phone) {
+    alert("Name and Phone are required!");
+    return;
+  }
+
+  const newSupplierRef = suppliersRef.push();
+  newSupplierRef.set({name, phone, email, address})
+    .then(() => {
+      document.getElementById("supplierName").value = "";
+      document.getElementById("supplierPhone").value = "";
+      document.getElementById("supplierEmail").value = "";
+      document.getElementById("supplierAddress").value = "";
+    });
+}
+
+// Render Supplier Table with real-time listener
+function renderSuppliers(){
+  suppliersRef.on("value", snapshot => {
+    const data = snapshot.val() || {};
+    const tbody = document.querySelector("#supplierTable tbody");
+    tbody.innerHTML = "";
+
+    const search = document.getElementById("supplierSearch").value.toLowerCase();
+
+    Object.keys(data).forEach(key => {
+      const sup = data[key];
+      const rowText = (sup.name + sup.phone + sup.email).toLowerCase();
+      if(search && !rowText.includes(search)) return;
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${sup.name || ""}</td>
+        <td>${sup.phone || ""}</td>
+        <td>${sup.email || ""}</td>
+        <td>${sup.address || ""}</td>
+        <td>
+          <button onclick="editSupplier('${key}')" style="margin-right:5px;">✏️ Edit</button>
+          <button onclick="deleteSupplier('${key}')">🗑️ Delete</button>
+        </td>
+      `;
+      tbody.appendChild(row);
+    });
+  });
+}
+
+// Edit Supplier
+function editSupplier(id){
+  suppliersRef.child(id).once("value").then(snapshot=>{
+    const sup = snapshot.val();
+    const name = prompt("Edit Supplier Name", sup.name);
+    const phone = prompt("Edit Phone", sup.phone);
+    const email = prompt("Edit Email", sup.email);
+    const address = prompt("Edit Address", sup.address);
+
+    if(name && phone){
+      suppliersRef.child(id).update({name, phone, email, address});
+    }
+  });
+}
+
+// Delete Supplier
+function deleteSupplier(id){
+  if(confirm("Are you sure you want to delete this supplier?")){
+    suppliersRef.child(id).remove();
+  }
+}
 
 
 </script>
