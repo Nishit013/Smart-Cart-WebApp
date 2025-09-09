@@ -1279,7 +1279,26 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 </div>
 
-
+<div id="lowStockModal" class="modal">
+  <div class="modal-content">
+    <span class="close-btn">&times;</span>
+    <h3>Low Stock Products</h3>
+    <div class="scroll-box" style="max-height: 400px; overflow-y:auto;">
+      <table class="security-table" id="lowStockTable" style="width:100%;">
+        <thead>
+          <tr style="background: var(--accent); color: white;">
+            <th>Product</th>
+            <th>Brand</th>
+            <th>Category</th>
+            <th>Price (₹)</th>
+            <th>Stock Left</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
 
 <!-- Customer Details Section -->
@@ -2760,26 +2779,7 @@ window.addEventListener("DOMContentLoaded", () => {
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-<div id="lowStockModal" class="modal">
-  <div class="modal-content">
-    <span class="close-btn">&times;</span>
-    <h3>Low Stock Products</h3>
-    <div class="scroll-box" style="max-height: 400px; overflow-y:auto;">
-      <table class="security-table" id="lowStockTable" style="width:100%;">
-        <thead>
-          <tr style="background: var(--accent); color: white;">
-            <th>Product</th>
-            <th>Brand</th>
-            <th>Category</th>
-            <th>Price (₹)</th>
-            <th>Stock Left</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-</div>
+
 
 </body>
 </html>
