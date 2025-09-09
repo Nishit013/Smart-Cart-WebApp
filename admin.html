@@ -889,6 +889,42 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   overflow-y: auto;
 }
 
+
+
+
+
+
+.low-stock-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.low-stock-card {
+  flex: 1 1 200px; /* responsive cards */
+  background-color: #fff4f4;
+  border-left: 4px solid #ff4d4d;
+  border-radius: 8px;
+  padding: 10px 14px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  transition: transform 0.2s;
+}
+
+.low-stock-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.low-stock-icon {
+  font-size: 20px;
+  color: #ff4d4d;
+}
+
 </style>
 
 </head>
@@ -1216,7 +1252,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
       <option value="">All Categories</option>
     </select>
   </div>
-<div id="lowStockAlerts" style="margin-bottom:10px;"></div>
+<div id="lowStockAlerts" class="low-stock-grid"></div>
+
 
   <!-- Inventory Table with Flexible Scroll -->
   <div class="scroll-box" style="max-height: 600px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--accent);">
@@ -2670,13 +2707,21 @@ function renderLowStockAlerts(products) {
   Object.keys(products).forEach(key => {
     const product = products[key];
     if (product.stock < 10) {
-      const alertDiv = document.createElement("div");
-      alertDiv.style = "padding:6px; margin-bottom:4px; background:#ffe0e0; border-left: 4px solid #ff4d4d;";
-      alertDiv.innerText = `⚠️ Low Stock: ${product.name} - ${product.stock} units left`;
-      container.appendChild(alertDiv);
+      const card = document.createElement("div");
+      card.className = "low-stock-card";
+
+      card.innerHTML = `
+        <span class="low-stock-icon">⚠️</span>
+        <div>
+          <div>${product.name}</div>
+          <small>${product.stock} units left</small>
+        </div>
+      `;
+      container.appendChild(card);
     }
   });
 }
+
 
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
