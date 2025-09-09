@@ -2712,10 +2712,25 @@ function updateProduct() {
     stock: Number(document.getElementById("editStock").value),
     image: document.getElementById("editImage").value,
     supplierId: supplierId || "" // NEW
-  });
+  }).then(() => {
+    alert("Product updated!");
 
-  alert("Product updated!");
+    // ✅ Clear edit form fields
+    document.getElementById("editName").value = "";
+    document.getElementById("editBrand").value = "";
+    document.getElementById("editCategory").value = "";
+    document.getElementById("editPrice").value = "";
+    document.getElementById("editGst").value = "";
+    document.getElementById("editStock").value = "";
+    document.getElementById("editImage").value = "";
+    document.getElementById("editSupplier").value = "";
+
+    // Hide edit section after update
+    document.getElementById("editSection").style.display = "none";
+    currentBarcode = "";
+  });
 }
+
 
 
 
