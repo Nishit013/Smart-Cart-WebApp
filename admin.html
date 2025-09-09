@@ -2780,17 +2780,20 @@ window.addEventListener("click", (e) => {
 
 // Populate low stock table
 function renderLowStockTable() {
+  const lowStockTbody = document.querySelector("#lowStockTable tbody");
+  lowStockTbody.innerHTML = ""; // clear table
+
   db.ref("products").once("value").then(snapshot => {
     const products = snapshot.val() || {};
-    tbody.innerHTML = ""; // clear table
-
     let lowStockCount = 0;
+    const promises = [];
 
     Object.keys(products).forEach(key => {
       const product = products[key];
       if (product.stock < 10) {
         lowStockCount++;
-        db.ref(`suppliers/${product.supplierId}`).once("value").then(snap => {
+
+        const p = db.ref(`suppliers/${product.supplierId}`).once("value").then(snap => {
           const supplier = snap.val() || {};
           const row = document.createElement("tr");
           row.innerHTML = `
@@ -2802,16 +2805,21 @@ function renderLowStockTable() {
             <td>${supplier.name || ""}</td>
             <td>${supplier.phone || ""}</td>
           `;
-          tbody.appendChild(row);
+          lowStockTbody.appendChild(row);
         });
+
+        promises.push(p);
       }
     });
 
-    // Update count badge
-    const countBtn = document.getElementById("lowStockCountBtn");
-    countBtn.innerText = `Total: ${lowStockCount}`;
+    Promise.all(promises).then(() => {
+      const countBtn = document.getElementById("lowStockCountBtn");
+      countBtn.innerText = `Total: ${lowStockCount}`;
+    });
   });
 }
+
+
 
 
 
