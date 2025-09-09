@@ -2719,15 +2719,13 @@ function updateProduct() {
 
 
 
-// ✅ Firebase Reference (adjust your path if needed)
-// Inventory table
-const inventoryTbody = document.querySelector("#inventoryTable tbody");
 const dbRef = db.ref("products");
 
 // Load products from Firebase
 dbRef.on("value", snapshot => {
   const data = snapshot.val() || {};
-  inventoryTbody.innerHTML = "";
+  const tbody = document.querySelector("#inventoryTable tbody");
+  tbody.innerHTML = "";
 
   const brands = new Set();
   const categories = new Set();
@@ -2744,19 +2742,8 @@ dbRef.on("value", snapshot => {
       <td class="${product.stock < 10 ? 'low-stock' : ''}">
         ${product.stock || 0} ${product.stock < 10 ? '⚠️' : ''}
       </td>
-      <td id="supplier-${key}">Loading...</td>
     `;
-    inventoryTbody.appendChild(row);
-
-    // Fetch supplier info if available
-    if (product.supplierId) {
-      db.ref(`suppliers/${product.supplierId}`).once("value").then(snap => {
-        const sup = snap.val();
-        document.getElementById(`supplier-${key}`).innerText = sup?.name || "";
-      });
-    } else {
-      document.getElementById(`supplier-${key}`).innerText = "";
-    }
+    tbody.appendChild(row);
 
     if (product.brand) brands.add(product.brand);
     if (product.category) categories.add(product.category);
@@ -2768,76 +2755,65 @@ dbRef.on("value", snapshot => {
   filterTable(); // apply filters
 });
 
-// Low stock modal
-const lowStockModal = document.getElementById("lowStockModal");
-const lowStockBtn = document.getElementById("lowStockBtn");
-const lowStockCloseBtn = lowStockModal.querySelector(".close-btn");
-const lowStockTbody = document.querySelector("#lowStockTable tbody");
+// Modal references
+const modal = document.getElementById("lowStockModal");
+const btn = document.getElementById("lowStockBtn");
+const closeBtn = modal.querySelector(".close-btn");
+const tbody = document.querySelector("#lowStockTable tbody");
 
 // Open modal
-lowStockBtn.addEventListener("click", () => {
-  renderLowStockTable();
-  lowStockModal.style.display = "block";
+btn.addEventListener("click", () => {
+  renderLowStockTable(); // populate table with current data
+  modal.style.display = "block";
 });
 
 // Close modal
-lowStockCloseBtn.addEventListener("click", () => {
-  lowStockModal.style.display = "none";
+closeBtn.addEventListener("click", () => {
+  modal.style.display = "none";
 });
 
-// Close when clicking outside
+// Close modal when clicking outside the content
 window.addEventListener("click", (e) => {
-  if (e.target == lowStockModal) lowStockModal.style.display = "none";
+  if (e.target == modal) modal.style.display = "none";
 });
 
-// Render low stock table
+// Populate low stock table
 function renderLowStockTable() {
   db.ref("products").once("value").then(snapshot => {
     const products = snapshot.val() || {};
-    lowStockTbody.innerHTML = "";
+    tbody.innerHTML = ""; // clear table
 
-    let lowStockCount = 0;
+    let lowStockCount = 0; // counter
 
-    const promises = [];
-
-    Object.keys(products).forEach(barcode => {
-      const p = products[barcode];
-      if (p.stock < 10) {
+    Object.keys(products).forEach(key => {
+      const product = products[key];
+      if (product.stock < 10) {
         lowStockCount++;
-
-        // Fetch supplier info if supplierId exists
-        const promise = (p.supplierId 
-          ? db.ref(`suppliers/${p.supplierId}`).once("value") 
-          : Promise.resolve({ val: () => ({ name: "", phone: "" }) })
-        ).then(snap => {
-          const sup = snap.val();
-          const row = document.createElement("tr");
-          row.innerHTML = `
-            <td>${p.name || ""}</td>
-            <td>${p.brand || ""}</td>
-            <td>${p.category || ""}</td>
-            <td>${p.price || 0}</td>
-            <td style="color:#ff4d4d; font-weight:bold;">${p.stock}</td>
-            <td>${sup.name || ""}</td>
-            <td>${sup.phone || ""}</td>
-          `;
-          lowStockTbody.appendChild(row);
-        });
-
-        promises.push(promise);
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${product.name || ""}</td>
+          <td>${product.brand || ""}</td>
+          <td>${product.category || ""}</td>
+          <td>${product.price || 0}</td>
+          <td style="color:#ff4d4d; font-weight:bold;">${product.stock}</td>
+        `;
+        tbody.appendChild(row);
       }
     });
 
-    Promise.all(promises).then(() => {
-      document.getElementById("lowStockCountBtn").innerText = `Total: ${lowStockCount}`;
-    });
+    // Update count badge
+    const countBtn = document.getElementById("lowStockCountBtn");
+    countBtn.innerText = `Total: ${lowStockCount}`;
   });
 }
 
-// Dropdown helper
+
+
+
+
 function populateDropdown(id, items) {
   const select = document.getElementById(id);
-  const currentValue = select.value; 
+  const currentValue = select.value; // keep selected filter
   select.innerHTML = `<option value="">Filter by ${id.replace("Filter","")}</option>`;
   items.forEach(item => {
     const option = document.createElement("option");
@@ -2845,7 +2821,7 @@ function populateDropdown(id, items) {
     option.textContent = item;
     select.appendChild(option);
   });
-  select.value = currentValue; 
+  select.value = currentValue; // restore selection
 }
 
 // Filter function
