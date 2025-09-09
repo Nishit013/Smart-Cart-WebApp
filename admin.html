@@ -893,6 +893,38 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 
 
+.modal {
+  display: none; /* hidden by default */
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0,0,0,0.5); /* semi-transparent background */
+}
+
+.modal-content {
+  background-color: var(--card);
+  margin: 50px auto;
+  padding: 20px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 800px; /* same size as inventory table */
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  position: relative;
+}
+
+.close-btn {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  font-size: 24px;
+  font-weight: bold;
+  cursor: pointer;
+  color: var(--text);
+}
 
 
 </style>
@@ -1223,6 +1255,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     </select>
   </div>
 
+<div style="margin-bottom:10px; display:flex; justify-content:flex-end;">
+  <button id="lowStockBtn" class="btn-primary">Low Stock Products</button>
+</div>
 
 
   <!-- Inventory Table with Flexible Scroll -->
@@ -1240,15 +1275,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
       <tbody></tbody>
     </table>
   </div>
-  <table id="lowStockTable" class="security-table">
-  <thead>
-    <tr>
-      <th>Product</th>
-      <th>Stock Left</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
+  
 
 </div>
 
@@ -2523,8 +2550,54 @@ dbRef.on("value", snapshot => {
   populateDropdown("categoryFilter", categories);
 
   filterTable(); // apply filters
-  renderLowStockAlerts(data); // ✅ show low stock alerts
 });
+
+// Modal references
+const modal = document.getElementById("lowStockModal");
+const btn = document.getElementById("lowStockBtn");
+const closeBtn = modal.querySelector(".close-btn");
+const tbody = document.querySelector("#lowStockTable tbody");
+
+// Open modal
+btn.addEventListener("click", () => {
+  renderLowStockTable(); // populate table with current data
+  modal.style.display = "block";
+});
+
+// Close modal
+closeBtn.addEventListener("click", () => {
+  modal.style.display = "none";
+});
+
+// Close modal when clicking outside the content
+window.addEventListener("click", (e) => {
+  if (e.target == modal) modal.style.display = "none";
+});
+
+// Populate low stock table
+function renderLowStockTable() {
+  db.ref("products").once("value").then(snapshot => {
+    const products = snapshot.val() || {};
+    tbody.innerHTML = ""; // clear table
+
+    Object.keys(products).forEach(key => {
+      const product = products[key];
+      if (product.stock < 10) {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${product.name || ""}</td>
+          <td>${product.brand || ""}</td>
+          <td>${product.category || ""}</td>
+          <td>${product.price || 0}</td>
+          <td style="color:#ff4d4d; font-weight:bold;">${product.stock}</td>
+        `;
+        tbody.appendChild(row);
+      }
+    });
+  });
+}
+
+
 
 
 function populateDropdown(id, items) {
@@ -2680,28 +2753,33 @@ window.addEventListener("DOMContentLoaded", () => {
 
 
 
-function renderLowStockAlerts(products) {
-  const tbody = document.querySelector("#lowStockTable tbody");
-  tbody.innerHTML = "";
 
-  Object.keys(products).forEach(key => {
-    const product = products[key];
-    if (product.stock < 10) {
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td>${product.name}</td>
-        <td style="color:#ff4d4d; font-weight:bold;">${product.stock}</td>
-      `;
-      tbody.appendChild(row);
-    }
-  });
-}
 
 
 
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<div id="lowStockModal" class="modal">
+  <div class="modal-content">
+    <span class="close-btn">&times;</span>
+    <h3>Low Stock Products</h3>
+    <div class="scroll-box" style="max-height: 400px; overflow-y:auto;">
+      <table class="security-table" id="lowStockTable" style="width:100%;">
+        <thead>
+          <tr style="background: var(--accent); color: white;">
+            <th>Product</th>
+            <th>Brand</th>
+            <th>Category</th>
+            <th>Price (₹)</th>
+            <th>Stock Left</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
