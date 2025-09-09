@@ -761,9 +761,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 
 .low-stock {
-  color: #ff6b6b;
+  background-color: #ffe0e0; /* light red */
   font-weight: bold;
 }
+
 
 
 
@@ -1215,6 +1216,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
       <option value="">All Categories</option>
     </select>
   </div>
+<div id="lowStockAlerts" style="margin-bottom:10px;"></div>
 
   <!-- Inventory Table with Flexible Scroll -->
   <div class="scroll-box" style="max-height: 600px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--accent);">
@@ -2478,21 +2480,21 @@ dbRef.on("value", snapshot => {
   const tbody = document.querySelector("#inventoryTable tbody");
   tbody.innerHTML = "";
 
-  // For collecting unique brands & categories
   const brands = new Set();
   const categories = new Set();
 
   Object.keys(data).forEach(key => {
     const product = data[key];
 
-    // Append row
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${product.name || ""}</td>
       <td>${product.brand || ""}</td>
       <td>${product.category || ""}</td>
       <td>${product.price || 0}</td>
-      <td class="${product.stock < 10 ? 'low-stock' : ''}">${product.stock || 0}</td>
+      <td class="${product.stock < 10 ? 'low-stock' : ''}">
+        ${product.stock || 0} ${product.stock < 10 ? '⚠️' : ''}
+      </td>
     `;
     tbody.appendChild(row);
 
@@ -2500,12 +2502,13 @@ dbRef.on("value", snapshot => {
     if (product.category) categories.add(product.category);
   });
 
-  // Populate filter dropdowns dynamically
   populateDropdown("brandFilter", brands);
   populateDropdown("categoryFilter", categories);
 
-  filterTable(); // apply filters if any
+  filterTable(); // apply filters
+  renderLowStockAlerts(data); // ✅ show low stock alerts
 });
+
 
 function populateDropdown(id, items) {
   const select = document.getElementById(id);
@@ -2660,6 +2663,20 @@ window.addEventListener("DOMContentLoaded", () => {
 
 
 
+function renderLowStockAlerts(products) {
+  const container = document.getElementById("lowStockAlerts");
+  container.innerHTML = ""; // clear old alerts
+
+  Object.keys(products).forEach(key => {
+    const product = products[key];
+    if (product.stock < 10) {
+      const alertDiv = document.createElement("div");
+      alertDiv.style = "padding:6px; margin-bottom:4px; background:#ffe0e0; border-left: 4px solid #ff4d4d;";
+      alertDiv.innerText = `⚠️ Low Stock: ${product.name} - ${product.stock} units left`;
+      container.appendChild(alertDiv);
+    }
+  });
+}
 
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
