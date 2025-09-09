@@ -1274,6 +1274,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
       <input type="number" id="gst" placeholder="GST %">
       <input type="number" id="stock" placeholder="Stock Qty">
       <input type="text" id="image" placeholder="Image URL">
+      <select id="productSupplier">
+  <option value="">Select Supplier</option>
+</select>
+
     </div>
     <button class="btn-primary" onclick="addProduct()">Add Product</button>
   </div>
@@ -1317,6 +1321,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
           <label for="editImage">Image URL</label>
           <input type="text" id="editImage" placeholder="Enter image URL">
         </div>
+        <select id="editSupplier">
+  <option value="">Select Supplier</option>
+</select>
+
       </div>
       <button class="btn-primary" onclick="updateProduct()">Update Product</button>
     </div>
@@ -1346,17 +1354,20 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   <!-- Inventory Table with Flexible Scroll -->
   <div class="scroll-box" style="max-height: 600px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--accent);">
     <table class="security-table" id="inventoryTable" style="width: 100%; border-collapse: collapse;">
-      <thead>
-        <tr style="background: var(--accent); color: white;">
-          <th>Product</th>
-          <th>Brand</th>
-          <th>Category</th>
-          <th>Price (₹)</th>
-          <th>Stock</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+      <table class="security-table" id="lowStockTable" style="width:100%;">
+  <thead>
+    <tr style="background: var(--accent); color: white;">
+      <th>Product</th>
+      <th>Brand</th>
+      <th>Category</th>
+      <th>Price (₹)</th>
+      <th>Stock Left</th>
+      <th>Supplier</th> <!-- NEW -->
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
   </div>
   
 
@@ -2537,6 +2548,26 @@ function deleteOffer(key) {
   }
 }
 
+function populateSupplierDropdowns() {
+  db.ref("suppliers").once("value").then(snapshot => {
+    const suppliers = snapshot.val() || {};
+    const addSelect = document.getElementById("productSupplier");
+    const editSelect = document.getElementById("editSupplier");
+
+    [addSelect, editSelect].forEach(select => {
+      select.innerHTML = '<option value="">Select Supplier</option>';
+      Object.keys(suppliers).forEach(id => {
+        const option = document.createElement("option");
+        option.value = id;
+        option.textContent = suppliers[id].name;
+        select.appendChild(option);
+      });
+    });
+  });
+}
+
+// Call once on page load
+populateSupplierDropdowns();
 
 
 // 🔹 Bulk Import
@@ -2571,21 +2602,36 @@ function uploadFile() {
 
 function saveProduct(row) {
   if (!row.barcode) return;
-  db.ref("products/" + row.barcode).set({
-    name: row.name || "",
-    brand: row.brand || "",
-    category: row.category || "",
-    price: Number(row.price) || 0,
-    gst: Number(row.gst) || 0,
-    stock: Number(row.stock) || 0,
-    image: row.image || ""
-  });
+
+  // Find supplierId by name
+  db.ref("suppliers").orderByChild("name").equalTo(row.supplierName || "").once("value")
+    .then(snap => {
+      const supData = snap.val();
+      let supplierId = "";
+      if (supData) supplierId = Object.keys(supData)[0];
+
+      db.ref("products/" + row.barcode).set({
+        name: row.name || "",
+        brand: row.brand || "",
+        category: row.category || "",
+        price: Number(row.price) || 0,
+        gst: Number(row.gst) || 0,
+        stock: Number(row.stock) || 0,
+        image: row.image || "",
+        supplierId: supplierId
+      });
+    });
 }
+
+
 
 // 🔹 Add Single Product
 function addProduct() {
   const barcode = document.getElementById("barcode").value;
   if (!barcode) return alert("Barcode required");
+
+  const supplierId = document.getElementById("productSupplier").value; // NEW
+
   db.ref("products/" + barcode).set({
     name: document.getElementById("name").value,
     brand: document.getElementById("brand").value,
@@ -2593,10 +2639,13 @@ function addProduct() {
     price: Number(document.getElementById("price").value),
     gst: Number(document.getElementById("gst").value),
     stock: Number(document.getElementById("stock").value),
-    image: document.getElementById("image").value
+    image: document.getElementById("image").value,
+    supplierId: supplierId || "" // NEW
   });
+
   alert("Product added!");
 
+  // Clear inputs
   document.getElementById("barcode").value = "";
   document.getElementById("name").value = "";
   document.getElementById("brand").value = "";
@@ -2605,8 +2654,9 @@ function addProduct() {
   document.getElementById("gst").value = "";
   document.getElementById("stock").value = "";
   document.getElementById("image").value = "";
-
+  document.getElementById("productSupplier").value = ""; // NEW
 }
+
 
 // 🔹 Search + Edit
 let currentBarcode = "";
@@ -2648,6 +2698,9 @@ function searchProduct() {
 
 function updateProduct() {
   if (!currentBarcode) return;
+
+  const supplierId = document.getElementById("editSupplier").value; // NEW
+
   db.ref("products/" + currentBarcode).update({
     name: document.getElementById("editName").value,
     brand: document.getElementById("editBrand").value,
@@ -2655,10 +2708,13 @@ function updateProduct() {
     price: Number(document.getElementById("editPrice").value),
     gst: Number(document.getElementById("editGst").value),
     stock: Number(document.getElementById("editStock").value),
-    image: document.getElementById("editImage").value
+    image: document.getElementById("editImage").value,
+    supplierId: supplierId || "" // NEW
   });
+
   alert("Product updated!");
 }
+
 
 
 
@@ -2728,21 +2784,26 @@ function renderLowStockTable() {
     const products = snapshot.val() || {};
     tbody.innerHTML = ""; // clear table
 
-    let lowStockCount = 0; // counter
+    let lowStockCount = 0;
 
     Object.keys(products).forEach(key => {
       const product = products[key];
       if (product.stock < 10) {
         lowStockCount++;
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td>${product.name || ""}</td>
-          <td>${product.brand || ""}</td>
-          <td>${product.category || ""}</td>
-          <td>${product.price || 0}</td>
-          <td style="color:#ff4d4d; font-weight:bold;">${product.stock}</td>
-        `;
-        tbody.appendChild(row);
+        db.ref(`suppliers/${product.supplierId}`).once("value").then(snap => {
+          const supplier = snap.val() || {};
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${product.name || ""}</td>
+            <td>${product.brand || ""}</td>
+            <td>${product.category || ""}</td>
+            <td>${product.price || 0}</td>
+            <td style="color:#ff4d4d; font-weight:bold;">${product.stock}</td>
+            <td>${supplier.name || ""}</td>
+            <td>${supplier.phone || ""}</td>
+          `;
+          tbody.appendChild(row);
+        });
       }
     });
 
@@ -2751,6 +2812,7 @@ function renderLowStockTable() {
     countBtn.innerText = `Total: ${lowStockCount}`;
   });
 }
+
 
 
 
