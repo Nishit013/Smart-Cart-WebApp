@@ -2020,7 +2020,6 @@ function populateCategoryFilter() {
 
     // Append categories without removing "All Categories"
     categoriesSet.forEach(cat => {
-      // Check if this option already exists
       if (![...select.options].some(o => o.value === cat)) {
         const option = document.createElement("option");
         option.value = cat;
@@ -2028,8 +2027,12 @@ function populateCategoryFilter() {
         select.appendChild(option);
       }
     });
+
+    // ✅ Render sales immediately after categories are loaded
+    renderProductSales();
   });
 }
+
 
 function renderProductSales() {
   const productFilter = document.getElementById("productSalesFilter")?.value || "all";
