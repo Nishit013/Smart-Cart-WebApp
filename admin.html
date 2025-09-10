@@ -1351,7 +1351,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 <!-- ✅ Now start inventory section separately -->
 <div class="section" id="inventory">
-  <h2>Product Inventory</h2>
+  <h2 style="display:flex; justify-content:space-between; align-items:center;">
+  <span>Product Inventory</span>
+  <button id="lowStockSettingsBtn" style="background:none; border:none; cursor:pointer; font-size:18px;">⚙️</button>
+</h2>
+
 
   <!-- Filter & Search Controls -->
   <div class="inventory-controls">
@@ -1421,6 +1425,23 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     </div>
   </div>
 </div>
+
+
+<!-- Low Stock Settings Modal -->
+<div id="lowStockSettingsModal" class="modal">
+  <div class="modal-content" style="max-width:350px; text-align:center;">
+    <span class="close-btn" onclick="closeLowStockSettingsModal()">&times;</span>
+    <h3>Low Stock Settings</h3>
+    <input type="number" id="lowStockThresholdInput" min="1" 
+           placeholder="Enter threshold" 
+           style="width:100%; padding:8px; margin:12px 0; border:1px solid var(--border); border-radius:6px;">
+    <div style="display:flex; gap:10px; justify-content:center; margin-top:10px;">
+      <button onclick="saveLowStockThreshold()" class="btn-primary">Save</button>
+      <button onclick="closeLowStockSettingsModal()" class="btn-secondary">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- Purchase Orders Modal -->
 <div id="purchaseOrderModal" class="modal">
   <div class="modal-content">
@@ -2912,9 +2933,11 @@ db.ref("products").on("value", snapshot => {
       <td>${product.brand || ""}</td>
       <td>${product.category || ""}</td>
       <td>${product.price || 0}</td>
-      <td class="${product.stock < 10 ? 'low-stock' : ''}">
-        ${product.stock || 0} ${product.stock < 10 ? '⚠️' : ''}
-      </td>
+      // Inventory table
+<td class="${product.stock < lowStockThreshold ? 'low-stock' : ''}">
+  ${product.stock || 0} ${product.stock < lowStockThreshold ? '⚠️' : ''}
+</td>
+
       <td>${supplierName}</td>
       <td>${supplierPhone}</td>
     `;
@@ -2966,6 +2989,34 @@ function renderLowStockTable() {
     document.getElementById("lowStockCountBtn").innerText = `Total: ${lowStockCount}`;
   });
 }
+
+
+let lowStockThreshold = 10; // default
+
+// Open Settings Modal
+document.getElementById("lowStockSettingsBtn").addEventListener("click", () => {
+  document.getElementById("lowStockSettingsModal").style.display = "flex";
+  document.getElementById("lowStockThresholdInput").value = lowStockThreshold;
+});
+
+// Close Settings Modal
+function closeLowStockSettingsModal() {
+  document.getElementById("lowStockSettingsModal").style.display = "none";
+}
+
+// Save new threshold
+function saveLowStockThreshold() {
+  const value = parseInt(document.getElementById("lowStockThresholdInput").value);
+  if (!value || value <= 0) {
+    alert("Enter a valid threshold!");
+    return;
+  }
+  lowStockThreshold = value;
+  closeLowStockSettingsModal();
+  renderInventoryTable();  // update highlighting in main table
+  renderLowStockTable();   // refresh low stock list
+}
+
 
 btn.addEventListener("click", () => {
   renderLowStockTable();
