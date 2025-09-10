@@ -1959,10 +1959,18 @@ function markAsPaid(cartId) {
   const cart = allCarts[cartId];
   if (!cart) return alert("Cart not found.");
 
+  // Step 1: Prompt for phone number
+  let phone = prompt("Enter customer phone number:");
+  if (!phone || !/^\d{10}$/.test(phone)) {
+    return alert("❌ Please enter a valid 10-digit phone number!");
+  }
+
+  // Step 2: Confirm payment
   if (confirm("Mark this cart as Paid?")) {
     const timestamp = Date.now();
     const paidData = {
       ...cart,
+      phone,           // ✅ Add phone number here
       paidAt: timestamp
     };
 
@@ -1970,7 +1978,7 @@ function markAsPaid(cartId) {
       .then(() => db.ref("carts/" + cartId + "/paymentStatus").set("Paid"))
       .then(() => db.ref("carts/" + cartId + "/items").remove())
       .then(() => db.ref("carts/" + cartId + "/total").set(0))
-      .then(() => db.ref("carts/" + cartId + "/isActive").set(false)) // ✅ Mark as inactive
+      .then(() => db.ref("carts/" + cartId + "/isActive").set(false)) // Mark as inactive
       .then(() => {
         alert("✅ Cart marked as Paid, cleared, and made inactive!");
         return Promise.all([
@@ -1987,6 +1995,7 @@ function markAsPaid(cartId) {
       .catch(err => console.error("❌ Error marking as paid:", err));
   }
 }
+
 let chartType = "line";
 
 function toggleChartType(type) {
