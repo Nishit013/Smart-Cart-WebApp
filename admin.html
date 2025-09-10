@@ -3003,9 +3003,15 @@ document.getElementById("createPOForm").addEventListener("submit", e => {
 });
 
 // ✅ Fetch and Render PO Table
+// ✅ Fetch and Render PO Table (real-time, no duplicates)
 function loadPOs() {
+  const tbody = document.getElementById("poTable").querySelector("tbody");
+
+  // Remove any old listener first
+  db.ref("purchaseOrders").off("value");
+
+  // Attach a fresh one
   db.ref("purchaseOrders").on("value", async snapshot => {
-    const tbody = document.getElementById("poTable").querySelector("tbody");
     tbody.innerHTML = "";
 
     // fetch suppliers & products for mapping
@@ -3037,6 +3043,7 @@ function loadPOs() {
     });
   });
 }
+
 
 // ✅ Mark PO as Received
 function receivePO(poId, productId, qty, supplierId) {
