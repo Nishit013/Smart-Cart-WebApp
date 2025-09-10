@@ -1350,6 +1350,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   <div style="margin-bottom:10px; display:flex; justify-content:flex-end;">
     <button id="lowStockBtn" class="btn-primary">Low Stock Products</button>
   </div>
+<!-- PO & Stock History Buttons -->
+<div style="margin-bottom:10px; display:flex; gap:10px; justify-content:flex-end;">
+  <button id="purchaseOrderBtn" class="btn-primary">📦 Manage POs</button>
+  <button id="stockHistoryBtn" class="btn-secondary">📊 Stock History</button>
+</div>
 
   <!-- Inventory Table -->
   <div class="scroll-box" style="max-height: 600px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--accent);">
@@ -1391,6 +1396,62 @@ input[type="date"]::-webkit-calendar-picker-indicator {
             <th>Stock Left</th>
             <th>Supplier</th> <!-- ✅ Added -->
             <th>Phone</th>    <!-- ✅ Added -->
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<!-- Purchase Orders Modal -->
+<div id="purchaseOrderModal" class="modal">
+  <div class="modal-content">
+    <span class="close-btn">&times;</span>
+    <h3>Purchase Orders</h3>
+
+    <!-- Create PO Form -->
+    <form id="createPOForm">
+      <select id="poSupplierSelect" required></select>
+      <select id="poProductSelect" required></select>
+      <input type="number" id="poQuantity" placeholder="Quantity" min="1" required>
+      <button type="submit" class="btn-primary">➕ Create PO</button>
+    </form>
+
+    <!-- PO Table -->
+    <div class="scroll-box" style="max-height: 400px; overflow-y:auto; margin-top:10px;">
+      <table class="security-table" id="poTable" style="width:100%;">
+        <thead>
+          <tr style="background: var(--accent); color: white;">
+            <th>PO ID</th>
+            <th>Supplier</th>
+            <th>Product</th>
+            <th>Qty</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Stock Movement History Modal -->
+<div id="stockHistoryModal" class="modal">
+  <div class="modal-content">
+    <span class="close-btn">&times;</span>
+    <h3>📊 Stock Movement History</h3>
+    <div class="scroll-box" style="max-height: 400px; overflow-y:auto;">
+      <table class="security-table" id="stockHistoryTable" style="width:100%;">
+        <thead>
+          <tr style="background: var(--accent); color: white;">
+            <th>Date</th>
+            <th>Product</th>
+            <th>Qty Change</th>
+            <th>Type</th>
+            <th>Current Stock</th>
+            <th>Supplier/Note</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -2896,6 +2957,128 @@ function filterTable() {
 
 
 
+// ✅ Load suppliers & products into dropdowns
+function loadPODropdowns() {
+  const supplierSelect = document.getElementById("poSupplierSelect");
+  const productSelect = document.getElementById("poProductSelect");
+
+  supplierSelect.innerHTML = "<option value=''>Select Supplier</option>";
+  productSelect.innerHTML = "<option value=''>Select Product</option>";
+
+  db.ref("suppliers").once("value").then(snapshot => {
+    snapshot.forEach(child => {
+      let s = child.val();
+      supplierSelect.innerHTML += `<option value="${child.key}">${s.name}</option>`;
+    });
+  });
+
+  db.ref("products").once("value").then(snapshot => {
+    snapshot.forEach(child => {
+      let p = child.val();
+      productSelect.innerHTML += `<option value="${child.key}">${p.name}</option>`;
+    });
+  });
+}
+
+// ✅ Create Purchase Order
+document.getElementById("createPOForm").addEventListener("submit", e => {
+  e.preventDefault();
+
+  const supplierId = document.getElementById("poSupplierSelect").value;
+  const productId = document.getElementById("poProductSelect").value;
+  const qty = parseInt(document.getElementById("poQuantity").value);
+
+  if (!supplierId || !productId || qty <= 0) return alert("Fill all fields!");
+
+  const newPORef = db.ref("purchaseOrders").push();
+  const poData = {
+    supplierId,
+    productId,
+    qty,
+    status: "Pending",
+    date: new Date().toLocaleString()
+  };
+  newPORef.set(poData);
+  document.getElementById("createPOForm").reset();
+});
+
+// ✅ Fetch and Render PO Table
+function loadPOs() {
+  db.ref("purchaseOrders").on("value", snapshot => {
+    const tbody = document.getElementById("poTable").querySelector("tbody");
+    tbody.innerHTML = "";
+    snapshot.forEach(child => {
+      let po = child.val();
+      tbody.innerHTML += `
+        <tr>
+          <td>${child.key}</td>
+          <td>${po.supplierId}</td>
+          <td>${po.productId}</td>
+          <td>${po.qty}</td>
+          <td>${po.status}</td>
+          <td>${po.date}</td>
+          <td>${po.status === "Pending" ? 
+            `<button onclick="receivePO('${child.key}','${po.productId}',${po.qty},'${po.supplierId}')">✔ Receive</button>` 
+            : "—"}</td>
+        </tr>
+      `;
+    });
+  });
+}
+
+// ✅ Mark PO as Received
+function receivePO(poId, productId, qty, supplierId) {
+  // Update PO
+  db.ref("purchaseOrders/" + poId + "/status").set("Received");
+
+  // Update Stock
+  db.ref("products/" + productId).once("value").then(snap => {
+    let stock = snap.val().stock || 0;
+    db.ref("products/" + productId + "/stock").set(stock + qty);
+
+    // Log Stock Movement
+    db.ref("stockMovements").push({
+      date: new Date().toLocaleString(),
+      productId,
+      qtyChange: "+" + qty,
+      type: "Stock-In",
+      currentStock: stock + qty,
+      supplierNote: "PO Received from Supplier " + supplierId
+    });
+  });
+}
+
+// ✅ Load Stock Movement History
+function loadStockMovements() {
+  db.ref("stockMovements").on("value", snapshot => {
+    const tbody = document.getElementById("stockHistoryTable").querySelector("tbody");
+    tbody.innerHTML = "";
+    snapshot.forEach(child => {
+      let m = child.val();
+      tbody.innerHTML += `
+        <tr>
+          <td>${m.date}</td>
+          <td>${m.productId}</td>
+          <td>${m.qtyChange}</td>
+          <td>${m.type}</td>
+          <td>${m.currentStock}</td>
+          <td>${m.supplierNote || ""}</td>
+        </tr>
+      `;
+    });
+  });
+}
+
+// ✅ Modal Buttons
+document.getElementById("purchaseOrderBtn").onclick = () => {
+  document.getElementById("purchaseOrderModal").style.display = "block";
+  loadPODropdowns();
+  loadPOs();
+};
+document.getElementById("stockHistoryBtn").onclick = () => {
+  document.getElementById("stockHistoryModal").style.display = "block";
+  loadStockMovements();
+};
 
 
 function toggleCustomerDetails() {
