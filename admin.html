@@ -3107,14 +3107,24 @@ document.getElementById("stockHistoryBtn").onclick = () => {
   loadStockMovements();
 };
 
-const poModal = document.getElementById("poModal");
-const stockHistoryModal = document.getElementById("stockHistoryModal");
+// 🔹 Handle modal close buttons
+document.querySelectorAll(".modal .close-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    btn.closest(".modal").style.display = "none";
+  });
+});
 
-document.getElementById("poBtn").onclick = () => loadPOs();
-document.getElementById("stockHistoryBtn").onclick = () => loadStockHistory();
+// 🔹 Handle outside click to close
+window.addEventListener("click", (event) => {
+  document.querySelectorAll(".modal").forEach(modal => {
+    if (event.target === modal) {
+      modal.style.display = "none";
+    }
+  });
+});
 
-document.getElementById("closePoModal").onclick = () => poModal.style.display = "none";
-document.getElementById("closeStockHistoryModal").onclick = () => stockHistoryModal.style.display = "none";
+
+
 
 function toggleCustomerDetails() {
   document.getElementById("customerDetailsPanel")
