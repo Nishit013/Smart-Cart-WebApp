@@ -1435,6 +1435,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
       <button type="submit" class="btn-primary">➕ Create PO</button>
     </form>
 
+    <h3>Purchase Orders
+  <button id="exportPOBtn" class="btn-primary" style="float:right; margin-left:10px;">Export CSV</button>
+</h3>
     <!-- PO Table -->
     <div class="scroll-box" style="max-height: 600px; overflow-y:auto; margin-top:10px;">
       <table class="security-table" id="poTable" style="width:100%;">
@@ -1460,6 +1463,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   <div class="modal-content">
     <span class="close-btn">&times;</span>
     <h3>Stock Movement History</h3>
+    <h3>Stock Movement History
+  <button id="exportStockBtn" class="btn-primary" style="float:right; margin-left:10px;">Export CSV</button>
+</h3>
     <div class="scroll-box" style="max-height: 600px; overflow-y:auto;">
       <table class="security-table" id="stockHistoryTable" style="width:100%;">
         <thead>
@@ -3148,6 +3154,30 @@ window.addEventListener("click", (event) => {
   });
 });
 
+// ✅ Export table data to CSV
+function exportTableToCSV(tableId, filename) {
+  const table = document.getElementById(tableId);
+  const rows = Array.from(table.querySelectorAll("tr"));
+  const csv = rows.map(row => {
+    const cells = Array.from(row.querySelectorAll("th, td"));
+    return cells.map(cell => `"${cell.innerText.replace(/"/g, '""')}"`).join(",");
+  }).join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+}
+
+// ✅ Button events
+document.getElementById("exportPOBtn").addEventListener("click", () => {
+  exportTableToCSV("poTable", "PurchaseOrders.csv");
+});
+
+document.getElementById("exportStockBtn").addEventListener("click", () => {
+  exportTableToCSV("stockHistoryTable", "StockMovements.csv");
+});
 
 
 
