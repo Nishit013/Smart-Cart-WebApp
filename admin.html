@@ -1037,27 +1037,38 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     <p id="loginError">❌ Invalid email or password</p>
   </div>
 </div>
-
+<!-- ❌ remove "dashboard" wrapper -->
 <div id="adminPanel" style="display:none;">
   <div class="sidebar">
-    <h2> <span>Admin</span></h2>
-    <a href="#analytics"> <span>Analytics</span></a>
-    <a href="#charts"> <span>Graphs</span></a>
-    <a href="#carts"> <span>Cart Details</span></a>
-    <a href="#security"> <span>Security</span></a>
-    <a href="#productSales"> <span>Product Sales</span></a> <!-- ✅ New link added -->
-    <a href="#customerOffers"> <span>Customer Offers</span></a> <!-- New link -->
-    <a href="#products"> <span>Product Management</span></a>
+    <h2><span>Admin</span></h2>
+    <a href="#analytics"><span>Analytics</span></a>
+    <a href="#charts"><span>Graphs</span></a>
+    <a href="#carts"><span>Cart Details</span></a>
+    <a href="#security"><span>Security</span></a>
+    <a href="#productSales"><span>Product Sales</span></a>
+    <a href="#customerOffers"><span>Customer Offers</span></a>
+    <a href="#products"><span>Product Management</span></a>
     <a href="#inventory"><span>Inventory</span></a>
     <a href="javascript:void(0)" onclick="toggleCustomerDetails()">
       <span>Customer Details</span>
-      <a href="javascript:void(0)" onclick="openSupplierModal()">
-  <span>Supplier Management</span>
-</a>
-<a href="#userManagement"><span>User Management</span></a>
     </a>
+    <a href="javascript:void(0)" onclick="openSupplierModal()">
+      <span>Supplier Management</span>
+    </a>
+    <a href="#userManagement"><span>User Management</span></a>
   </div>
 
+  <!-- put all your sections here -->
+  <div id="analytics" class="section"> ... </div>
+  <div id="charts" class="section"> ... </div>
+  <div id="carts" class="section"> ... </div>
+  <div id="security" class="section"> ... </div>
+  <div id="productSales" class="section"> ... </div>
+  <div id="customerOffers" class="section"> ... </div>
+  <div id="products" class="section"> ... </div>
+  <div id="inventory" class="section"> ... </div>
+  <div id="userManagement" class="section"> ... </div>
+</div>
 
 
   <div class="content">
@@ -1560,17 +1571,14 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   </div>
 </div>
 
-<div class="section" id="userManagement">
+<div id="userManagement" class="section">
   <h2>User Management</h2>
 
   <!-- Add User Form -->
-  <form id="addUserForm" style="margin-bottom:15px; display:flex; gap:10px; flex-wrap:wrap;">
-    <input type="email" id="newUserEmail" placeholder="Enter Email" required 
-           style="flex:1; padding:8px; border:1px solid var(--border); border-radius:6px;">
-    <input type="password" id="newUserPassword" placeholder="Enter Password" required 
-           style="flex:1; padding:8px; border:1px solid var(--border); border-radius:6px;">
-    <select id="newUserRole" required style="padding:8px; border:1px solid var(--border); border-radius:6px;">
-      <option value="">Select Role</option>
+  <form id="addUserForm" style="margin-bottom:15px;">
+    <input type="text" id="newUserUid" placeholder="Firebase UID" required />
+    <input type="email" id="newUserEmail" placeholder="User Email" required />
+    <select id="newUserRole" required>
       <option value="cashier">Cashier</option>
       <option value="sales_manager">Sales Manager</option>
       <option value="inventory_manager">Inventory Manager</option>
@@ -1579,11 +1587,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     <button type="submit" class="btn-primary">➕ Add User</button>
   </form>
 
-  <!-- User Table -->
-  <div class="scroll-box" style="max-height:400px; overflow-y:auto;">
+  <!-- Users Table -->
+  <div class="scroll-box" style="max-height: 400px; overflow-y:auto;">
     <table class="security-table" id="userTable" style="width:100%;">
       <thead>
-        <tr style="background: var(--accent); color:white;">
+        <tr style="background: var(--accent); color: white;">
           <th>Email</th>
           <th>Role</th>
           <th>Action</th>
@@ -1593,6 +1601,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     </table>
   </div>
 </div>
+
 
 
 <script>
@@ -2153,11 +2162,10 @@ function getCartStatus(cart) {
       const role = userData.role;
       sessionStorage.setItem("userRole", role);
 
-      // ✅ Hide login screen, show dashboard
+      // ✅ Show admin panel properly
       document.getElementById("loginContainer").style.display = "none";
-      document.getElementById("dashboard").style.display = "block";
+      document.getElementById("adminPanel").style.display = "block";
 
-      // ✅ Apply role-based UI
       applyRolePermissions(role);
     })
     .catch(error => {
@@ -2179,7 +2187,6 @@ function applyRolePermissions(role) {
   } else if (role === "inventoryManager") {
     showSections(["productSales", "products", "inventory", "supplierManagement"]);
   } else if (role === "admin") {
-    // ✅ Admin sees all
     document.querySelectorAll(".section").forEach(sec => sec.style.display = "block");
     document.querySelectorAll(".sidebar a").forEach(link => link.style.display = "block");
   }
@@ -2194,22 +2201,39 @@ function showSections(sectionIds) {
   });
 }
 
+// 🔁 Auto-login on refresh
+firebase.auth().onAuthStateChanged(user => {
+  if (user) {
+    db.ref("users/" + user.uid).once("value").then(snapshot => {
+      const userData = snapshot.val();
+      if (!userData) {
+        firebase.auth().signOut();
+        return;
+      }
+      const role = userData.role;
+      sessionStorage.setItem("userRole", role);
 
-
-  // 🔁 Auto-login on page reload
-  auth.onAuthStateChanged((user) => {
-    if (user) {
       document.getElementById("loginContainer").style.display = "none";
       document.getElementById("adminPanel").style.display = "block";
-    }
-  });
-  // 🔓 Logout function
+
+      applyRolePermissions(role);
+    });
+  } else {
+    // No user logged in
+    document.getElementById("adminPanel").style.display = "none";
+    document.getElementById("loginContainer").style.display = "flex";
+  }
+});
+
+// 🔓 Logout
 function logout() {
   firebase.auth().signOut().then(() => {
+    sessionStorage.clear();
     document.getElementById("adminPanel").style.display = "none";
     document.getElementById("loginContainer").style.display = "flex";
   });
 }
+
 
 // ⏱️ Auto logout after 10 mins of inactivity
 let inactivityTimer;
@@ -3650,26 +3674,22 @@ function deleteSupplier(id){
 
 const userTableBody = document.querySelector("#userTable tbody");
 
-// Handle Add User
+// Add User (only maps UID to email + role in DB)
 document.getElementById("addUserForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
+  const uid = document.getElementById("newUserUid").value.trim();
   const email = document.getElementById("newUserEmail").value.trim();
-  const password = document.getElementById("newUserPassword").value.trim();
   const role = document.getElementById("newUserRole").value;
 
-  if (!email || !password || !role) {
-    alert("Please fill all fields!");
+  if (!uid || !email || !role) {
+    alert("⚠️ Please fill all fields!");
     return;
   }
 
   try {
-    // ✅ Create user with Firebase Admin REST API (since client SDK can’t directly create users)
-    // For now, simulate by storing in `users` node
-    const newUserRef = db.ref("users").push();
-    await newUserRef.set({ email, role });
-
-    alert("✅ User added successfully!");
+    await db.ref("users/" + uid).set({ email, role });
+    alert("✅ User mapped successfully!");
     document.getElementById("addUserForm").reset();
     loadUsers();
   } catch (error) {
@@ -3691,7 +3711,8 @@ function loadUsers() {
       row.innerHTML = `
         <td>${email}</td>
         <td>
-          <select onchange="updateUserRole('${uid}', this.value)" style="padding:4px; border:1px solid var(--border); border-radius:6px;">
+          <select onchange="updateUserRole('${uid}', this.value)" 
+                  style="padding:4px; border:1px solid var(--border); border-radius:6px;">
             <option value="cashier" ${role==="cashier"?"selected":""}>Cashier</option>
             <option value="sales_manager" ${role==="sales_manager"?"selected":""}>Sales Manager</option>
             <option value="inventory_manager" ${role==="inventory_manager"?"selected":""}>Inventory Manager</option>
@@ -3721,6 +3742,7 @@ function deleteUser(uid) {
 
 // Initial load
 loadUsers();
+
 
 
 
