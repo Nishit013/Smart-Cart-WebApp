@@ -1425,7 +1425,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 <div id="purchaseOrderModal" class="modal">
   <div class="modal-content">
     <span class="close-btn">&times;</span>
-    <h3>Purchase Orders</h3>
+    <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+  <h3>Purchase Orders</h3>
+  <button id="exportPOBtn" class="btn-primary">Export CSV</button>
+</div>
+
 
     <!-- Create PO Form -->
     <form id="createPOForm">
@@ -1435,9 +1439,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
       <button type="submit" class="btn-primary">➕ Create PO</button>
     </form>
 
-    <h3>Export Data
-  <button id="exportPOBtn" class="btn-primary" style="float:right; margin-left:10px;">Export CSV</button>
-</h3>
+    
     <!-- PO Table -->
     <div class="scroll-box" style="max-height: 600px; overflow-y:auto; margin-top:10px;">
       <table class="security-table" id="poTable" style="width:100%;">
@@ -1462,10 +1464,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 <div id="stockHistoryModal" class="modal">
   <div class="modal-content">
     <span class="close-btn">&times;</span>
-    <h3>Stock Movement History</h3>
-    <h3>Export Data
-  <button id="exportStockBtn" class="btn-primary" style="float:right; margin-left:10px;">Export CSV</button>
-</h3>
+    <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+  <h3>Stock Movement History</h3>
+  <button id="exportStockBtn" class="btn-primary">Export CSV</button>
+</div>
+
     <div class="scroll-box" style="max-height: 600px; overflow-y:auto;">
       <table class="security-table" id="stockHistoryTable" style="width:100%;">
         <thead>
