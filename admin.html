@@ -1449,6 +1449,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
             <th>Qty</th>
             <th>Status</th>
             <th>Date</th>
+            <th>PDF</th> <!-- New column for PDF -->
             <th>Action</th>
           </tr>
         </thead>
@@ -3053,18 +3054,25 @@ function loadPOs() {
       const productName = products[po.productId]?.name || "Unknown Product";
 
       tbody.innerHTML += `
-        <tr>
-          <td>${child.key}</td>
-          <td>${supplierName}</td>
-          <td>${productName}</td>
-          <td>${po.qty}</td>
-          <td>${po.status}</td>
-          <td>${po.date}</td>
-          <td>${po.status === "Pending" ? 
-            `<button onclick="receivePO('${child.key}','${po.productId}',${po.qty},'${po.supplierId}')">✔ Receive</button>` 
-            : "—"}</td>
-        </tr>
-      `;
+  <tr>
+    <td>${child.key}</td>
+    <td>${supplierName}</td>
+    <td>${productName}</td>
+    <td>${po.qty}</td>
+    <td>${po.status}</td>
+    <td>${po.date}</td>
+    <td>
+      <button onclick="generatePOPdf('${child.key}','${supplierName}','${products[po.productId]?.name}','${po.qty}','${po.status}','${po.date}','${suppliers[po.supplierId]?.address || ''}')">📄 PDF</button>
+    </td>
+    <td>
+      ${po.status === "Pending" ? 
+        `<button onclick="receivePO('${child.key}','${po.productId}',${po.qty},'${po.supplierId}')">✔ Receive</button>` 
+        : "—"
+      }
+    </td>
+  </tr>
+`;
+
     });
   });
 }
@@ -3179,6 +3187,24 @@ document.getElementById("exportPOBtn").addEventListener("click", () => {
 document.getElementById("exportStockBtn").addEventListener("click", () => {
   exportTableToCSV("stockHistoryTable", "StockMovements.csv");
 });
+function generatePOPdf(poId, supplierName, productName, qty, status, date, supplierAddress) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  doc.setFontSize(16);
+  doc.text("Purchase Order Receipt", 105, 20, null, null, "center");
+
+  doc.setFontSize(12);
+  doc.text(`PO ID: ${poId}`, 20, 40);
+  doc.text(`Supplier: ${supplierName}`, 20, 50);
+  doc.text(`Supplier Address: ${supplierAddress}`, 20, 60);
+  doc.text(`Product: ${productName}`, 20, 70);
+  doc.text(`Quantity: ${qty}`, 20, 80);
+  doc.text(`Status: ${status}`, 20, 90);
+  doc.text(`Date: ${date}`, 20, 100);
+
+  doc.save(`PO_${poId}.pdf`);
+}
 
 
 
