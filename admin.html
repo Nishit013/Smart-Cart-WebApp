@@ -1425,11 +1425,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 <div id="purchaseOrderModal" class="modal">
   <div class="modal-content">
     <span class="close-btn">&times;</span>
-    <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-  <h3>Purchase Orders</h3>
-  <button id="exportPOBtn" class="btn-primary">Export CSV</button>
-</div>
-
+    <h3>Purchase Orders</h3>
 
     <!-- Create PO Form -->
     <form id="createPOForm">
@@ -1439,7 +1435,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
       <button type="submit" class="btn-primary">➕ Create PO</button>
     </form>
 
-    
+    <div style="display: flex; justify-content: flex-end; margin: 10px 0;">
+  <button id="exportPOBtn" class="btn-primary">Export CSV</button>
+</div>
     <!-- PO Table -->
     <div class="scroll-box" style="max-height: 600px; overflow-y:auto; margin-top:10px;">
       <table class="security-table" id="poTable" style="width:100%;">
