@@ -1970,17 +1970,48 @@ function markAsPaid(cartId) {
     const timestamp = Date.now();
     const paidData = {
       ...cart,
-      phone,           // ✅ Add phone number here
+      phone,           // Store phone number
       paidAt: timestamp
     };
 
+    // Save to paidCarts
     db.ref("paidCarts/" + timestamp + "_" + cartId).set(paidData)
-      .then(() => db.ref("carts/" + cartId + "/paymentStatus").set("Paid"))
-      .then(() => db.ref("carts/" + cartId + "/items").remove())
-      .then(() => db.ref("carts/" + cartId + "/total").set(0))
-      .then(() => db.ref("carts/" + cartId + "/isActive").set(false)) // Mark as inactive
       .then(() => {
-        alert("✅ Cart marked as Paid, cleared, and made inactive!");
+        // Decrease stock for each product in the cart
+        const updates = [];
+        Object.keys(cart.items).forEach(productId => {
+          const qty = cart.items[productId].qty;
+          updates.push(
+            db.ref("products/" + productId).once("value").then(snap => {
+              let stock = snap.val().stock || 0;
+              let newStock = stock - qty;
+              db.ref("products/" + productId + "/stock").set(newStock);
+
+              // Optionally, log stock movement
+              db.ref("stockMovements").push({
+                date: new Date().toLocaleString(),
+                productId,
+                qtyChange: "-" + qty,
+                type: "Sale",
+                currentStock: newStock,
+                note: "Cash Sale"
+              });
+            })
+          );
+        });
+        return Promise.all(updates);
+      })
+      .then(() => {
+        // Clear cart
+        return Promise.all([
+          db.ref("carts/" + cartId + "/items").remove(),
+          db.ref("carts/" + cartId + "/total").set(0),
+          db.ref("carts/" + cartId + "/paymentStatus").set("Paid"),
+          db.ref("carts/" + cartId + "/isActive").set(false)
+        ]);
+      })
+      .then(() => {
+        alert("✅ Cart marked as Paid, stock updated, and cart cleared!");
         return Promise.all([
           db.ref("carts").once("value"),
           db.ref("paidCarts").once("value")
@@ -1995,6 +2026,7 @@ function markAsPaid(cartId) {
       .catch(err => console.error("❌ Error marking as paid:", err));
   }
 }
+
 
 let chartType = "line";
 
