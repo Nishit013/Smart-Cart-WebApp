@@ -3062,7 +3062,10 @@ function loadPOs() {
     <td>${po.status}</td>
     <td>${po.date}</td>
     <td>
-      <button onclick="generatePOPdf('${child.key}','${supplierName}','${products[po.productId]?.name}','${po.qty}','${po.status}','${po.date}','${suppliers[po.supplierId]?.address || ''}')">📄 PDF</button>
+      <button onclick="generateEnhancedPOPdf(
+  'PO123', 'Supplier Name', 'Product Name', 5, 'Pending', '2025-09-10 18:30', 'Supplier Address'
+)">📄 PDF</button>
+
     </td>
     <td>
       ${po.status === "Pending" ? 
