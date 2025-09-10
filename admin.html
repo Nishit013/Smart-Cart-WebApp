@@ -1006,6 +1006,24 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   text-align: left;
 }
 
+
+
+
+/* Sticky table headers inside scroll-box */
+.scroll-box table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--accent); /* Matches your table header color */
+  color: white;              /* Header text color */
+  z-index: 2;                /* Keep headers above rows */
+}
+
+/* Optional: padding for better look */
+.scroll-box th, .scroll-box td {
+  padding: 10px;
+  text-align: left;
+}
+
 </style>
 
 </head>
@@ -1385,7 +1403,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         0
       </span>
     </h3>
-    <div class="scroll-box" style="max-height: 400px; overflow-y:auto;">
+    <div class="scroll-box" style="max-height: 600px; overflow-y:auto;">
       <table class="security-table" id="lowStockTable" style="width:100%;">
         <thead>
           <tr style="background: var(--accent); color: white;">
@@ -1418,7 +1436,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     </form>
 
     <!-- PO Table -->
-    <div class="scroll-box" style="max-height: 400px; overflow-y:auto; margin-top:10px;">
+    <div class="scroll-box" style="max-height: 600px; overflow-y:auto; margin-top:10px;">
       <table class="security-table" id="poTable" style="width:100%;">
         <thead>
           <tr style="background: var(--accent); color: white;">
@@ -1441,8 +1459,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 <div id="stockHistoryModal" class="modal">
   <div class="modal-content">
     <span class="close-btn">&times;</span>
-    <h3>📊 Stock Movement History</h3>
-    <div class="scroll-box" style="max-height: 400px; overflow-y:auto;">
+    <h3>Stock Movement History</h3>
+    <div class="scroll-box" style="max-height: 600px; overflow-y:auto;">
       <table class="security-table" id="stockHistoryTable" style="width:100%;">
         <thead>
           <tr style="background: var(--accent); color: white;">
