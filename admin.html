@@ -3004,16 +3004,28 @@ document.getElementById("createPOForm").addEventListener("submit", e => {
 
 // ✅ Fetch and Render PO Table
 function loadPOs() {
-  db.ref("purchaseOrders").on("value", snapshot => {
+  db.ref("purchaseOrders").on("value", async snapshot => {
     const tbody = document.getElementById("poTable").querySelector("tbody");
     tbody.innerHTML = "";
+
+    // fetch suppliers & products for mapping
+    const suppliersSnap = await db.ref("suppliers").once("value");
+    const productsSnap = await db.ref("products").once("value");
+
+    const suppliers = suppliersSnap.val() || {};
+    const products = productsSnap.val() || {};
+
     snapshot.forEach(child => {
       let po = child.val();
+
+      const supplierName = suppliers[po.supplierId]?.name || "Unknown Supplier";
+      const productName = products[po.productId]?.name || "Unknown Product";
+
       tbody.innerHTML += `
         <tr>
           <td>${child.key}</td>
-          <td>${po.supplierId}</td>
-          <td>${po.productId}</td>
+          <td>${supplierName}</td>
+          <td>${productName}</td>
           <td>${po.qty}</td>
           <td>${po.status}</td>
           <td>${po.date}</td>
@@ -3049,20 +3061,35 @@ function receivePO(poId, productId, qty, supplierId) {
 }
 
 // ✅ Load Stock Movement History
-function loadStockMovements() {
+async function loadStockMovements() {
+  const tbody = document.getElementById("stockHistoryTable").querySelector("tbody");
+  tbody.innerHTML = "";
+
+  // fetch suppliers & products for mapping
+  const suppliersSnap = await db.ref("suppliers").once("value");
+  const productsSnap = await db.ref("products").once("value");
+
+  const suppliers = suppliersSnap.val() || {};
+  const products = productsSnap.val() || {};
+
   db.ref("stockMovements").on("value", snapshot => {
-    const tbody = document.getElementById("stockHistoryTable").querySelector("tbody");
     tbody.innerHTML = "";
     snapshot.forEach(child => {
       let m = child.val();
+
+      const productName = products[m.productId]?.name || "Unknown Product";
+      const supplierNote = m.supplierNote?.replace(/Supplier (.+)/, (match, id) => {
+        return suppliers[id]?.name ? `Supplier: ${suppliers[id].name}` : match;
+      });
+
       tbody.innerHTML += `
         <tr>
           <td>${m.date}</td>
-          <td>${m.productId}</td>
+          <td>${productName}</td>
           <td>${m.qtyChange}</td>
           <td>${m.type}</td>
           <td>${m.currentStock}</td>
-          <td>${m.supplierNote || ""}</td>
+          <td>${supplierNote || ""}</td>
         </tr>
       `;
     });
@@ -3080,6 +3107,14 @@ document.getElementById("stockHistoryBtn").onclick = () => {
   loadStockMovements();
 };
 
+const poModal = document.getElementById("poModal");
+const stockHistoryModal = document.getElementById("stockHistoryModal");
+
+document.getElementById("poBtn").onclick = () => loadPOs();
+document.getElementById("stockHistoryBtn").onclick = () => loadStockHistory();
+
+document.getElementById("closePoModal").onclick = () => poModal.style.display = "none";
+document.getElementById("closeStockHistoryModal").onclick = () => stockHistoryModal.style.display = "none";
 
 function toggleCustomerDetails() {
   document.getElementById("customerDetailsPanel")
