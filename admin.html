@@ -1040,23 +1040,36 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   </div>
 
   <!-- ADMIN PANEL -->
-  <div id="adminPanel" style="display:none;">
-    <div class="sidebar">
-      <h2><span>Admin</span></h2>
-      <a href="#analytics"><span>Analytics</span></a>
-      <a href="#charts"><span>Graphs</span></a>
-      <a href="#carts"><span>Cart Details</span></a>
-      <a href="#security"><span>Security</span></a>
-      <a href="#productSales"><span>Product Sales</span></a>
-      <a href="#customerOffers"><span>Customer Offers</span></a>
-      <a href="#products"><span>Product Management</span></a>
-      <a href="#inventory"><span>Inventory</span></a>
-      <a href="javascript:void(0)" onclick="toggleCustomerDetails()"><span>Customer Details</span></a>
-      <a href="javascript:void(0)" onclick="openSupplierModal()"><span>Supplier Management</span></a>
-      <a href="#userManagement"><span>User Management</span></a>
-    </div>
+  <!-- ADMIN PANEL -->
+<div id="adminPanel" style="display:none;">
+  <div class="sidebar">
+    <h2><span>Admin</span></h2>
+    <a href="#analytics"><span>Analytics</span></a>
+    <a href="#charts"><span>Graphs</span></a>
+    <a href="#carts"><span>Cart Details</span></a>
+    <a href="#security"><span>Security</span></a>
+    <a href="#productSales"><span>Product Sales</span></a>
+    <a href="#customerOffers"><span>Customer Offers</span></a>
+    <a href="#products"><span>Product Management</span></a>
+    <a href="#inventory"><span>Inventory</span></a>
+    <a href="javascript:void(0)" onclick="toggleCustomerDetails()"><span>Customer Details</span></a>
+    <a href="javascript:void(0)" onclick="openSupplierModal()"><span>Supplier Management</span></a>
+    
+    <a href="javascript:void(0)" onclick="logout()"><span>Logout</span></a>
   </div>
-</body>
+
+  <!-- Sections -->
+  <div id="analytics" class="section" style="display:none;">Analytics Section</div>
+  <div id="charts" class="section" style="display:none;">Graphs Section</div>
+  <div id="carts" class="section" style="display:none;">Cart Details Section</div>
+  <div id="security" class="section" style="display:none;">Security Section</div>
+  <div id="productSales" class="section" style="display:none;">Product Sales Section</div>
+  <div id="customerOffers" class="section" style="display:none;">Customer Offers Section</div>
+  <div id="products" class="section" style="display:none;">Product Management Section</div>
+  <div id="inventory" class="section" style="display:none;">Inventory Section</div>
+  
+</div>
+
 
 
 
