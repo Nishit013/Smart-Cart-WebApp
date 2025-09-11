@@ -1028,62 +1028,35 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 </head>
 <body>
-  <!-- LOGIN SCREEN -->
-  <div id="loginContainer" class="login-screen">
+<div id="loginContainer" class="login-screen">
   <div class="login-card">
-    <h2 style="margin:0 0 8px;">Smart Cart Pro — Admin Login</h2>
-    <input type="email" id="email" placeholder="Email" />
-    <input type="password" id="password" placeholder="Password" />
-    <div style="display:flex; gap:8px; margin-top:8px;">
-      <button class="btn" onclick="login()">Login</button>
-    </div>
-    <p id="loginError" style="display:none; color:#b00020; margin-top:10px;">❌ Invalid email/password or role not assigned</p>
+    <h2> Admin Login</h2>
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+    <p id="loginError">❌ Invalid email or password</p>
   </div>
 </div>
 
-<!-- ========== ADMIN PANEL ========== -->
-<div id="adminPanel">
+<div id="adminPanel" style="display:none;">
   <div class="sidebar">
-    <h3 style="margin-top:0;">Admin</h3>
+    <h2> <span>Admin</span></h2>
+    <a href="#analytics"> <span>Analytics</span></a>
+    <a href="#charts"> <span>Graphs</span></a>
+    <a href="#carts"> <span>Cart Details</span></a>
+    <a href="#security"> <span>Security</span></a>
+    <a href="#productSales"> <span>Product Sales</span></a> <!-- ✅ New link added -->
+    <a href="#customerOffers"> <span>Customer Offers</span></a> <!-- New link -->
+    <a href="#products"> <span>Product Management</span></a>
+    <a href="#inventory"><span>Inventory</span></a>
+    <a href="javascript:void(0)" onclick="toggleCustomerDetails()">
+      <span>Customer Details</span>
+      <a href="javascript:void(0)" onclick="openSupplierModal()">
+  <span>Supplier Management</span>
+</a>
 
-    <!-- Put a data-target attribute to help show/hide correct links -->
-    <a href="#analytics" data-target="analytics"><span>Analytics</span></a>
-    <a href="#charts" data-target="charts"><span>Graphs</span></a>
-    <a href="#carts" data-target="carts"><span>Cart Details</span></a>
-    <a href="#security" data-target="security"><span>Security</span></a>
-    <a href="#productSales" data-target="productSales"><span>Product Sales</span></a>
-    <a href="#customerOffers" data-target="customerOffers"><span>Customer Offers</span></a>
-    <a href="#products" data-target="products"><span>Product Management</span></a>
-    <a href="#inventory" data-target="inventory"><span>Inventory</span></a>
-
-    <!-- modal triggers: include data-target so role logic can show/hide links -->
-    <a href="javascript:void(0)" data-target="customerDetails" onclick="toggleCustomerDetails()"><span>Customer Details</span></a>
-    <a href="javascript:void(0)" data-target="supplierManagement" onclick="openSupplierModal()"><span>Supplier Management</span></a>
-
-    <!-- always present but hidden until login -->
-    <a href="javascript:void(0)" onclick="logout()" id="logoutLink"><span>Logout</span></a>
+    </a>
   </div>
-
-  <div class="content">
-    <!-- All sections start hidden (role code will show them) -->
-    <div id="analytics" class="section">Analytics Section</div>
-    <div id="charts" class="section">Graphs Section</div>
-    <div id="carts" class="section">Cart Details Section</div>
-    <div id="security" class="section">Security Section</div>
-    <div id="productSales" class="section">Product Sales Section</div>
-    <div id="customerOffers" class="section">Customer Offers Section</div>
-    <div id="products" class="section">Product Management Section</div>
-    <div id="inventory" class="section">Inventory Section</div>
-
-    <!-- optional: modal-managed sections (they may open a centered modal instead) -->
-    <div id="customerDetails" class="section">Customer Details (modal / panel)</div>
-    <div id="supplierManagement" class="section">Supplier Management (modal / panel)</div>
-  </div>
-</div>
-
-
-
-
 
 
 
@@ -2126,156 +2099,36 @@ function getCartStatus(cart) {
 </script>
 <script>
   const auth = firebase.auth();
-  function showLoginScreen(msg) {
-    document.getElementById("loginContainer").style.display = "flex";
-    document.getElementById("adminPanel").style.display = "none";
-    if (msg) {
-      const el = document.getElementById("loginError");
-      el.innerText = msg;
-      el.style.display = "block";
-    } else {
-      document.getElementById("loginError").style.display = "none";
-    }
-  }
 
-  function showAdminPanel() {
-    document.getElementById("loginContainer").style.display = "none";
-    document.getElementById("adminPanel").style.display = "block";
-  }
-
-  // Clear sections & links (hide all)
-  function hideAllSectionsAndLinks() {
-    document.querySelectorAll(".section").forEach(s => s.style.display = "none");
-    document.querySelectorAll(".sidebar a").forEach(a => a.style.display = "none");
-  }
-
-  // showSections: shows sections by id and shows corresponding sidebar link
-  function showSections(sectionIds) {
-    // show the requested sections and their sidebar links
-    sectionIds.forEach(id => {
-      const sec = document.getElementById(id);
-      if (sec) sec.style.display = "block";
-
-      // find sidebar link by href or data-target
-      const link = document.querySelector(`.sidebar a[href="#${id}"], .sidebar a[data-target="${id}"]`);
-      if (link) link.style.display = "block";
-    });
-
-    // always show logout link
-    const logoutLink = document.getElementById("logoutLink");
-    if (logoutLink) logoutLink.style.display = "block";
-  }
-
-  // ====== ROLE PERMISSIONS ======
-  function applyRolePermissions(role) {
-    hideAllSectionsAndLinks();
-
-    if (role === "cashier") {
-      showSections(["carts", "analytics"]);
-    } else if (role === "sales_manager") {
-      showSections(["analytics", "charts", "productSales", "customerOffers"]);
-    } else if (role === "inventory_manager") {
-      showSections(["products", "inventory", "supplierManagement"]);
-    } else if (role === "admin") {
-      // admin sees everything: show sections and links
-      document.querySelectorAll(".section").forEach(s => s.style.display = "block");
-      document.querySelectorAll(".sidebar a").forEach(a => a.style.display = "block");
-    } else {
-      // unknown role -> nothing shown
-      console.warn("Unknown role:", role);
-    }
-  }
-
-  // ====== LOGIN ======
   function login() {
-    const email = document.getElementById("email").value.trim();
+    const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
 
-    if (!email || !password) {
-      showLoginScreen("❌ Enter email and password");
-      return;
-    }
-
     auth.signInWithEmailAndPassword(email, password)
-      .then(userCredential => {
-        const user = userCredential.user;
-        // fetch role from DB
-        return db.ref("users/" + user.uid).once("value").then(snap => ({ uid: user.uid, db: snap.val() }));
+      .then((userCredential) => {
+        document.getElementById("loginContainer").style.display = "none";
+        document.getElementById("adminPanel").style.display = "block";
       })
-      .then(({ uid, db: userData }) => {
-        if (!userData || !userData.role) {
-          // role not set -> forcibly sign out and show message
-          auth.signOut().then(() => {
-            showLoginScreen("❌ Your account has no role assigned. Contact admin.");
-          });
-          return;
-        }
-
-        // success: show panel and apply role
-        sessionStorage.setItem("userRole", userData.role);
-        showAdminPanel();
-        applyRolePermissions(userData.role);
-      })
-      .catch(err => {
-        console.error("Login failed:", err);
-        showLoginScreen("❌ Invalid email/password or network error");
+      .catch((error) => {
+        console.error(error);
+        document.getElementById("loginError").style.display = "block";
       });
   }
 
-  // ====== AUTO LOGIN (on refresh) ======
-  auth.onAuthStateChanged(user => {
-    if (!user) {
-      // no user signed in
-      showLoginScreen();
-      return;
+  // 🔁 Auto-login on page reload
+  auth.onAuthStateChanged((user) => {
+    if (user) {
+      document.getElementById("loginContainer").style.display = "none";
+      document.getElementById("adminPanel").style.display = "block";
     }
-
-    // user is signed in — verify role exists
-    db.ref("users/" + user.uid).once("value")
-      .then(snap => {
-        const userData = snap.val();
-        if (!userData || !userData.role) {
-          // missing role → force sign out and show message
-          console.warn("Auth user has no role entry in DB, signing out:", user.uid);
-          auth.signOut().then(() => {
-            showLoginScreen("❌ Your account has no role assigned. Contact admin.");
-          });
-          return;
-        }
-        // ok — show panel
-        sessionStorage.setItem("userRole", userData.role);
-        showAdminPanel();
-        applyRolePermissions(userData.role);
-      })
-      .catch(err => {
-        console.error("Error reading user role:", err);
-        showLoginScreen("❌ Error verifying user role");
-      });
   });
-
-  // ====== LOGOUT ======
-  function logout() {
-    auth.signOut().then(() => {
-      sessionStorage.removeItem("userRole");
-      showLoginScreen();
-      // hide everything for safety
-      hideAllSectionsAndLinks();
-    });
-  }
-
-  // Expose functions globally for inline onclick's in markup
-  window.login = login;
-  window.logout = logout;
-  window.applyRolePermissions = applyRolePermissions;
-  window.toggleCustomerDetails = function() {
-    // example: open centered modal or toggle panel
-    const sec = document.getElementById("customerDetails");
-    if (sec) sec.style.display = sec.style.display === "block" ? "none" : "block";
-  };
-  window.openSupplierModal = function() {
-    const sec = document.getElementById("supplierManagement");
-    if (sec) sec.style.display = sec.style.display === "block" ? "none" : "block";
-  };
+  // 🔓 Logout function
+function logout() {
+  firebase.auth().signOut().then(() => {
+    document.getElementById("adminPanel").style.display = "none";
+    document.getElementById("loginContainer").style.display = "flex";
+  });
+}
 
 // ⏱️ Auto logout after 10 mins of inactivity
 let inactivityTimer;
