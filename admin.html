@@ -2121,40 +2121,30 @@ function getCartStatus(cart) {
   auth.signInWithEmailAndPassword(email, password)
     .then((userCredential) => {
       const user = userCredential.user;
-
-      // Fetch role from Realtime Database
       return db.ref("users/" + user.uid).once("value");
     })
     .then(snapshot => {
       const userData = snapshot.val();
       if (!userData) {
-        document.getElementById("loginError").innerText = "❌ No user role found";
+        document.getElementById("loginError").innerText = "❌ No user role found in database!";
         document.getElementById("loginError").style.display = "block";
         return;
       }
 
       const role = userData.role;
+      sessionStorage.setItem("userRole", role);
 
-      // Show panel only if user exists
       document.getElementById("loginContainer").style.display = "none";
       document.getElementById("adminPanel").style.display = "block";
 
-      console.log("Logged in as role:", role);
-
-      // Example: role-based access
-      if (role === "cashier") {
-        hideSectionsExcept(["#carts"]);
-      } else if (role === "sales_manager") {
-        hideSectionsExcept(["#productSales", "#inventory"]);
-      } else if (role === "admin") {
-        // Admin sees everything
-      }
+      applyRolePermissions(role);
     })
     .catch((error) => {
       console.error(error);
       document.getElementById("loginError").style.display = "block";
     });
 }
+
 
 // Utility: Hide all except allowed sections
 function hideSectionsExcept(allowedIds) {
@@ -2170,66 +2160,66 @@ function hideSectionsExcept(allowedIds) {
 
   // 🔁 Auto-login on refresh
   auth.onAuthStateChanged(user => {
-    if (user) {
-      db.ref("users/" + user.uid).once("value").then(snapshot => {
-        const userData = snapshot.val();
-        if (userData) {
-          const role = userData.role;
-          sessionStorage.setItem("userRole", role);
+  if (user) {
+    db.ref("users/" + user.uid).once("value").then(snapshot => {
+      const userData = snapshot.val();
+      if (userData) {
+        const role = userData.role;
+        sessionStorage.setItem("userRole", role);
 
-          document.getElementById("loginContainer").style.display = "none";
-          document.getElementById("adminPanel").style.display = "block";
+        document.getElementById("loginContainer").style.display = "none";
+        document.getElementById("adminPanel").style.display = "block";
 
-          applyRolePermissions(role);
-        }
-      });
-    } else {
-      document.getElementById("loginContainer").style.display = "flex";
-      document.getElementById("adminPanel").style.display = "none";
-    }
-  });
+        applyRolePermissions(role);
+      }
+    });
+  } else {
+    document.getElementById("loginContainer").style.display = "flex";
+    document.getElementById("adminPanel").style.display = "none";
+  }
+});
 
   // 🚪 Logout
   function logout() {
-    auth.signOut().then(() => {
-      sessionStorage.removeItem("userRole");
-      document.getElementById("adminPanel").style.display = "none";
-      document.getElementById("loginContainer").style.display = "flex";
-    });
-  }
+  auth.signOut().then(() => {
+    sessionStorage.removeItem("userRole");
+    document.getElementById("adminPanel").style.display = "none";
+    document.getElementById("loginContainer").style.display = "flex";
+  });
+}
 
   // 🎭 Role Permissions
   function applyRolePermissions(role) {
-    // hide all sections and links
-    document.querySelectorAll(".section").forEach(sec => sec.style.display = "none");
-    document.querySelectorAll(".sidebar a").forEach(link => link.style.display = "none");
+  // Hide all sections + links first
+  document.querySelectorAll(".section").forEach(sec => sec.style.display = "none");
+  document.querySelectorAll(".sidebar a").forEach(link => link.style.display = "none");
 
-    if (role === "cashier") {
-      showSections(["carts", "analytics"]);
-    } else if (role === "sales_manager") {
-      showSections(["analytics", "charts", "productSales", "customerOffers"]);
-    } else if (role === "inventory_manager") {
-      showSections(["products", "inventory", "supplierManagement"]);
-    } else if (role === "admin") {
-      // admin sees everything
-      document.querySelectorAll(".section").forEach(sec => sec.style.display = "block");
-      document.querySelectorAll(".sidebar a").forEach(link => link.style.display = "block");
-    }
-
-    // always show logout button
-    const logoutLink = document.querySelector(".sidebar a[onclick='logout()']");
-    if (logoutLink) logoutLink.style.display = "block";
+  if (role === "cashier") {
+    showSections(["carts", "analytics"]);
+  } else if (role === "sales_manager") {
+    showSections(["analytics", "charts", "productSales", "customerOffers"]);
+  } else if (role === "inventory_manager") {
+    showSections(["products", "inventory"]);
+  } else if (role === "admin") {
+    // Admin sees everything
+    document.querySelectorAll(".section").forEach(sec => sec.style.display = "block");
+    document.querySelectorAll(".sidebar a").forEach(link => link.style.display = "block");
   }
+
+  // Always show logout
+  const logoutLink = document.querySelector(".sidebar a[onclick='logout()']");
+  if (logoutLink) logoutLink.style.display = "block";
+}
 
   // helper
   function showSections(sectionIds) {
-    sectionIds.forEach(id => {
-      const sec = document.getElementById(id);
-      const link = document.querySelector(`.sidebar a[href="#${id}"]`);
-      if (sec) sec.style.display = "block";
-      if (link) link.style.display = "block";
-    });
-  }
+  sectionIds.forEach(id => {
+    const sec = document.getElementById(id);
+    const link = document.querySelector(`.sidebar a[href="#${id}"]`);
+    if (sec) sec.style.display = "block";
+    if (link) link.style.display = "block";
+  });
+}
 
 // ⏱️ Auto logout after 10 mins of inactivity
 let inactivityTimer;
