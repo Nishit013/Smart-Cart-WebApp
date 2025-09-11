@@ -1028,45 +1028,36 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 </head>
 <body>
-<div id="loginContainer" class="login-screen">
-  <div class="login-card">
-    <h2> Admin Login</h2>
-    <input type="email" id="email" placeholder="Email">
-    <input type="password" id="password" placeholder="Password">
-    <button onclick="login()">Login</button>
-    <p id="loginError">❌ Invalid email or password</p>
+  <!-- LOGIN SCREEN -->
+  <div id="loginContainer" class="login-screen">
+    <div class="login-card">
+      <h2>Login</h2>
+      <input type="email" id="email" placeholder="Email">
+      <input type="password" id="password" placeholder="Password">
+      <button onclick="login()">Login</button>
+      <p id="loginError" style="display:none;">❌ Invalid email or password</p>
+    </div>
   </div>
-</div>
 
-<div id="adminPanel" style="display:none;">
-  <div class="sidebar">
-    <h2><span>Admin</span></h2>
-
-    <!-- Regular sections -->
-    <a href="#analytics"><span>Analytics</span></a>
-    <a href="#charts"><span>Graphs</span></a>
-    <a href="#carts"><span>Cart Details</span></a>
-    <a href="#security"><span>Security</span></a>
-    <a href="#productSales"><span>Product Sales</span></a>
-    <a href="#customerOffers"><span>Customer Offers</span></a>
-    <a href="#products"><span>Product Management</span></a>
-    <a href="#inventory"><span>Inventory</span></a>
-
-    <!-- Modal triggers -->
-    <a href="javascript:void(0)" onclick="toggleCustomerDetails()">
-      <span>Customer Details</span>
-    </a>
-    <a href="javascript:void(0)" onclick="openSupplierModal()">
-      <span>Supplier Management</span>
-    </a>
-
-    <!-- Admin-only -->
-    <a href="#userManagement"><span>User Management</span></a>
-
-    <!-- Logout -->
-    <a href="javascript:void(0)" onclick="logout()"><span>Logout</span></a>
+  <!-- ADMIN PANEL -->
+  <div id="adminPanel" style="display:none;">
+    <div class="sidebar">
+      <h2><span>Admin</span></h2>
+      <a href="#analytics"><span>Analytics</span></a>
+      <a href="#charts"><span>Graphs</span></a>
+      <a href="#carts"><span>Cart Details</span></a>
+      <a href="#security"><span>Security</span></a>
+      <a href="#productSales"><span>Product Sales</span></a>
+      <a href="#customerOffers"><span>Customer Offers</span></a>
+      <a href="#products"><span>Product Management</span></a>
+      <a href="#inventory"><span>Inventory</span></a>
+      <a href="javascript:void(0)" onclick="toggleCustomerDetails()"><span>Customer Details</span></a>
+      <a href="javascript:void(0)" onclick="openSupplierModal()"><span>Supplier Management</span></a>
+      <a href="#userManagement"><span>User Management</span></a>
+    </div>
   </div>
-</div>
+</body>
+
 
 
 
@@ -2111,36 +2102,58 @@ function getCartStatus(cart) {
 <script>
   const auth = firebase.auth();
   function login() {
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value.trim();
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
 
-    auth.signInWithEmailAndPassword(email, password)
-      .then(userCredential => {
-        const user = userCredential.user;
+  auth.signInWithEmailAndPassword(email, password)
+    .then((userCredential) => {
+      const user = userCredential.user;
 
-        // get role from DB
-        return db.ref("users/" + user.uid).once("value").then(snapshot => {
-          const userData = snapshot.val();
-          if (!userData) {
-            alert("❌ User role not found in database!");
-            auth.signOut();
-            return;
-          }
-
-          const role = userData.role;
-          sessionStorage.setItem("userRole", role);
-
-          document.getElementById("loginContainer").style.display = "none";
-          document.getElementById("adminPanel").style.display = "block";
-
-          applyRolePermissions(role);
-        });
-      })
-      .catch(error => {
-        console.error(error);
+      // Fetch role from Realtime Database
+      return db.ref("users/" + user.uid).once("value");
+    })
+    .then(snapshot => {
+      const userData = snapshot.val();
+      if (!userData) {
+        document.getElementById("loginError").innerText = "❌ No user role found";
         document.getElementById("loginError").style.display = "block";
-      });
-  }
+        return;
+      }
+
+      const role = userData.role;
+
+      // Show panel only if user exists
+      document.getElementById("loginContainer").style.display = "none";
+      document.getElementById("adminPanel").style.display = "block";
+
+      console.log("Logged in as role:", role);
+
+      // Example: role-based access
+      if (role === "cashier") {
+        hideSectionsExcept(["#carts"]);
+      } else if (role === "sales_manager") {
+        hideSectionsExcept(["#productSales", "#inventory"]);
+      } else if (role === "admin") {
+        // Admin sees everything
+      }
+    })
+    .catch((error) => {
+      console.error(error);
+      document.getElementById("loginError").style.display = "block";
+    });
+}
+
+// Utility: Hide all except allowed sections
+function hideSectionsExcept(allowedIds) {
+  const allSections = document.querySelectorAll("#adminPanel .sidebar a");
+  allSections.forEach(link => {
+    const targetId = link.getAttribute("href");
+    if (targetId && !allowedIds.includes(targetId)) {
+      link.style.display = "none"; // hide menu link
+    }
+  });
+}
+
 
   // 🔁 Auto-login on refresh
   auth.onAuthStateChanged(user => {
