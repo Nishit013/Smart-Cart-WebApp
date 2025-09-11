@@ -1040,23 +1040,34 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 <div id="adminPanel" style="display:none;">
   <div class="sidebar">
-    <h2> <span>Admin</span></h2>
-    <a href="#analytics"> <span>Analytics</span></a>
-    <a href="#charts"> <span>Graphs</span></a>
-    <a href="#carts"> <span>Cart Details</span></a>
-    <a href="#security"> <span>Security</span></a>
-    <a href="#productSales"> <span>Product Sales</span></a> <!-- ✅ New link added -->
-    <a href="#customerOffers"> <span>Customer Offers</span></a> <!-- New link -->
-    <a href="#products"> <span>Product Management</span></a>
+    <h2><span>Admin</span></h2>
+
+    <!-- Regular sections -->
+    <a href="#analytics"><span>Analytics</span></a>
+    <a href="#charts"><span>Graphs</span></a>
+    <a href="#carts"><span>Cart Details</span></a>
+    <a href="#security"><span>Security</span></a>
+    <a href="#productSales"><span>Product Sales</span></a>
+    <a href="#customerOffers"><span>Customer Offers</span></a>
+    <a href="#products"><span>Product Management</span></a>
     <a href="#inventory"><span>Inventory</span></a>
+
+    <!-- Modal triggers -->
     <a href="javascript:void(0)" onclick="toggleCustomerDetails()">
       <span>Customer Details</span>
-      <a href="javascript:void(0)" onclick="openSupplierModal()">
-  <span>Supplier Management</span>
-</a>
-
     </a>
+    <a href="javascript:void(0)" onclick="openSupplierModal()">
+      <span>Supplier Management</span>
+    </a>
+
+    <!-- Admin-only -->
+    <a href="#userManagement"><span>User Management</span></a>
+
+    <!-- Logout -->
+    <a href="javascript:void(0)" onclick="logout()"><span>Logout</span></a>
   </div>
+</div>
+
 
 
 
@@ -2099,36 +2110,100 @@ function getCartStatus(cart) {
 </script>
 <script>
   const auth = firebase.auth();
-
   function login() {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value.trim();
 
     auth.signInWithEmailAndPassword(email, password)
-      .then((userCredential) => {
-        document.getElementById("loginContainer").style.display = "none";
-        document.getElementById("adminPanel").style.display = "block";
+      .then(userCredential => {
+        const user = userCredential.user;
+
+        // get role from DB
+        return db.ref("users/" + user.uid).once("value").then(snapshot => {
+          const userData = snapshot.val();
+          if (!userData) {
+            alert("❌ User role not found in database!");
+            auth.signOut();
+            return;
+          }
+
+          const role = userData.role;
+          sessionStorage.setItem("userRole", role);
+
+          document.getElementById("loginContainer").style.display = "none";
+          document.getElementById("adminPanel").style.display = "block";
+
+          applyRolePermissions(role);
+        });
       })
-      .catch((error) => {
+      .catch(error => {
         console.error(error);
         document.getElementById("loginError").style.display = "block";
       });
   }
 
-  // 🔁 Auto-login on page reload
-  auth.onAuthStateChanged((user) => {
+  // 🔁 Auto-login on refresh
+  auth.onAuthStateChanged(user => {
     if (user) {
-      document.getElementById("loginContainer").style.display = "none";
-      document.getElementById("adminPanel").style.display = "block";
+      db.ref("users/" + user.uid).once("value").then(snapshot => {
+        const userData = snapshot.val();
+        if (userData) {
+          const role = userData.role;
+          sessionStorage.setItem("userRole", role);
+
+          document.getElementById("loginContainer").style.display = "none";
+          document.getElementById("adminPanel").style.display = "block";
+
+          applyRolePermissions(role);
+        }
+      });
+    } else {
+      document.getElementById("loginContainer").style.display = "flex";
+      document.getElementById("adminPanel").style.display = "none";
     }
   });
-  // 🔓 Logout function
-function logout() {
-  firebase.auth().signOut().then(() => {
-    document.getElementById("adminPanel").style.display = "none";
-    document.getElementById("loginContainer").style.display = "flex";
-  });
-}
+
+  // 🚪 Logout
+  function logout() {
+    auth.signOut().then(() => {
+      sessionStorage.removeItem("userRole");
+      document.getElementById("adminPanel").style.display = "none";
+      document.getElementById("loginContainer").style.display = "flex";
+    });
+  }
+
+  // 🎭 Role Permissions
+  function applyRolePermissions(role) {
+    // hide all sections and links
+    document.querySelectorAll(".section").forEach(sec => sec.style.display = "none");
+    document.querySelectorAll(".sidebar a").forEach(link => link.style.display = "none");
+
+    if (role === "cashier") {
+      showSections(["carts", "analytics"]);
+    } else if (role === "sales_manager") {
+      showSections(["analytics", "charts", "productSales", "customerOffers"]);
+    } else if (role === "inventory_manager") {
+      showSections(["products", "inventory", "supplierManagement"]);
+    } else if (role === "admin") {
+      // admin sees everything
+      document.querySelectorAll(".section").forEach(sec => sec.style.display = "block");
+      document.querySelectorAll(".sidebar a").forEach(link => link.style.display = "block");
+    }
+
+    // always show logout button
+    const logoutLink = document.querySelector(".sidebar a[onclick='logout()']");
+    if (logoutLink) logoutLink.style.display = "block";
+  }
+
+  // helper
+  function showSections(sectionIds) {
+    sectionIds.forEach(id => {
+      const sec = document.getElementById(id);
+      const link = document.querySelector(`.sidebar a[href="#${id}"]`);
+      if (sec) sec.style.display = "block";
+      if (link) link.style.display = "block";
+    });
+  }
 
 // ⏱️ Auto logout after 10 mins of inactivity
 let inactivityTimer;
