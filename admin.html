@@ -1289,7 +1289,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
       <input type="text" id="brand" placeholder="Brand">
       <input type="text" id="category" placeholder="Category">
       <input type="number" id="price" placeholder="Price">
-      <input type="number" id="gst" placeholder="GST %">
+      <input type="number" id="cgst" placeholder="CGST %">
+<input type="number" id="sgst" placeholder="SGST %">
+
       <input type="number" id="stock" placeholder="Stock Qty">
       <input type="text" id="image" placeholder="Image URL">
       <select id="productSupplier">
@@ -1328,9 +1330,14 @@ input[type="date"]::-webkit-calendar-picker-indicator {
           <input type="number" id="editPrice" placeholder="Enter price">
         </div>
         <div class="form-group">
-          <label for="editGst">GST %</label>
-          <input type="number" id="editGst" placeholder="Enter GST %">
-        </div>
+  <label for="editCgst">CGST %</label>
+  <input type="number" id="editCgst" placeholder="Enter CGST %">
+</div>
+<div class="form-group">
+  <label for="editSgst">SGST %</label>
+  <input type="number" id="editSgst" placeholder="Enter SGST %">
+</div>
+
         <div class="form-group">
           <label for="editStock">Stock Qty</label>
           <input type="number" id="editStock" placeholder="Enter stock quantity">
@@ -2739,15 +2746,17 @@ function saveProduct(row) {
       if (supData) supplierId = Object.keys(supData)[0];
 
       db.ref("products/" + row.barcode).set({
-        name: row.name || "",
-        brand: row.brand || "",
-        category: row.category || "",
-        price: Number(row.price) || 0,
-        gst: Number(row.gst) || 0,
-        stock: Number(row.stock) || 0,
-        image: row.image || "",
-        supplierId: supplierId
-      });
+  name: row.name || "",
+  brand: row.brand || "",
+  category: row.category || "",
+  price: Number(row.price) || 0, // final price (with tax)
+  sgst: Number(row.sgst) || 0,
+  cgst: Number(row.cgst) || 0,
+  stock: Number(row.stock) || 0,
+  image: row.image || "",
+  supplierId: supplierId
+});
+
     });
 }
 
@@ -2761,15 +2770,17 @@ function addProduct() {
   const supplierId = document.getElementById("productSupplier").value; // NEW
 
   db.ref("products/" + barcode).set({
-    name: document.getElementById("name").value,
-    brand: document.getElementById("brand").value,
-    category: document.getElementById("category").value,
-    price: Number(document.getElementById("price").value),
-    gst: Number(document.getElementById("gst").value),
-    stock: Number(document.getElementById("stock").value),
-    image: document.getElementById("image").value,
-    supplierId: supplierId || "" // NEW
-  });
+  name: document.getElementById("name").value,
+  brand: document.getElementById("brand").value,
+  category: document.getElementById("category").value,
+  price: Number(document.getElementById("price").value), // final price (with tax)
+  sgst: Number(document.getElementById("sgst").value),
+  cgst: Number(document.getElementById("cgst").value),
+  stock: Number(document.getElementById("stock").value),
+  image: document.getElementById("image").value,
+  supplierId: supplierId || ""
+});
+
 
   alert("Product added!");
 
@@ -2779,7 +2790,8 @@ function addProduct() {
   document.getElementById("brand").value = "";
   document.getElementById("category").value = "";
   document.getElementById("price").value = "";
-  document.getElementById("gst").value = "";
+  document.getElementById("sgst").value = "";
+  document.getElementById("cgst").value = "";
   document.getElementById("stock").value = "";
   document.getElementById("image").value = "";
   document.getElementById("productSupplier").value = ""; // NEW
@@ -2808,7 +2820,9 @@ function searchProduct() {
         document.getElementById("editBrand").value = p.brand;
         document.getElementById("editCategory").value = p.category;
         document.getElementById("editPrice").value = p.price;
-        document.getElementById("editGst").value = p.gst;
+        document.getElementById("editSgst").value = p.sgst || 0;
+document.getElementById("editCgst").value = p.cgst || 0;
+
         document.getElementById("editStock").value = p.stock;
         document.getElementById("editImage").value = p.image;
 
@@ -2837,7 +2851,9 @@ function updateProduct() {
     brand: document.getElementById("editBrand").value,
     category: document.getElementById("editCategory").value,
     price: Number(document.getElementById("editPrice").value),
-    gst: Number(document.getElementById("editGst").value),
+    sgst: Number(document.getElementById("editSgst").value),
+cgst: Number(document.getElementById("editCgst").value),
+
     stock: Number(document.getElementById("editStock").value),
     image: document.getElementById("editImage").value,
     supplierId: supplierId || "" // NEW
@@ -2849,7 +2865,9 @@ function updateProduct() {
     document.getElementById("editBrand").value = "";
     document.getElementById("editCategory").value = "";
     document.getElementById("editPrice").value = "";
-    document.getElementById("editGst").value = "";
+    document.getElementById("editSgst").value = "";
+document.getElementById("editCgst").value = "";
+
     document.getElementById("editStock").value = "";
     document.getElementById("editImage").value = "";
     document.getElementById("editSupplier").value = "";
