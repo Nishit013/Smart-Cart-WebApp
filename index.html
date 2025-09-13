@@ -511,10 +511,10 @@ function updateStockAfterPayment() {
   db.ref('carts/' + cartId).set(cartData);
 }
  
-    async function generatePDF(cartItems, total, discount, finalAmount) {
+  async function generatePDF(cartItems, total, discount, finalAmount) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
- 
+
   // Header
   doc.setFontSize(14);
   doc.text("Smart Cart Pro", 20, 20);
@@ -522,72 +522,94 @@ function updateStockAfterPayment() {
   doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, 26);
   doc.text("GSTIN: 24XXXXXXX1Z9", 20, 31);
   doc.text("TAX INVOICE", 150, 20);
- 
-  // Date and time
+
   const now = new Date();
   doc.text(`Date: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`, 150, 26);
- 
-  // Line
+
   doc.setLineWidth(0.1);
   doc.line(20, 34, 190, 34);
- 
+
   // Table header
   doc.setFontSize(11);
   let y = 40;
   doc.text("Item", 20, y);
-  doc.text("Price", 90, y);
-  doc.text("Qty", 120, y);
-  doc.text("Amount", 150, y);
+  doc.text("CGST", 80, y);
+  doc.text("SGST", 110, y);
+  doc.text("Final Price", 140, y);
+  doc.text("Qty", 170, y);
+  doc.text("Total", 190, y, { align: "right" });
   y += 6;
- 
-  doc.setLineWidth(0.05);
+
+  let totalCGST = 0, totalSGST = 0;
+
   cartItems.forEach(item => {
-    const subtotal = item.price * item.qty;
+    const price = item.price; // final price incl. GST
+    const sgst = item.sgst || 0;
+    const cgst = item.cgst || 0;
+
+    const basePrice = price / (1 + (sgst + cgst) / 100);
+    const sgstAmt = basePrice * (sgst / 100);
+    const cgstAmt = basePrice * (cgst / 100);
+
+    const subtotal = price * item.qty;
+
     doc.text(item.name, 20, y);
-    doc.text(`₹${item.price.toFixed(2)}`, 90, y);
-    doc.text(`${item.qty}`, 120, y);
-    doc.text(`₹${subtotal.toFixed(2)}`, 150, y);
+    doc.text(`₹${cgstAmt.toFixed(2)}`, 80, y);
+    doc.text(`₹${sgstAmt.toFixed(2)}`, 110, y);
+    doc.text(`₹${price.toFixed(2)}`, 140, y);
+    doc.text(`${item.qty}`, 170, y);
+    doc.text(`₹${subtotal.toFixed(2)}`, 190, y, { align: "right" });
+
+    totalCGST += cgstAmt * item.qty; // ✅ fixed
+    totalSGST += sgstAmt * item.qty; // ✅ fixed
     y += 6;
   });
- 
-  // Line before total
+
+  // Line before totals
   y += 4;
   doc.line(20, y, 190, y);
   y += 6;
- 
+
+  // Tax totals
+  doc.text("Total CGST:", 120, y);
+  doc.text(`₹${totalCGST.toFixed(2)}`, 170, y, { align: "right" });
+  y += 6;
+
+  doc.text("Total SGST:", 120, y);
+  doc.text(`₹${totalSGST.toFixed(2)}`, 170, y, { align: "right" });
+  y += 6;
+
   // Subtotal
-  doc.setFontSize(11);
   doc.text("Subtotal:", 120, y);
   doc.text(`₹${total.toFixed(2)}`, 170, y, { align: "right" });
   y += 6;
 
-  // Discount (only if applied)
+  // Discount
   if (discount > 0) {
-    doc.setTextColor(200, 0, 0); // red for discount
+    doc.setTextColor(200, 0, 0);
     doc.text("Discount:", 120, y);
     doc.text(`-₹${discount.toFixed(2)}`, 170, y, { align: "right" });
     doc.setTextColor(0, 0, 0);
     y += 6;
   }
 
-  // Final total
-  doc.setFontSize(12);
+  // Final amount
   doc.setFont(undefined, "bold");
   doc.text("Final Invoice Amount:", 120, y);
   doc.text(`₹${finalAmount.toFixed(2)}`, 170, y, { align: "right" });
   doc.setFont(undefined, "normal");
   y += 10;
- 
-  // Footer notes
+
+  // Footer
   doc.setFontSize(9);
   doc.text("This is a computer-generated invoice and doesn't require a signature.", 20, y);
   y += 5;
   doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
- 
-  // Save the file
+
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   doc.save(`SmartCart_Receipt_${timestamp}.pdf`);
 }
+
 
  
  
@@ -607,13 +629,27 @@ function updateStockAfterPayment() {
       document.getElementById("loading").style.display = "block";
  
       let summary = '';
-      let total = 0;
-      cartItems.forEach((item, i) => {
-        const subtotal = item.price * item.qty;
-        summary += `${i + 1}. ${item.name} - ₹${item.price} × ${item.qty} = ₹${subtotal}\n`;
-        total += subtotal;
-      });
-      summary += `\nTotal: ₹${total}`;
+let total = 0;
+cartItems.forEach((item, i) => {
+  const subtotal = item.price * item.qty; // includes GST
+  total += subtotal;
+
+  // GST % values
+  const cgst = item.cgst || 0;
+  const sgst = item.sgst || 0;
+  const totalTaxPercent = cgst + sgst;
+
+  // Base price (exclusive of GST)
+  const basePrice = subtotal / (1 + totalTaxPercent / 100);
+
+  // Tax amounts
+  const cgstAmt = basePrice * (cgst / 100);
+  const sgstAmt = basePrice * (sgst / 100);
+
+  summary += `${i + 1}. ${item.name}\n   Price (incl. tax): ₹${item.price}\n   Qty: ${item.qty}\n   Subtotal: ₹${subtotal.toFixed(2)}\n   ➝ CGST (${cgst}%): ₹${cgstAmt.toFixed(2)} | SGST (${sgst}%): ₹${sgstAmt.toFixed(2)}\n\n`;
+});
+summary += `\nTotal: ₹${total.toFixed(2)}`;
+
 
 
       let discount = parseFloat(discountAmountEl.textContent.replace(/[₹,]/g, "")) || 0;
