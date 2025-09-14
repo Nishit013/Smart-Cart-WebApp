@@ -1273,9 +1273,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
   <!-- Bulk Import -->
   <div class="card">
-    <h3> Bulk Import Products (CSV/Excel)</h3>
+    <h3> Bulk Import Products (CSV/Excel/JSON)</h3>
     <div class="input-row">
-      <input type="file" id="fileInput" accept=".csv,.xlsx" />
+      <input type="file" id="fileInput" accept=".csv,.xlsx.json" />
       <button class="btn-primary" onclick="uploadFile()">Upload</button>
     </div>
   </div>
@@ -2730,10 +2730,36 @@ function uploadFile() {
       alert("Excel Imported Successfully!");
     };
     reader.readAsArrayBuffer(file);
+  } else if (fileName.endsWith(".json")) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const jsonData = JSON.parse(e.target.result);
+
+        // Case 1: JSON array of objects
+        if (Array.isArray(jsonData)) {
+          jsonData.forEach(row => saveProduct(row));
+        } 
+        // Case 2: JSON object with barcode keys
+        else {
+          Object.keys(jsonData).forEach(barcode => {
+            const row = { barcode, ...jsonData[barcode] };
+            saveProduct(row);
+          });
+        }
+
+        alert("JSON Imported Successfully!");
+      } catch (err) {
+        alert("Invalid JSON file format!");
+      }
+    };
+    reader.readAsText(file);
   } else {
-    alert("Unsupported file format. Please upload CSV or Excel.");
+    alert("Unsupported file format. Please upload CSV, Excel, or JSON.");
   }
 }
+
+
 
 function saveProduct(row) {
   if (!row.barcode) return;
