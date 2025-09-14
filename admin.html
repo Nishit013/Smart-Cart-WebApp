@@ -3430,22 +3430,23 @@ function fetchCustomerBills() {
 
       let itemHTML = `<div style="padding:12px; background:var(--surface-2,#1e2235); border-radius:8px; font-size:14px; line-height:1.6;">`;
 
-      if (bill.items && bill.items.length > 0) {
-        itemHTML += "<strong style='display:block; margin-bottom:6px;'>Items Purchased:</strong>";
-        itemHTML += `<div style="max-height:calc(5 * 1.8em + 10px); overflow-y:auto; padding-left:10px; margin-bottom:10px;">`;
+      if (bill.items && Object.keys(bill.items).length > 0) {
+  itemHTML += "<strong style='display:block; margin-bottom:6px;'>Items Purchased:</strong>";
+  itemHTML += `<div style="max-height:calc(5 * 1.8em + 10px); overflow-y:auto; padding-left:10px; margin-bottom:10px;">`;
 
-        bill.items.forEach(it => {
-          const name = it.name || "Item";
-          const qty = it.qty || 1;
-          const price = it.price || 0;
-          const totalItem = qty * price;
-          itemHTML += `<div style="margin-bottom:4px;">${name} — Qty: ${qty} × ₹${price} = ₹${totalItem}</div>`;
-        });
+  Object.values(bill.items).forEach(it => {
+    const name = it.name || "Item";
+    const qty = it.qty || 1;
+    const price = it.price || 0;
+    const totalItem = qty * price;
+    itemHTML += `<div style="margin-bottom:4px;">${name} — Qty: ${qty} × ₹${price} = ₹${totalItem}</div>`;
+  });
 
-        itemHTML += "</div>";
-      } else {
-        itemHTML += "<p>No items found</p>";
-      }
+  itemHTML += "</div>";
+} else {
+  itemHTML += "<p>No items found</p>";
+}
+
 
       itemHTML += `<p style="margin:6px 0;"><strong>Total Before Discount:</strong> ₹${total}</p>`;
       if (discount > 0) {
