@@ -1678,12 +1678,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   if (trimmedSearch && !matchesSearch) return;
 
   total++;
-  if (cart.paymentStatus === "Paid") {
+ if (cart.paymentStatus === "Paid" || cart.isActive === false) {
     disactive++;
-  } else {
+} else {
     if (minsOld <= 150) active++;
     else disactive++;
-  }
+}
+
 barLabels.push(cart.cartId);
 barData.push(Number(cart.finalAmount ?? cart.total) || 0);
 
@@ -2118,9 +2119,10 @@ function deleteCart(cartId) {
   }
 }
 function getCartStatus(cart) {
-  if (cart.paymentStatus === "Paid") return "Inactive";
-  return cart.paymentStatus || "Pending";
+    if (cart.paymentStatus === "Paid" || cart.isActive === false) return "Inactive";
+    return cart.paymentStatus || "Pending";
 }
+
 </script>
 
 
