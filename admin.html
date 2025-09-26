@@ -1982,10 +1982,10 @@ function markAsPaid(cartId) {
   let i = 1;
   let totalBeforeDiscount = 0;
 
-  // cart.items may be object keyed by productId — guard for that
   const itemsObj = cart.items || {};
-  Object.keys(itemsObj).forEach(productId => {
-    const item = itemsObj[productId];
+  const itemsArray = Object.values(itemsObj); // Convert to array for easier iteration
+
+  itemsArray.forEach(item => {
     const price = Number(item.price || 0);
     const qty = Number(item.qty || 0);
     const subtotal = price * qty;
@@ -2005,7 +2005,6 @@ function markAsPaid(cartId) {
   summaryText += `Discount: -₹${discount.toFixed(2)}\n`;
   summaryText += `Final Paid: ₹${finalPaid.toFixed(2)}\n`;
 
-  // ---- Prepare paid record to store in paidCarts ----
   const paidData = {
     cartId: cart.cartId || cartId,
     items: cart.items || {},
@@ -2023,83 +2022,66 @@ function markAsPaid(cartId) {
     }
   };
 
-  // Save to paidCarts
+  // Save bill and mark cart as paid
   db.ref("paidCarts/" + timestamp + "_" + cartId).set(paidData)
+    .then(() => db.ref("carts/" + cartId + "/bill").set(paidData.bill))
+    .then(() => db.ref("carts/" + cartId).update({
+      paymentStatus: "Paid",
+      isActive: false
+    }))
+    // ---- Update stock like user panel ----
     .then(() => {
-      // Also write bill into live cart so UI can show it (do NOT set paymentStatus = "Paid" in carts)
-      return db.ref("carts/" + cartId + "/bill").set(paidData.bill);
+      const stockUpdates = itemsArray.map(item => {
+        const barcode = item.barcode;
+        const qty = Number(item.qty || 0);
+        if (!barcode) return Promise.resolve();
+
+        return db.ref("products/" + barcode).once("value").then(snap => {
+          if (!snap.exists()) return;
+
+          const currentStock = snap.val().stock || 0;
+          const newStock = Math.max(0, currentStock - qty);
+
+          return db.ref("products/" + barcode + "/stock").set(newStock)
+            .then(() => db.ref("stockMovements").push({
+              date: new Date().toLocaleString(),
+              barcode,
+              productName: item.name || snap.val().name,
+              qtyChange: "-" + qty,
+              type: "Sale",
+              currentStock: newStock,
+              note: "Cash Sale (markAsPaid)"
+            }));
+        });
+      });
+      return Promise.all(stockUpdates);
     })
-
-    .then(() => {
-  // Set paymentStatus = "Paid" and isActive = false so badge and disactive count work
-  return db.ref("carts/" + cartId).update({
-    paymentStatus: "Paid",
-    isActive: false
-  });
-})
-
-
-    .then(() => {
-  // Decrease stock for each product and log stockMovements
-  const updates = [];
-  Object.keys(itemsObj).forEach(barcode => {
-    const item = itemsObj[barcode];
-    const qty = Number(item.qty || 0);
-
-    updates.push(
-      db.ref("products/" + barcode).once("value").then(snap => {
-        if (!snap.exists()) return;
-        const current = snap.val() || {};
-        const oldStock = Number(current.stock || 0);
-        const newStock = Math.max(0, oldStock - qty);
-
-        return db.ref("products/" + barcode + "/stock").set(newStock)
-          .then(() => db.ref("stockMovements").push({
-            date: new Date().toLocaleString(),
-            barcode,
-            productName: item.name || current.name,
-            qtyChange: "-" + qty,
-            type: "Sale",
-            currentStock: newStock,
-            note: "Cash Sale (markAsPaid)"
-          }));
-      })
-    );
-  });
-
-  return Promise.all(updates);
-})
-
-    .then(() => {
-      // Clear the cart items and totals but keep the bill object in carts (so UI shows it)
-      return Promise.all([
-        db.ref("carts/" + cartId + "/items").remove(),
-        db.ref("carts/" + cartId + "/total").set(0),
-        db.ref("carts/" + cartId + "/discount").set(0),
-        db.ref("carts/" + cartId + "/isActive").set(false)
-      ]);
-    })
-    .then(() => {
-      alert("✅ Cart marked as Paid, bill saved, stock updated and cart cleared.");
-      // Refresh local caches & UI
-      return Promise.all([
-        db.ref("carts").once("value"),
-        db.ref("paidCarts").once("value"),
-        db.ref("products").once("value")
-      ]);
-    })
+    // ---- Clear cart items/totals ----
+    .then(() => Promise.all([
+      db.ref("carts/" + cartId + "/items").remove(),
+      db.ref("carts/" + cartId + "/total").set(0),
+      db.ref("carts/" + cartId + "/discount").set(0)
+    ]))
+    // ---- Refresh local cache and UI ----
+    .then(() => Promise.all([
+      db.ref("carts").once("value"),
+      db.ref("paidCarts").once("value"),
+      db.ref("products").once("value")
+    ]))
     .then(([snapCarts, snapPaid, snapProducts]) => {
       allCarts = snapCarts.val() || {};
       paidCarts = snapPaid.val() || {};
-      productsData = snapProducts.val() || {}; // if you keep a local products cache
+      productsData = snapProducts.val() || {};
       renderData();
       renderProductSales();
+      alert("✅ Cart marked as Paid, bill saved, stock updated and cart cleared.");
     })
     .catch(err => {
       console.error("Error in markAsPaid:", err);
       alert("❌ Something went wrong while marking as paid (check console).");
     });
 }
+
 
 
 
