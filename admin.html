@@ -1977,13 +1977,12 @@ function markAsPaid(cartId) {
 
   const timestamp = Date.now();
 
-  // ---- Build bill summary text and totals ----
+  // Build bill summary
   let summaryText = "";
   let i = 1;
   let totalBeforeDiscount = 0;
-
   const itemsObj = cart.items || {};
-  const itemsArray = Object.values(itemsObj); // Convert to array for easier iteration
+  const itemsArray = Object.values(itemsObj);
 
   itemsArray.forEach(item => {
     const price = Number(item.price || 0);
@@ -2027,9 +2026,11 @@ function markAsPaid(cartId) {
     .then(() => db.ref("carts/" + cartId + "/bill").set(paidData.bill))
     .then(() => db.ref("carts/" + cartId).update({
       paymentStatus: "Paid",
-      isActive: false
+      isActive: false,
+      finalAmount: finalPaid,
+      discount: discount
     }))
-    // ---- Update stock like user panel ----
+    // Update stock
     .then(() => {
       const stockUpdates = itemsArray.map(item => {
         const barcode = item.barcode;
@@ -2056,13 +2057,15 @@ function markAsPaid(cartId) {
       });
       return Promise.all(stockUpdates);
     })
-    // ---- Clear cart items/totals ----
-    .then(() => Promise.all([
-      db.ref("carts/" + cartId + "/items").remove(),
-      db.ref("carts/" + cartId + "/total").set(0),
-      db.ref("carts/" + cartId + "/discount").set(0)
-    ]))
-    // ---- Refresh local cache and UI ----
+    .then(() => {
+      // Clear cart items/totals in Firebase
+      return Promise.all([
+        db.ref("carts/" + cartId + "/items").remove(),
+        db.ref("carts/" + cartId + "/total").set(0),
+        db.ref("carts/" + cartId + "/discount").set(0)
+      ]);
+    })
+    // Refresh local cache & UI
     .then(() => Promise.all([
       db.ref("carts").once("value"),
       db.ref("paidCarts").once("value"),
@@ -2081,6 +2084,7 @@ function markAsPaid(cartId) {
       alert("❌ Something went wrong while marking as paid (check console).");
     });
 }
+
 
 
 
