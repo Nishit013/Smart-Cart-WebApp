@@ -332,6 +332,40 @@
 const cartId = urlParams.get("id"); // ✅ Only QR-based cart, no default
 const bleName = cartId ? "ESP32-" + cartId.toUpperCase() : null;
 
+
+
+// ------------------- Listen for admin marking cart as Paid -------------------
+db.ref("carts/" + cartId).on("value", snap => {
+  const cart = snap.val();
+  if (!cart) return;
+
+  // Check if admin marked as Paid and items still exist
+  if (cart.paymentStatus === "Paid" && cart.items && Object.keys(cart.items).length > 0) {
+    const itemsArray = Object.values(cart.items);
+    const total = cart.total || 0;
+    const discount = cart.discount || 0;
+    const finalAmount = cart.finalAmount || total - discount;
+
+    // Temporarily set cartItems for stock update
+    cartItems = itemsArray;
+
+    // 1️⃣ Update stock
+    updateStockAfterPayment();
+
+    // 2️⃣ Generate PDF bill
+    generatePDF(itemsArray, total, discount, finalAmount);
+
+    // 3️⃣ Clear cart UI
+    clearCart(true);
+
+    // 4️⃣ Remove items in Firebase so UI stays synced
+    db.ref("carts/" + cartId + "/items").remove();
+    db.ref("carts/" + cartId + "/total").set(0);
+    db.ref("carts/" + cartId + "/discount").set(0);
+  }
+});
+
+
 function loadCartFromFirebase() {
   if (!cartId) {
     console.warn("No cartId found in URL. No cart data will be loaded.");
