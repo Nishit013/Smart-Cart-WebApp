@@ -1975,37 +1975,16 @@ function markAsPaid(cartId) {
   // Step 2: Confirm payment
   if (confirm("Mark this cart as Paid?")) {
     const timestamp = Date.now();
-
-    // ✅ Generate bill summary
-    let billSummary = "";
-    let totalBeforeDiscount = 0;
-
-    Object.keys(cart.items).forEach(pid => {
-      const item = cart.items[pid];
-      const line = `${item.name} x${item.qty} = ₹${item.qty * item.price}`;
-      billSummary += line + "\n";
-      totalBeforeDiscount += item.qty * item.price;
-    });
-
-    billSummary += `\nTotal Before Discount: ₹${totalBeforeDiscount}`;
-    billSummary += `\nDiscount Applied: ₹0`;
-    billSummary += `\nFinal Paid: ₹${totalBeforeDiscount}`;
-    billSummary += `\nPayment Status: Paid`;
-    billSummary += `\nPayment Mode: Cash`;
-
     const paidData = {
       ...cart,
-      phone,
-      paidAt: timestamp,
-      paymentStatus: "Paid",        // ✅ store here
-      paymentMode: "Cash",
-      bill: { summary: billSummary }
+      phone,           // Store phone number
+      paidAt: timestamp
     };
 
     // Save to paidCarts
     db.ref("paidCarts/" + timestamp + "_" + cartId).set(paidData)
       .then(() => {
-        // Decrease stock for each product
+        // Decrease stock for each product in the cart
         const updates = [];
         Object.keys(cart.items).forEach(productId => {
           const qty = cart.items[productId].qty;
@@ -2015,6 +1994,7 @@ function markAsPaid(cartId) {
               let newStock = stock - qty;
               db.ref("products/" + productId + "/stock").set(newStock);
 
+              // Optionally, log stock movement
               db.ref("stockMovements").push({
                 date: new Date().toLocaleString(),
                 productId,
@@ -2029,16 +2009,16 @@ function markAsPaid(cartId) {
         return Promise.all(updates);
       })
       .then(() => {
-        // Clear cart but DO NOT mark paymentStatus as Paid in carts
+        // Clear cart
         return Promise.all([
           db.ref("carts/" + cartId + "/items").remove(),
           db.ref("carts/" + cartId + "/total").set(0),
-          db.ref("carts/" + cartId + "/isActive").set(false),
-          db.ref("carts/" + cartId + "/bill").set({ summary: paidData.bill.summary }) // just keep bill for UI
+          db.ref("carts/" + cartId + "/paymentStatus").set("Paid"),
+          db.ref("carts/" + cartId + "/isActive").set(false)
         ]);
       })
       .then(() => {
-        alert("✅ Cart marked as Paid (cash), bill generated, stock updated!");
+        alert("✅ Cart marked as Paid, stock updated, and cart cleared!");
         return Promise.all([
           db.ref("carts").once("value"),
           db.ref("paidCarts").once("value")
@@ -2053,7 +2033,6 @@ function markAsPaid(cartId) {
       .catch(err => console.error("❌ Error marking as paid:", err));
   }
 }
-
 
 
 let chartType = "line";
