@@ -348,50 +348,11 @@ function loadCartFromFirebase() {
     console.error("Error loading cart:", err);
   });
 }
-function listenForMarkAsPaid() {
-  if (!cartId) return; // No QR → nothing to listen for
-
-  db.ref("markAsPaidTriggers/" + cartId).on("value", (snapshot) => {
-    if (!snapshot.exists()) return;
-    const trigger = snapshot.val();
-
-    console.log("📢 MarkAsPaid Trigger received:", trigger);
-
-    // 1. Use existing functions
-    updateStockAfterPayment();   // ✅ already in your user panel
-    generateBillPDF(trigger.phone, trigger.paymentType || "Cash"); 
-    clearCart();
-
-    // 2. Save bill in paidCarts
-    const timestamp = Date.now();
-    const paidData = {
-      cartId: cartId,
-      items: cartItems,
-      discount: trigger.discount || 0,
-      finalAmount: calculateCartTotal() - (trigger.discount || 0),
-      phone: trigger.phone,
-      paidAt: timestamp,
-      paymentType: trigger.paymentType || "Cash",
-    };
-
-    db.ref("paidCarts/" + timestamp + "_" + cartId).set(paidData);
-
-    // 3. Remove trigger so it doesn’t fire again
-    db.ref("markAsPaidTriggers/" + cartId).remove();
-
-    alert("✅ Cash payment processed. PDF generated & cart cleared.");
-  });
-}
-
-// ✅ Call this on page load
-listenForMarkAsPaid();
-
 
  
     document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("cartNumber").textContent = "#" + cartId;
   loadCartFromFirebase();
-  listenForPaymentStatus();   // ✅ added here
 });
 
  
