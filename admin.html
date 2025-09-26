@@ -1976,23 +1976,49 @@ function markAsPaid(cartId) {
   if (confirm("Mark this cart as Paid?")) {
     const timestamp = Date.now();
 
-    // Prepare bill summary (similar to online payment flow)
+    // ---- Generate Bill Summary ----
+    let summaryText = "";
+    let i = 1;
+    let total = 0;
+
+    Object.keys(cart.items || {}).forEach(productId => {
+      const item = cart.items[productId];
+      const price = item.price || 0;
+      const qty = item.qty || 1;
+      const subtotal = price * qty;
+      total += subtotal;
+
+      summaryText += `${i}. ${item.name}\n`;
+      summaryText += `   Price: ₹${price}\n`;
+      summaryText += `   Qty: ${qty}\n`;
+      summaryText += `   Subtotal: ₹${subtotal.toFixed(2)}\n\n`;
+      i++;
+    });
+
+    summaryText += `Total Before Discount: ₹${total.toFixed(2)}\n`;
+    summaryText += `Discount: -₹${cart.discount || 0}\n`;
+    summaryText += `Final Paid: ₹${(total - (cart.discount || 0)).toFixed(2)}\n`;
+
+    // ✅ Paid cart data
     const paidData = {
       ...cart,
       phone,
       paidAt: timestamp,
       paymentStatus: "Paid",
-      originalTotal: cart.total || 0,
-      discount: cart.discount || 0,
-      finalPaid: (cart.total || 0) - (cart.discount || 0)
+      bill: {
+        summary: summaryText,
+        originalTotal: total,
+        discount: cart.discount || 0,
+        finalPaid: total - (cart.discount || 0)
+      }
     };
 
     // Save to paidCarts
     db.ref("paidCarts/" + timestamp + "_" + cartId).set(paidData)
       .then(() => {
-        // Decrease stock for each product
+        // Update stock
         const updates = [];
-        Object.keys(cart.items).forEach(productId => {
+        Object.keys(cart.items || {}).forEach(productId => {
           const qty = cart.items[productId].qty;
           updates.push(
             db.ref("products/" + productId).once("value").then(snap => {
@@ -2000,7 +2026,6 @@ function markAsPaid(cartId) {
               let newStock = stock - qty;
               db.ref("products/" + productId + "/stock").set(newStock);
 
-              // Stock movement log
               db.ref("stockMovements").push({
                 date: new Date().toLocaleString(),
                 productId,
@@ -2015,7 +2040,7 @@ function markAsPaid(cartId) {
         return Promise.all(updates);
       })
       .then(() => {
-        // Clear cart but don't set "Paid" in carts node
+        // Clear cart (don’t store Paid in carts node, only clear it)
         return Promise.all([
           db.ref("carts/" + cartId + "/items").remove(),
           db.ref("carts/" + cartId + "/total").set(0),
@@ -2024,7 +2049,7 @@ function markAsPaid(cartId) {
         ]);
       })
       .then(() => {
-        alert("✅ Cart marked as Paid, stock updated, and cart cleared!");
+        alert("✅ Cart marked as Paid, bill generated, stock updated!");
         return Promise.all([
           db.ref("carts").once("value"),
           db.ref("paidCarts").once("value")
@@ -2033,12 +2058,13 @@ function markAsPaid(cartId) {
       .then(([snapCarts, snapPaid]) => {
         allCarts = snapCarts.val() || {};
         paidCarts = snapPaid.val() || {};
-        renderData();       // refresh cart + bill summary UI
-        renderProductSales(); // refresh sales analytics
+        renderData();       // refresh UI
+        renderProductSales();
       })
       .catch(err => console.error("❌ Error marking as paid:", err));
   }
 }
+
 
 
 
