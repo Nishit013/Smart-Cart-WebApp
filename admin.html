@@ -1975,16 +1975,22 @@ function markAsPaid(cartId) {
   // Step 2: Confirm payment
   if (confirm("Mark this cart as Paid?")) {
     const timestamp = Date.now();
+
+    // Prepare bill summary (similar to online payment flow)
     const paidData = {
       ...cart,
-      phone,           // Store phone number
-      paidAt: timestamp
+      phone,
+      paidAt: timestamp,
+      paymentStatus: "Paid",
+      originalTotal: cart.total || 0,
+      discount: cart.discount || 0,
+      finalPaid: (cart.total || 0) - (cart.discount || 0)
     };
 
     // Save to paidCarts
     db.ref("paidCarts/" + timestamp + "_" + cartId).set(paidData)
       .then(() => {
-        // Decrease stock for each product in the cart
+        // Decrease stock for each product
         const updates = [];
         Object.keys(cart.items).forEach(productId => {
           const qty = cart.items[productId].qty;
@@ -1994,7 +2000,7 @@ function markAsPaid(cartId) {
               let newStock = stock - qty;
               db.ref("products/" + productId + "/stock").set(newStock);
 
-              // Optionally, log stock movement
+              // Stock movement log
               db.ref("stockMovements").push({
                 date: new Date().toLocaleString(),
                 productId,
@@ -2009,11 +2015,11 @@ function markAsPaid(cartId) {
         return Promise.all(updates);
       })
       .then(() => {
-        // Clear cart
+        // Clear cart but don't set "Paid" in carts node
         return Promise.all([
           db.ref("carts/" + cartId + "/items").remove(),
           db.ref("carts/" + cartId + "/total").set(0),
-          db.ref("carts/" + cartId + "/paymentStatus").set("Paid"),
+          db.ref("carts/" + cartId + "/discount").set(0),
           db.ref("carts/" + cartId + "/isActive").set(false)
         ]);
       })
@@ -2027,12 +2033,13 @@ function markAsPaid(cartId) {
       .then(([snapCarts, snapPaid]) => {
         allCarts = snapCarts.val() || {};
         paidCarts = snapPaid.val() || {};
-        renderData();
-        renderProductSales();
+        renderData();       // refresh cart + bill summary UI
+        renderProductSales(); // refresh sales analytics
       })
       .catch(err => console.error("❌ Error marking as paid:", err));
   }
 }
+
 
 
 let chartType = "line";
