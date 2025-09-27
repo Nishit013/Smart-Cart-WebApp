@@ -2013,6 +2013,7 @@ function markAsPaid(cartId) {
     finalAmount: finalPaid,
     phone,
     paidAt: timestamp,
+    paymentTime: timestamp,   // ✅ added
     paymentType: "Cash (Marked Paid)",
     bill: {
       summary: summaryText,
@@ -3467,20 +3468,26 @@ function fetchCustomerBills() {
     // Filter by phone
     const bills = Object.values(data).filter(b => b.phone === phone);
 
-    // Sort by latest paymentTime
-    bills.sort((a, b) => new Date(b.paymentTime) - new Date(a.paymentTime));
+    // ✅ Sort by latest payment time (paidAt or paymentTime)
+    bills.sort((a, b) => {
+      const ta = a.paidAt || a.paymentTime || 0;
+      const tb = b.paidAt || b.paymentTime || 0;
+      return tb - ta; // latest first
+    });
 
     if (bills.length === 0) {
       tbody.innerHTML = "<tr><td colspan='4'>No bills found for this number</td></tr>";
       return;
     }
 
-    let currentlyOpenDetail = null; // ✅ Track the currently open detail row
+    let currentlyOpenDetail = null;
 
     bills.forEach(bill => {
+      // ✅ Use paidAt if available, else fallback to paymentTime
       let date = "N/A";
-      if (bill.paymentTime) {
-        date = new Date(bill.paymentTime).toLocaleString("en-IN", {
+      const timestamp = bill.paidAt || bill.paymentTime;
+      if (timestamp) {
+        date = new Date(timestamp).toLocaleString("en-IN", {
           day: "2-digit",
           month: "short",
           year: "numeric",
@@ -3490,20 +3497,22 @@ function fetchCustomerBills() {
         });
       }
 
-      const finalAmount = bill.finalAmount || 0;
+      // ✅ Handle both finalAmount and finalPaid
+      const finalAmount = bill.finalAmount || bill.finalPaid || 0;
       const discount = bill.discount || 0;
       const total = bill.total || 0;
 
-      const itemCount = bill.items ? Object.keys(bill.items).length : 0;
+      // ✅ Items can be object or array
+      const items = Array.isArray(bill.items) ? bill.items : Object.values(bill.items || {});
+      const itemCount = items.length;
 
-const row = document.createElement("tr");
-row.innerHTML = `
-  <td>${date}</td>
-  <td>₹${finalAmount}</td>
-  <td>${itemCount}</td>   <!-- ✅ show number of items -->
-  <td>Paid</td>
-`;
-
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${date}</td>
+        <td>₹${finalAmount}</td>
+        <td>${itemCount}</td>
+        <td>Paid</td>
+      `;
       row.style.cursor = "pointer";
 
       const detailRow = document.createElement("tr");
@@ -3513,11 +3522,11 @@ row.innerHTML = `
 
       let itemHTML = `<div style="padding:12px; background:var(--surface-2,#1e2235); border-radius:8px; font-size:14px; line-height:1.6;">`;
 
-      if (bill.items && bill.items.length > 0) {
+      if (items.length > 0) {
         itemHTML += "<strong style='display:block; margin-bottom:6px;'>Items Purchased:</strong>";
         itemHTML += `<div style="max-height:calc(5 * 1.8em + 10px); overflow-y:auto; padding-left:10px; margin-bottom:10px;">`;
 
-        bill.items.forEach(it => {
+        items.forEach(it => {
           const name = it.name || "Item";
           const qty = it.qty || 1;
           const price = it.price || 0;
@@ -3530,7 +3539,6 @@ row.innerHTML = `
         itemHTML += "<p>No items found</p>";
       }
 
-
       itemHTML += `<p style="margin:6px 0;"><strong>Total Before Discount:</strong> ₹${total}</p>`;
       if (discount > 0) {
         itemHTML += `<p style="margin:6px 0; color:#e63946;"><strong>Discount Applied:</strong> -₹${discount}</p>`;
@@ -3542,15 +3550,10 @@ row.innerHTML = `
       detailRow.appendChild(col);
 
       row.addEventListener("click", () => {
-        // Close previously open detail row if it's not the same one
         if (currentlyOpenDetail && currentlyOpenDetail !== detailRow) {
           currentlyOpenDetail.style.display = "none";
         }
-
-        // Toggle current detail row
         detailRow.style.display = detailRow.style.display === "none" ? "table-row" : "none";
-
-        // Update currently open detail
         currentlyOpenDetail = detailRow.style.display === "none" ? null : detailRow;
       });
 
