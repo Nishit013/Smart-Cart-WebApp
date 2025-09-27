@@ -1578,9 +1578,9 @@ background:#222; color:#fff; padding:20px; border-radius:10px; z-index:1000;">
   <button onclick="closeCouponModal()">Cancel</button>
 </div>
 
-<!-- Overlay behind modal -->
 <div id="overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
 background:rgba(0,0,0,0.5); z-index:999;"></div>
+
 
 
 
@@ -1978,20 +1978,22 @@ function toggleCart(cartId) {
 }
 
 // ✅ Place these two outside of any other function
+// --- Coupon Modal functions ---
 function openCouponModal(cartId) {
   const cart = allCarts[cartId];
   if (!cart) return alert("Cart not found");
 
+  // Fetch active coupons from Firebase
   db.ref("offers").once("value").then(snapshot => {
     const offers = snapshot.val() || {};
     const availableCoupons = Object.values(offers)
       .filter(o => o.status && o.status.toLowerCase() === "active"); // case-insensitive
 
-    // attach to cart
+    // Attach to cart
     cart.discountCoupons = availableCoupons;
 
     const select = document.getElementById('couponSelect');
-    select.innerHTML = `<option value="">No Discount</option>`; // reset
+    select.innerHTML = `<option value="">No Discount</option>`; // reset options
 
     availableCoupons.forEach((c, i) => {
       const opt = document.createElement('option');
@@ -2009,32 +2011,49 @@ function openCouponModal(cartId) {
       if (selectedIndex !== "") selectedCoupon = availableCoupons[selectedIndex];
       closeCouponModal();
 
-      // mark as paid with selected coupon
+      // Mark as paid with the selected coupon
       markAsPaid(cartId, selectedCoupon);
     };
   });
 }
-
-
 
 function closeCouponModal() {
   document.getElementById('couponModal').style.display = 'none';
   document.getElementById('overlay').style.display = 'none';
 }
 
+// --- Merged markAsPaid function ---
 function markAsPaid(cartId, selectedCoupon = null) {
   const cart = allCarts[cartId];
   if (!cart) return alert("Cart not found.");
 
-  // Step 1: Ask for phone
+  // --- Step 1: Ask for phone ---
   let phone = prompt("Enter customer phone number:");
   if (!phone || !/^\d{10}$/.test(phone)) return alert("❌ Please enter a valid 10-digit phone number!");
   if (!confirm("Mark this cart as Paid?")) return;
 
-  // Step 2: Calculate totals
+  const timestamp = Date.now();
   const itemsArray = Object.values(cart.items || {});
-  let totalBeforeDiscount = itemsArray.reduce((sum, item) => sum + (Number(item.price) * Number(item.qty)), 0);
 
+  // --- Step 2: Calculate totals ---
+  let totalBeforeDiscount = 0;
+  let summaryText = "";
+  let i = 1;
+
+  itemsArray.forEach(item => {
+    const price = Number(item.price || 0);
+    const qty = Number(item.qty || 0);
+    const subtotal = price * qty;
+    totalBeforeDiscount += subtotal;
+
+    summaryText += `${i}. ${item.name || "Item"}\n`;
+    summaryText += `   Price: ₹${price.toFixed(2)}\n`;
+    summaryText += `   Qty: ${qty}\n`;
+    summaryText += `   Subtotal: ₹${subtotal.toFixed(2)}\n\n`;
+    i++;
+  });
+
+  // --- Step 3: Apply discount ---
   let discount = 0;
   if (selectedCoupon && totalBeforeDiscount >= selectedCoupon.minAmount) {
     discount = Math.min((totalBeforeDiscount * selectedCoupon.discountPercent) / 100, selectedCoupon.maxDiscount);
@@ -2043,37 +2062,44 @@ function markAsPaid(cartId, selectedCoupon = null) {
   }
 
   const finalPaid = totalBeforeDiscount - discount;
-  const timestamp = Date.now();
+  summaryText += `Total Before Discount: ₹${totalBeforeDiscount.toFixed(2)}\n`;
+  summaryText += `Discount: -₹${discount.toFixed(2)}\n`;
+  summaryText += `Final Paid: ₹${finalPaid.toFixed(2)}\n`;
 
-  // Step 3: Build bill data
+  // --- Step 4: Build paid data ---
   const paidData = {
     cartId: cart.cartId || cartId,
     items: cart.items || {},
     total: totalBeforeDiscount,
-    discount,
+    discount: discount,
     finalAmount: finalPaid,
     phone,
     paidAt: timestamp,
     paymentTime: timestamp,
     paymentType: "Cash (Marked Paid)",
-    discountCoupon: selectedCoupon ? selectedCoupon.code : null,
+    discountCoupon: selectedCoupon ? selectedCoupon.couponCode : null, // save coupon
     bill: {
-      summary: `Total: ₹${totalBeforeDiscount}\nDiscount: -₹${discount}\nFinal Paid: ₹${finalPaid}`,
+      summary: summaryText,
       originalTotal: totalBeforeDiscount,
-      discount,
-      finalPaid,
+      discount: discount,
+      finalPaid: finalPaid,
       phone
     }
   };
 
-  // Step 4: Save to Firebase, update stock, clear cart, refresh
+  // --- Step 5: Save to Firebase, update stock, clear cart ---
   db.ref("paidCarts/" + timestamp + "_" + cartId).set(paidData)
-    .then(() => db.ref("carts/" + cartId).update({ paymentStatus: "Paid", isActive: false, bill: paidData.bill }))
+    .then(() => db.ref("carts/" + cartId).update({
+      paymentStatus: "Paid",
+      isActive: false,
+      bill: paidData.bill
+    }))
     .then(() => {
       const stockUpdates = itemsArray.map(item => {
         const barcode = item.barcode;
-        const qty = Number(item.qty);
+        const qty = Number(item.qty || 0);
         if (!barcode) return Promise.resolve();
+
         return db.ref("products/" + barcode).once("value").then(snap => {
           if (!snap.exists()) return;
           const currentStock = snap.val().stock || 0;
@@ -2107,7 +2133,7 @@ function markAsPaid(cartId, selectedCoupon = null) {
       alert("✅ Cart marked as Paid with discount applied!");
     })
     .catch(err => {
-      console.error(err);
+      console.error("Error in markAsPaid:", err);
       alert("❌ Something went wrong while marking as paid (check console).");
     });
 }
