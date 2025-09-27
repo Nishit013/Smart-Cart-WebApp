@@ -1566,6 +1566,21 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     </div>
   </div>
 </div>
+<!-- Discount Coupon Modal -->
+<div id="couponModal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+background:#222; color:#fff; padding:20px; border-radius:10px; z-index:1000;">
+  <h3>Select Discount Coupon</h3>
+  <select id="couponSelect">
+    <option value="">No Discount</option>
+  </select>
+  <br><br>
+  <button id="applyCouponBtn">Apply Coupon</button>
+  <button onclick="closeCouponModal()">Cancel</button>
+</div>
+
+<!-- Overlay behind modal -->
+<div id="overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+background:rgba(0,0,0,0.5); z-index:999;"></div>
 
 
 
@@ -1714,7 +1729,8 @@ barData.push(Number(cart.finalAmount ?? cart.total) || 0);
             <button onclick="event.stopPropagation(); downloadPDF('${cart.cartId}')" style="padding:5px 10px; margin-top:5px;">📥 Download PDF</button>
           ` : ''}
           <div style="margin-top:10px;">
-            <button onclick="event.stopPropagation(); markAsPaid('${cart.cartId}')" style="margin-right:8px; padding:5px 10px;">✅ Mark as Paid</button>
+            <button onclick="event.stopPropagation(); openCouponModal('${cart.cartId}')" style="margin-right:8px; padding:5px 10px;">✅ Mark as Paid</button>
+
             <button onclick="event.stopPropagation(); deleteCart('${cart.cartId}')" style="padding:5px 10px;">🗑️ Delete</button>
           </div>
         </div>
@@ -1963,61 +1979,52 @@ function toggleCart(cartId) {
 }
 
 // ✅ Place these two outside of any other function
+function openCouponModal(cartId) {
+  const cart = allCarts[cartId];
+  const availableCoupons = cart.discountCoupons || [];
 
-function markAsPaid(cartId) {
+  const select = document.getElementById('couponSelect');
+  select.innerHTML = `<option value="">No Discount</option>`; // reset options
+
+  availableCoupons.forEach((c, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.text = `${c.code} - ${c.discountPercent}% off up to ₹${c.maxDiscount}`;
+    select.appendChild(opt);
+  });
+
+  document.getElementById('couponModal').style.display = 'block';
+  document.getElementById('overlay').style.display = 'block';
+
+  document.getElementById('applyCouponBtn').onclick = function() {
+    const selectedIndex = select.value;
+    let selectedCoupon = null;
+    if (selectedIndex !== "") selectedCoupon = availableCoupons[selectedIndex];
+    closeCouponModal();
+
+    // After selecting coupon, ask for phone and mark as paid
+    markAsPaidWithCoupon(cartId, selectedCoupon);
+  };
+}
+
+function closeCouponModal() {
+  document.getElementById('couponModal').style.display = 'none';
+  document.getElementById('overlay').style.display = 'none';
+}
+
+function markAsPaid(cartId, selectedCoupon = null) {
   const cart = allCarts[cartId];
   if (!cart) return alert("Cart not found.");
 
-  // Step 1️⃣: Get available discount coupons (example: stored in cart.discountCoupons or global)
-  const availableCoupons = cart.discountCoupons || []; // [{ code, minAmount, discountPercent, maxDiscount }]
-
-  // Step 2️⃣: If coupons exist, show selection popup
-  let selectedCoupon = null;
-
-  if (availableCoupons.length > 0) {
-    const couponOptions = availableCoupons.map((c, i) => `${i + 1}. ${c.code} - ${c.discountPercent}% off up to ₹${c.maxDiscount}`).join("\n");
-    const choice = prompt(`Select a discount coupon:\n${couponOptions}\nEnter number or leave blank for no discount:`);
-
-    if (choice) {
-      const index = parseInt(choice) - 1;
-      if (availableCoupons[index]) {
-        selectedCoupon = availableCoupons[index];
-      }
-    }
-  }
-
-  // Step 3️⃣: Ask for phone number
+  // Step 1: Ask for phone
   let phone = prompt("Enter customer phone number:");
-  if (!phone || !/^\d{10}$/.test(phone)) {
-    return alert("❌ Please enter a valid 10-digit phone number!");
-  }
-
+  if (!phone || !/^\d{10}$/.test(phone)) return alert("❌ Please enter a valid 10-digit phone number!");
   if (!confirm("Mark this cart as Paid?")) return;
 
-  const timestamp = Date.now();
+  // Step 2: Calculate totals
+  const itemsArray = Object.values(cart.items || {});
+  let totalBeforeDiscount = itemsArray.reduce((sum, item) => sum + (Number(item.price) * Number(item.qty)), 0);
 
-  // ---- Build bill summary ----
-  let summaryText = "";
-  let i = 1;
-  let totalBeforeDiscount = 0;
-
-  const itemsObj = cart.items || {};
-  const itemsArray = Object.values(itemsObj);
-
-  itemsArray.forEach(item => {
-    const price = Number(item.price || 0);
-    const qty = Number(item.qty || 0);
-    const subtotal = price * qty;
-    totalBeforeDiscount += subtotal;
-
-    summaryText += `${i}. ${item.name || "Item"}\n`;
-    summaryText += `   Price: ₹${price.toFixed(2)}\n`;
-    summaryText += `   Qty: ${qty}\n`;
-    summaryText += `   Subtotal: ₹${subtotal.toFixed(2)}\n\n`;
-    i++;
-  });
-
-  // Step 4️⃣: Calculate discount
   let discount = 0;
   if (selectedCoupon && totalBeforeDiscount >= selectedCoupon.minAmount) {
     discount = Math.min((totalBeforeDiscount * selectedCoupon.discountPercent) / 100, selectedCoupon.maxDiscount);
@@ -2026,50 +2033,41 @@ function markAsPaid(cartId) {
   }
 
   const finalPaid = totalBeforeDiscount - discount;
+  const timestamp = Date.now();
 
-  summaryText += `Total Before Discount: ₹${totalBeforeDiscount.toFixed(2)}\n`;
-  summaryText += `Discount: -₹${discount.toFixed(2)}\n`;
-  summaryText += `Final Paid: ₹${finalPaid.toFixed(2)}\n`;
-
+  // Step 3: Build bill data
   const paidData = {
     cartId: cart.cartId || cartId,
     items: cart.items || {},
     total: totalBeforeDiscount,
-    discount: discount,
+    discount,
     finalAmount: finalPaid,
     phone,
     paidAt: timestamp,
     paymentTime: timestamp,
     paymentType: "Cash (Marked Paid)",
-    discountCoupon: selectedCoupon ? selectedCoupon.code : null, // save applied coupon code
+    discountCoupon: selectedCoupon ? selectedCoupon.code : null,
     bill: {
-      summary: summaryText,
+      summary: `Total: ₹${totalBeforeDiscount}\nDiscount: -₹${discount}\nFinal Paid: ₹${finalPaid}`,
       originalTotal: totalBeforeDiscount,
-      discount: discount,
-      finalPaid: finalPaid,
+      discount,
+      finalPaid,
       phone
     }
   };
 
-  // Save in Firebase and continue with your stock update, cart clearing, and rendering logic
+  // Step 4: Save to Firebase, update stock, clear cart, refresh
   db.ref("paidCarts/" + timestamp + "_" + cartId).set(paidData)
-    .then(() => db.ref("carts/" + cartId).update({
-      paymentStatus: "Paid",
-      isActive: false,
-      bill: paidData.bill
-    }))
+    .then(() => db.ref("carts/" + cartId).update({ paymentStatus: "Paid", isActive: false, bill: paidData.bill }))
     .then(() => {
-      // Update stock logic here
       const stockUpdates = itemsArray.map(item => {
         const barcode = item.barcode;
-        const qty = Number(item.qty || 0);
+        const qty = Number(item.qty);
         if (!barcode) return Promise.resolve();
-
         return db.ref("products/" + barcode).once("value").then(snap => {
           if (!snap.exists()) return;
           const currentStock = snap.val().stock || 0;
           const newStock = Math.max(0, currentStock - qty);
-
           return db.ref("products/" + barcode + "/stock").set(newStock)
             .then(() => db.ref("stockMovements").push({
               date: new Date().toLocaleString(),
@@ -2089,13 +2087,7 @@ function markAsPaid(cartId) {
       db.ref("carts/" + cartId + "/total").set(0),
       db.ref("carts/" + cartId + "/discount").set(0)
     ]))
-    .then(() => {
-      return Promise.all([
-        db.ref("carts").once("value"),
-        db.ref("paidCarts").once("value"),
-        db.ref("products").once("value")
-      ]);
-    })
+    .then(() => Promise.all([db.ref("carts").once("value"), db.ref("paidCarts").once("value"), db.ref("products").once("value")]))
     .then(([snapCarts, snapPaid, snapProducts]) => {
       allCarts = snapCarts.val() || {};
       paidCarts = snapPaid.val() || {};
@@ -2105,7 +2097,7 @@ function markAsPaid(cartId) {
       alert("✅ Cart marked as Paid with discount applied!");
     })
     .catch(err => {
-      console.error("Error in markAsPaid:", err);
+      console.error(err);
       alert("❌ Something went wrong while marking as paid (check console).");
     });
 }
