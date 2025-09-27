@@ -2090,30 +2090,24 @@ function markAsPaid(cartId, selectedCoupon = null) {
       bill: paidData.bill,
       items: null // clear cart items
     }))
-    .then(() => {
-      const stockUpdates = itemsArray.map(item => {
-        const barcode = item.barcode;
-        const qty = Number(item.qty || 0);
-        if (!barcode) return Promise.resolve();
+    // Update stock quantity without creating stock history
+.then(() => {
+  const stockUpdates = itemsArray.map(item => {
+    const barcode = item.barcode;
+    const qty = Number(item.qty || 0);
+    if (!barcode) return Promise.resolve();
 
-        return db.ref("products/" + barcode).once("value").then(snap => {
-          if (!snap.exists()) return;
-          const currentStock = snap.val().stock || 0;
-          const newStock = Math.max(0, currentStock - qty);
-          return db.ref("products/" + barcode + "/stock").set(newStock)
-            .then(() => db.ref("stockMovements").push({
-              date: new Date().toLocaleString(),
-              barcode,
-              productName: item.name || snap.val().name,
-              qtyChange: "-" + qty,
-              type: "Sale",
-              currentStock: newStock,
-              note: "Cash Sale (markAsPaid)"
-            }));
-        });
-      });
-      return Promise.all(stockUpdates);
-    })
+    return db.ref("products/" + barcode).once("value").then(snap => {
+      if (!snap.exists()) return;
+      const currentStock = snap.val().stock || 0;
+      const newStock = Math.max(0, currentStock - qty);
+      return db.ref("products/" + barcode + "/stock").set(newStock);
+      // Do NOT push to stockMovements here
+    });
+  });
+  return Promise.all(stockUpdates);
+})
+
     .then(() => Promise.all([
       db.ref("carts").once("value"),
       db.ref("paidCarts").once("value"),
