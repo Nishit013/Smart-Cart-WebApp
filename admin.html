@@ -3312,27 +3312,31 @@ async function loadStockMovements() {
   const products = productsSnap.val() || {};
 
   db.ref("stockMovements").on("value", snapshot => {
-    tbody.innerHTML = "";
-    snapshot.forEach(child => {
-      let m = child.val();
+  tbody.innerHTML = "";
+  snapshot.forEach(child => {
+    let m = child.val();
 
-      const productName = products[m.productId]?.name || "Unknown Product";
-      const supplierNote = m.supplierNote?.replace(/Supplier (.+)/, (match, id) => {
-        return suppliers[id]?.name ? `Supplier: ${suppliers[id].name}` : match;
-      });
+    // ONLY show PO-related entries
+    if (!m.type || !["Stock-In", "PO Received"].includes(m.type)) return;
 
-      tbody.innerHTML += `
-        <tr>
-          <td>${m.date}</td>
-          <td>${productName}</td>
-          <td>${m.qtyChange}</td>
-          <td>${m.type}</td>
-          <td>${m.currentStock}</td>
-          <td>${supplierNote || ""}</td>
-        </tr>
-      `;
+    const productName = products[m.productId]?.name || "Unknown Product";
+    const supplierNote = m.supplierNote?.replace(/Supplier (.+)/, (match, id) => {
+      return suppliers[id]?.name ? `Supplier: ${suppliers[id].name}` : match;
     });
+
+    tbody.innerHTML += `
+      <tr>
+        <td>${m.date}</td>
+        <td>${productName}</td>
+        <td>${m.qtyChange}</td>
+        <td>${m.type}</td>
+        <td>${m.currentStock}</td>
+        <td>${supplierNote || ""}</td>
+      </tr>
+    `;
   });
+});
+
 }
 
 // ✅ Modal Buttons
