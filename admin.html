@@ -2022,7 +2022,6 @@ function closeCouponModal() {
   document.getElementById('overlay').style.display = 'none';
 }
 
-// --- Merged markAsPaid function ---
 function markAsPaid(cartId, selectedCoupon = null) {
   const cart = allCarts[cartId];
   if (!cart) return alert("Cart not found.");
@@ -2049,14 +2048,6 @@ function markAsPaid(cartId, selectedCoupon = null) {
     discount = Math.min((totalBeforeDiscount * selectedCoupon.discountPercent) / 100, selectedCoupon.maxDiscount);
   }
   const finalPaid = totalBeforeDiscount - discount;
-
-  // Update cart node for live admin/user panels
-  db.ref("carts/" + cartId).update({
-    total: totalBeforeDiscount,
-    finalAmount: finalPaid,
-    discount: discount,
-    discountCoupon: selectedCoupon ? selectedCoupon.couponCode : null
-  });
 
   // --- Step 4: Build bill summary ---
   const summaryText = buildBillSummary(itemsArray, totalBeforeDiscount, discount);
@@ -2085,29 +2076,32 @@ function markAsPaid(cartId, selectedCoupon = null) {
   // --- Step 6: Save to Firebase, update stock, clear cart ---
   db.ref("paidCarts/" + timestamp + "_" + cartId).set(paidData)
     .then(() => db.ref("carts/" + cartId).update({
+      total: totalBeforeDiscount,
+      finalAmount: finalPaid,
+      discount: discount,
+      discountCoupon: selectedCoupon ? selectedCoupon.couponCode : null,
       paymentStatus: "Paid",
       isActive: false,
       bill: paidData.bill,
       items: null // clear cart items
     }))
     // Update stock quantity without creating stock history
-.then(() => {
-  const stockUpdates = itemsArray.map(item => {
-    const barcode = item.barcode;
-    const qty = Number(item.qty || 0);
-    if (!barcode) return Promise.resolve();
+    .then(() => {
+      const stockUpdates = itemsArray.map(item => {
+        const barcode = item.barcode;
+        const qty = Number(item.qty || 0);
+        if (!barcode) return Promise.resolve();
 
-    return db.ref("products/" + barcode).once("value").then(snap => {
-      if (!snap.exists()) return;
-      const currentStock = snap.val().stock || 0;
-      const newStock = Math.max(0, currentStock - qty);
-      return db.ref("products/" + barcode + "/stock").set(newStock);
-      // Do NOT push to stockMovements here
-    });
-  });
-  return Promise.all(stockUpdates);
-})
-
+        return db.ref("products/" + barcode).once("value").then(snap => {
+          if (!snap.exists()) return;
+          const currentStock = snap.val().stock || 0;
+          const newStock = Math.max(0, currentStock - qty);
+          return db.ref("products/" + barcode + "/stock").set(newStock);
+          // Do NOT push to stockMovements here
+        });
+      });
+      return Promise.all(stockUpdates);
+    })
     .then(() => Promise.all([
       db.ref("carts").once("value"),
       db.ref("paidCarts").once("value"),
@@ -2140,6 +2134,7 @@ function buildBillSummary(itemsArray, total, discount) {
   text += `Final Paid: ₹${(total - discount).toFixed(2)}\n`;
   return text;
 }
+
 
 
 
