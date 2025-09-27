@@ -2043,11 +2043,18 @@ function markAsPaid(cartId, selectedCoupon = null) {
   });
 
   // --- Step 3: Apply discount ---
-  let discount = 0;
-  if (selectedCoupon && totalBeforeDiscount >= selectedCoupon.minAmount) {
-    discount = Math.min((totalBeforeDiscount * selectedCoupon.discountPercent) / 100, selectedCoupon.maxDiscount);
-  }
-  const finalPaid = totalBeforeDiscount - discount;
+  // --- Step 3: Apply discount ---
+let discount = 0;
+let appliedCouponCode = null;
+if (selectedCoupon && Number(totalBeforeDiscount) >= Number(selectedCoupon.minAmount)) {
+  discount = Math.min(
+    (Number(totalBeforeDiscount) * Number(selectedCoupon.discountPercent)) / 100,
+    Number(selectedCoupon.maxDiscount)
+  );
+  appliedCouponCode = selectedCoupon.couponCode;
+}
+
+const finalPaid = totalBeforeDiscount - discount;
 
   // --- Step 4: Build bill summary ---
   const summaryText = buildBillSummary(itemsArray, totalBeforeDiscount, discount);
@@ -2063,7 +2070,7 @@ function markAsPaid(cartId, selectedCoupon = null) {
     paidAt: timestamp,
     paymentTime: timestamp,
     paymentType: "Cash (Marked Paid)",
-    discountCoupon: selectedCoupon ? selectedCoupon.couponCode : null,
+    discountCoupon: appliedCouponCode,
     bill: {
       summary: summaryText,
       originalTotal: totalBeforeDiscount,
