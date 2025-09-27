@@ -2042,15 +2042,24 @@ function markAsPaid(cartId, selectedCoupon = null) {
     totalBeforeDiscount += price * qty;
   });
 
-  // --- Step 3: Apply discount ---
-  // --- Step 3: Apply discount ---
+// --- Step 3: Apply discount ---
 let discount = 0;
 let appliedCouponCode = null;
-if (selectedCoupon && Number(totalBeforeDiscount) >= Number(selectedCoupon.minAmount)) {
-  discount = Math.min(
-    (Number(totalBeforeDiscount) * Number(selectedCoupon.discountPercent)) / 100,
-    Number(selectedCoupon.maxDiscount)
-  );
+
+if (selectedCoupon && Number(totalBeforeDiscount) >= Number(selectedCoupon.minPurchase)) {
+  if (selectedCoupon.discountType === "flat") {
+    // Flat discount = fixed value, capped by maxDiscount if provided
+    discount = Math.min(
+      Number(selectedCoupon.discountValue),
+      Number(selectedCoupon.maxDiscount || selectedCoupon.discountValue)
+    );
+  } else if (selectedCoupon.discountType === "percent") {
+    // Percentage discount = % of total, capped by maxDiscount
+    discount = Math.min(
+      (Number(totalBeforeDiscount) * Number(selectedCoupon.discountValue)) / 100,
+      Number(selectedCoupon.maxDiscount || (totalBeforeDiscount * selectedCoupon.discountValue) / 100)
+    );
+  }
   appliedCouponCode = selectedCoupon.couponCode;
 }
 
