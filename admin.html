@@ -1982,14 +1982,16 @@ function openCouponModal(cartId) {
   const cart = allCarts[cartId];
   if (!cart) return alert("Cart not found");
 
-  // Fetch active coupons from Firebase
   db.ref("offers").once("value").then(snapshot => {
     const offers = snapshot.val() || {};
     const availableCoupons = Object.values(offers)
-      .filter(o => o.status === "Active"); // only active coupons
+      .filter(o => o.status && o.status.toLowerCase() === "active"); // case-insensitive
+
+    // attach to cart
+    cart.discountCoupons = availableCoupons;
 
     const select = document.getElementById('couponSelect');
-    select.innerHTML = `<option value="">No Discount</option>`; // reset options
+    select.innerHTML = `<option value="">No Discount</option>`; // reset
 
     availableCoupons.forEach((c, i) => {
       const opt = document.createElement('option');
@@ -2007,11 +2009,12 @@ function openCouponModal(cartId) {
       if (selectedIndex !== "") selectedCoupon = availableCoupons[selectedIndex];
       closeCouponModal();
 
-      // After selecting coupon, ask for phone and mark as paid
+      // mark as paid with selected coupon
       markAsPaid(cartId, selectedCoupon);
     };
   });
 }
+
 
 
 function closeCouponModal() {
