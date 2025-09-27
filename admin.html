@@ -1566,15 +1566,21 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     </div>
   </div>
 </div>
-<div id="overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:black; opacity:0.5; z-index:999;"></div>
-
-<div id="couponModal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:20px; border-radius:8px; box-shadow:0 0 10px rgba(0,0,0,0.3); z-index:1000;">
-  <h3>Select Coupon</h3>
-  <select id="couponSelect" style="width:100%; margin-bottom:10px;">
+<!-- Discount Coupon Modal -->
+<div id="couponModal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+background:#222; color:#fff; padding:20px; border-radius:10px; z-index:1000;">
+  <h3>Select Discount Coupon</h3>
+  <select id="couponSelect">
     <option value="">No Discount</option>
   </select>
+  <br><br>
   <button id="applyCouponBtn">Apply Coupon</button>
+  <button onclick="closeCouponModal()">Cancel</button>
 </div>
+
+<!-- Overlay behind modal -->
+<div id="overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+background:rgba(0,0,0,0.5); z-index:999;"></div>
 
 
 
@@ -1723,9 +1729,7 @@ barData.push(Number(cart.finalAmount ?? cart.total) || 0);
             <button onclick="event.stopPropagation(); downloadPDF('${cart.cartId}')" style="padding:5px 10px; margin-top:5px;">📥 Download PDF</button>
           ` : ''}
           <div style="margin-top:10px;">
-            <<button onclick="event.stopPropagation(); openCouponModal('${cart.cartId}')" style="margin-right:8px; padding:5px 10px;">✅ Mark as Paid</button>
-
-
+           <button onclick="event.stopPropagation(); openCouponModal('${cart.cartId}')" style="margin-right:8px; padding:5px 10px;">✅ Mark as Paid</button>
             <button onclick="event.stopPropagation(); deleteCart('${cart.cartId}')" style="padding:5px 10px;">🗑️ Delete</button>
           </div>
         </div>
