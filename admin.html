@@ -1064,7 +1064,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     <div class="topbar">
   <strong>Smart Cart Pro</strong>
   <div style="position: relative;">
-    <button onclick="document.body.classList.toggle('light-mode')">Toggle Mode</button>
+    <button onclick="toggleTheme()">Toggle Mode</button>
+
 <button onclick="toggleProfileDropdown()">👤</button>
     <div id="profileDropdown" style="display: none; position: absolute; right: 0; top: 35px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; min-width: 180px;">
       <p style="margin: 0 0 10px; font-size: 14px;" id="userEmail">admin@email.com</p>
@@ -2169,6 +2170,34 @@ function toggleItems(id) {
 }
 
 
+function toggleTheme() {
+  document.body.classList.toggle('light-mode');
+  updateChartColors(); // update chart axes and labels for new theme
+}
+
+// Helper function to update chart colors
+function updateChartColors() {
+  const textColor = getComputedStyle(document.body).getPropertyValue('--text');
+
+  if (chart1) {
+    chart1.options.scales.x.ticks.color = textColor;
+    chart1.options.scales.y.ticks.color = textColor;
+    chart1.options.plugins.legend.labels.color = textColor;
+    chart1.update();
+  }
+
+  if (chart2) {
+    chart2.options.scales.x.ticks.color = textColor;
+    chart2.options.scales.y.ticks.color = textColor;
+    chart2.update();
+  }
+
+  if (window.productChart) {
+    window.productChart.options.scales.x.ticks.color = textColor;
+    window.productChart.options.scales.y.ticks.color = textColor;
+    window.productChart.update();
+  }
+}
 
 
 function deleteCart(cartId) {
