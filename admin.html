@@ -1878,10 +1878,11 @@ barData.push(Number(cart.finalAmount ?? cart.total) || 0);
 <p><strong>Final Paid:</strong> ₹${c.finalAmount || c.total}</p>
 
         <p><strong>Phone:</strong> ${c.phone || "N/A"}</p>
-        <button class="toggle-items" onclick="toggleItems('items-${index}')">📦 View Items</button>
-        <div id="items-${index}" class="items-box" style="display:none;">
-          <ul>${itemsHTML}</ul>
-        </div>
+        <button class="toggle-items" onclick="toggleItems('items-${cartId}-${index}')">📦 View Items</button>
+<div id="items-${cartId}-${index}" class="items-box" style="display:none;">
+  <ul>${itemsHTML}</ul>
+</div>
+
       </div>
     `;
   }).join("<hr>");
@@ -2097,8 +2098,10 @@ function toggleChartType(type) {
 }
 function toggleItems(id) {
   const box = document.getElementById(id);
+  if (!box) return;
   box.style.display = box.style.display === "none" ? "block" : "none";
 }
+
 
 
 
