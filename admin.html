@@ -2055,11 +2055,12 @@ function markAsPaid(cartId, selectedCoupon = null) {
 
   // --- Step 3: Apply discount ---
   let discount = 0;
-  if (selectedCoupon && totalBeforeDiscount >= selectedCoupon.minAmount) {
-    discount = Math.min((totalBeforeDiscount * selectedCoupon.discountPercent) / 100, selectedCoupon.maxDiscount);
-  } else if (cart.discount) {
-    discount = Number(cart.discount || 0);
-  }
+if (selectedCoupon && totalBeforeDiscount >= selectedCoupon.minAmount) {
+  discount = Math.min((totalBeforeDiscount * selectedCoupon.discountPercent) / 100, selectedCoupon.maxDiscount);
+}
+
+// Optional: store coupon discount in cart node for admin/user view
+db.ref("carts/" + cartId + "/discount").set(discount);
 
   const finalPaid = totalBeforeDiscount - discount;
   summaryText += `Total Before Discount: ₹${totalBeforeDiscount.toFixed(2)}\n`;
@@ -2067,25 +2068,28 @@ function markAsPaid(cartId, selectedCoupon = null) {
   summaryText += `Final Paid: ₹${finalPaid.toFixed(2)}\n`;
 
   // --- Step 4: Build paid data ---
-  const paidData = {
-    cartId: cart.cartId || cartId,
-    items: cart.items || {},
-    total: totalBeforeDiscount,
+ 
+
+const paidData = {
+  cartId: cart.cartId || cartId,
+  items: cart.items || {},
+  total: totalBeforeDiscount,
+  discount: discount,
+  finalAmount: finalPaid,
+  phone,
+  paidAt: timestamp,
+  paymentTime: timestamp,
+  paymentType: "Cash (Marked Paid)",
+  discountCoupon: selectedCoupon ? selectedCoupon.couponCode : null, // save applied coupon code
+  bill: {
+    summary: buildBillSummary(itemsArray, totalBeforeDiscount, discount),
+    originalTotal: totalBeforeDiscount,
     discount: discount,
-    finalAmount: finalPaid,
-    phone,
-    paidAt: timestamp,
-    paymentTime: timestamp,
-    paymentType: "Cash (Marked Paid)",
-    discountCoupon: selectedCoupon ? selectedCoupon.couponCode : null, // save coupon
-    bill: {
-      summary: summaryText,
-      originalTotal: totalBeforeDiscount,
-      discount: discount,
-      finalPaid: finalPaid,
-      phone
-    }
-  };
+    finalPaid: finalPaid,
+    phone
+  }
+};
+
 
   // --- Step 5: Save to Firebase, update stock, clear cart ---
   db.ref("paidCarts/" + timestamp + "_" + cartId).set(paidData)
@@ -2119,10 +2123,11 @@ function markAsPaid(cartId, selectedCoupon = null) {
       return Promise.all(stockUpdates);
     })
     .then(() => Promise.all([
-      db.ref("carts/" + cartId + "/items").remove(),
-      db.ref("carts/" + cartId + "/total").set(0),
-      db.ref("carts/" + cartId + "/discount").set(0)
-    ]))
+  db.ref("carts/" + cartId + "/items").remove(),
+  db.ref("carts/" + cartId + "/total").set(finalPaid), // save discounted total
+  db.ref("carts/" + cartId + "/discount").set(discount) // save applied discount
+]))
+
     .then(() => Promise.all([db.ref("carts").once("value"), db.ref("paidCarts").once("value"), db.ref("products").once("value")]))
     .then(([snapCarts, snapPaid, snapProducts]) => {
       allCarts = snapCarts.val() || {};
@@ -2139,6 +2144,16 @@ function markAsPaid(cartId, selectedCoupon = null) {
 }
 
 
+function buildBillSummary(itemsArray, total, discount) {
+  let text = "";
+  itemsArray.forEach((item, i) => {
+    text += `${i + 1}. ${item.name}\n   Price: ₹${item.price}\n   Qty: ${item.qty}\n   Subtotal: ₹${item.price * item.qty}\n\n`;
+  });
+  text += `Total Before Discount: ₹${total}\n`;
+  text += `Discount: -₹${discount}\n`;
+  text += `Final Paid: ₹${total - discount}\n`;
+  return text;
+}
 
 
 
