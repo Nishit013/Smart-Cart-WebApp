@@ -3498,9 +3498,11 @@ function fetchCustomerBills() {
       }
 
       // ✅ Handle both finalAmount and finalPaid
-      const finalAmount = bill.finalAmount || bill.finalPaid || 0;
-      const discount = bill.discount || 0;
-      const total = bill.total || 0;
+      // ✅ Handle both finalAmount, finalPaid, and nested bill.finalPaid
+const finalAmount = bill.finalAmount || bill.finalPaid || (bill.bill && bill.bill.finalPaid) || 0;
+const discount = bill.discount || (bill.bill && bill.bill.discount) || 0;
+const total = bill.total || (bill.bill && bill.bill.originalTotal) || 0;
+
 
       // ✅ Items can be object or array
       const items = Array.isArray(bill.items) ? bill.items : Object.values(bill.items || {});
