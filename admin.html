@@ -1635,31 +1635,21 @@ background:rgba(0,0,0,0.5); z-index:999;"></div>
   <h2>GST Collection</h2>
 
   <!-- Filters -->
-<div class="gst-filters" style="margin-bottom: 20px;">
-  <label>Filter: </label>
-  <select id="gstFilter" onchange="updateGSTSection(this.value)">
-    <option value="all">All Time</option>
-    <option value="today">Today</option>
-    <option value="week">This Week</option>
-    <option value="month">This Month</option>
-  </select>
+  <div class="gst-filters" style="margin-bottom: 20px;">
+    <label>Filter: </label>
+    <select id="gstFilter" onchange="updateGSTSection(this.value)">
+      <option value="all">All Time</option>
+      <option value="today">Today</option>
+      <option value="week">This Week</option>
+      <option value="month">This Month</option>
+    </select>
 
-  <label style="margin-left:20px;">Category: </label>
-  <select id="gstCategoryFilter" onchange="updateGSTSection(document.getElementById('gstFilter').value)">
-    <option value="all">All Categories</option>
-    <!-- categories will be dynamically populated -->
-  </select>
-
-  <!-- ✅ Add custom date range filter here -->
-  <label style="margin-left:20px;">Start Date: </label>
-  <input type="date" id="gstStartDate">
-
-  <label style="margin-left:10px;">End Date: </label>
-  <input type="date" id="gstEndDate">
-
-  <button onclick="updateGSTSectionByDate()" style="margin-left:10px;">Apply Date Filter</button>
-</div>
-
+    <label style="margin-left:20px;">Category: </label>
+    <select id="gstCategoryFilter" onchange="updateGSTSection(document.getElementById('gstFilter').value)">
+      <option value="all">All Categories</option>
+      <!-- categories will be dynamically populated -->
+    </select>
+  </div>
 
   <!-- ✅ Export Buttons -->
   <div style="margin-bottom: 20px;">
@@ -4073,13 +4063,6 @@ function exportGSTtoCSV() {
   const selectedCategory = document.getElementById("gstCategoryFilter")?.value || "All Categories";
   const now = new Date().toLocaleString();
 
-  // Read start/end dates from inputs
-  const startDateInput = document.getElementById("gstStartDate")?.value;
-  const endDateInput = document.getElementById("gstEndDate")?.value;
-  const dateInfo = startDateInput && endDateInput
-    ? `Date Range: ${startDateInput} to ${endDateInput}`
-    : "Date Range: All Dates";
-
   const headers = ["Category", "CGST", "SGST", "Total GST"];
   const rows = [];
 
@@ -4102,9 +4085,9 @@ function exportGSTtoCSV() {
     document.getElementById("totalGstValue").textContent.replace("₹", "")
   ]);
 
+  // Include filter info and generation time as first rows
   let csvContent = `GST Collection Report\n`;
   csvContent += `Category Filter: ${selectedCategory}\n`;
-  csvContent += `${dateInfo}\n`;
   csvContent += `Generated on: ${now}\n\n`;
 
   csvContent += headers.join(",") + "\n";
@@ -4121,7 +4104,6 @@ function exportGSTtoCSV() {
 
 
 
-
 async function exportGSTtoPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
@@ -4129,20 +4111,12 @@ async function exportGSTtoPDF() {
   const now = new Date().toLocaleString();
   const selectedCategory = document.getElementById("gstCategoryFilter")?.value || "All Categories";
 
-  // Read start/end dates from inputs
-  const startDateInput = document.getElementById("gstStartDate")?.value;
-  const endDateInput = document.getElementById("gstEndDate")?.value;
-  const dateInfo = startDateInput && endDateInput
-    ? `Date Range: ${startDateInput} to ${endDateInput}`
-    : "Date Range: All Dates";
-
   // Header
   doc.setFontSize(16);
   doc.text("GST Collection Report", 14, 20);
   doc.setFontSize(10);
   doc.text(`Category Filter: ${selectedCategory}`, 14, 28);
-  doc.text(`${dateInfo}`, 14, 36);
-  doc.text(`Generated on: ${now}`, 14, 44);
+  doc.text(`Generated on: ${now}`, 14, 36);
 
   const tableData = [];
   const categories = new Set([
@@ -4172,7 +4146,7 @@ async function exportGSTtoPDF() {
   doc.autoTable({
     head: [["Category", "CGST", "SGST", "Total GST"]],
     body: tableData,
-    startY: 50,
+    startY: 45,
     styles: { halign: "right", fontSize: 10 },
     headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: "center" },
     columnStyles: {
@@ -4186,7 +4160,6 @@ async function exportGSTtoPDF() {
 
   doc.save(`GST_Report_${new Date().getTime()}.pdf`);
 }
-
 
 
 // Initialize GST section on load
