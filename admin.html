@@ -3675,29 +3675,30 @@ function fetchCustomerBills() {
   const tbody = document.getElementById("customerBillList");
   tbody.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
 
-  db.ref("paidCarts").once("value").then(snap => {
+  db.ref("paidCarts").once("value", snap => {
     const data = snap.val() || {};
     tbody.innerHTML = "";
 
     // Filter by phone
     let bills = Object.values(data).filter(b => b.phone === phone);
 
+    // Assign unified timestamp for sorting
+    bills.forEach(bill => {
+      bill.sortTime = Number(bill.paidAt ?? bill.paymentTime ?? Date.now());
+    });
+
+    // Sort by latest paid first
+    bills.sort((a, b) => b.sortTime - a.sortTime);
+
     if (bills.length === 0) {
       tbody.innerHTML = "<tr><td colspan='4'>No bills found for this number</td></tr>";
       return;
     }
 
-    // Sort by latest paid time (most recent first)
-    bills.sort((a, b) => {
-      const ta = Number(a.paidAt || a.paymentTime || 0);
-      const tb = Number(b.paidAt || b.paymentTime || 0);
-      return tb - ta; // latest first
-    });
-
     let currentlyOpenDetail = null;
 
     bills.forEach(bill => {
-      const timestamp = bill.paidAt || bill.paymentTime;
+      const timestamp = bill.paidAt ?? bill.paymentTime;
       const date = timestamp
         ? new Date(timestamp).toLocaleString("en-IN", {
             day: "2-digit",
@@ -3711,7 +3712,12 @@ function fetchCustomerBills() {
 
       const total = Number(bill.total || 0);
       const discount = Number(bill.discount || 0);
-      const finalAmount = Number(bill.finalAmount || bill.bill?.finalPaid || total - discount);
+
+      const finalAmount = Number(
+        bill.finalAmount ??
+        bill.bill?.finalPaid ??
+        total - discount
+      );
 
       const items = Array.isArray(bill.items) ? bill.items : Object.values(bill.items || {});
       const itemCount = items.length;
@@ -3722,7 +3728,7 @@ function fetchCustomerBills() {
         <td>${date}</td>
         <td>₹${finalAmount}</td>
         <td>${itemCount}</td>
-        <td>Paid</td>
+        <td>${bill.paymentType || "Paid"}</td>
       `;
       row.style.cursor = "pointer";
 
@@ -3774,6 +3780,7 @@ function fetchCustomerBills() {
     });
   });
 }
+
 
 
 
