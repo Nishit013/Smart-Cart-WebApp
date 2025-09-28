@@ -4115,12 +4115,18 @@ async function exportGSTtoPDF() {
   ]);
 
   doc.autoTable({
-    head: [["Category", "CGST (₹)", "SGST (₹)", "Total GST (₹)"]],
-    body: tableData,
-    startY: 30,
-    styles: { halign: "right" },
-    headStyles: { fillColor: [50, 50, 50], textColor: 255 },
-  });
+  head: [["Category", "CGST (₹)", "SGST (₹)", "Total GST (₹)"]],
+  body: tableData,
+  startY: 30,
+  styles: { halign: "right", fontSize: 10 }, // smaller font helps
+  headStyles: { fillColor: [50, 50, 50], textColor: 255 },
+  columnStyles: {
+    0: { halign: "left", cellWidth: 50 }, // Category
+    1: { cellWidth: 30 },                  // CGST
+    2: { cellWidth: 30 },                  // SGST
+    3: { cellWidth: 40 }                   // Total GST
+  }
+});
 
   doc.save("GST_Collection.pdf");
 }
