@@ -3675,29 +3675,28 @@ function fetchCustomerBills() {
   const tbody = document.getElementById("customerBillList");
   tbody.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
 
-  db.ref("paidCarts").once("value", snap => {
+  db.ref("paidCarts").once("value").then(snap => {
     const data = snap.val() || {};
     tbody.innerHTML = "";
 
     // Filter by phone
-    const bills = Object.values(data).filter(b => b.phone === phone);
-
-    // Sort by latest payment time
-    bills.sort((a, b) => {
-      const ta = a.paidAt || a.paymentTime || 0;
-      const tb = b.paidAt || b.paymentTime || 0;
-      return tb - ta; // latest first
-    });
+    let bills = Object.values(data).filter(b => b.phone === phone);
 
     if (bills.length === 0) {
       tbody.innerHTML = "<tr><td colspan='4'>No bills found for this number</td></tr>";
       return;
     }
 
+    // Sort by latest paid time (most recent first)
+    bills.sort((a, b) => {
+      const ta = Number(a.paidAt || a.paymentTime || 0);
+      const tb = Number(b.paidAt || b.paymentTime || 0);
+      return tb - ta; // latest first
+    });
+
     let currentlyOpenDetail = null;
 
     bills.forEach(bill => {
-      // Format date
       const timestamp = bill.paidAt || bill.paymentTime;
       const date = timestamp
         ? new Date(timestamp).toLocaleString("en-IN", {
@@ -3710,18 +3709,10 @@ function fetchCustomerBills() {
           })
         : "N/A";
 
-      // Get numeric values safely
       const total = Number(bill.total || 0);
       const discount = Number(bill.discount || 0);
+      const finalAmount = Number(bill.finalAmount || bill.bill?.finalPaid || total - discount);
 
-      // ✅ Correct finalAmount fetching
-      const finalAmount = Number(
-        bill.finalAmount ||
-        bill.bill?.finalPaid ||
-        total - discount
-      );
-
-      // Items
       const items = Array.isArray(bill.items) ? bill.items : Object.values(bill.items || {});
       const itemCount = items.length;
 
@@ -3783,6 +3774,7 @@ function fetchCustomerBills() {
     });
   });
 }
+
 
 
 
