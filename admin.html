@@ -1635,21 +1635,31 @@ background:rgba(0,0,0,0.5); z-index:999;"></div>
   <h2>GST Collection</h2>
 
   <!-- Filters -->
-  <div class="gst-filters" style="margin-bottom: 20px;">
-    <label>Filter: </label>
-    <select id="gstFilter" onchange="updateGSTSection(this.value)">
-      <option value="all">All Time</option>
-      <option value="today">Today</option>
-      <option value="week">This Week</option>
-      <option value="month">This Month</option>
-    </select>
+<div class="gst-filters" style="margin-bottom: 20px;">
+  <label>Filter: </label>
+  <select id="gstFilter" onchange="updateGSTSection(this.value)">
+    <option value="all">All Time</option>
+    <option value="today">Today</option>
+    <option value="week">This Week</option>
+    <option value="month">This Month</option>
+  </select>
 
-    <label style="margin-left:20px;">Category: </label>
-    <select id="gstCategoryFilter" onchange="updateGSTSection(document.getElementById('gstFilter').value)">
-      <option value="all">All Categories</option>
-      <!-- categories will be dynamically populated -->
-    </select>
-  </div>
+  <label style="margin-left:20px;">Category: </label>
+  <select id="gstCategoryFilter" onchange="updateGSTSection(document.getElementById('gstFilter').value)">
+    <option value="all">All Categories</option>
+    <!-- categories will be dynamically populated -->
+  </select>
+
+  <!-- ✅ Add custom date range filter here -->
+  <label style="margin-left:20px;">Start Date: </label>
+  <input type="date" id="gstStartDate">
+
+  <label style="margin-left:10px;">End Date: </label>
+  <input type="date" id="gstEndDate">
+
+  <button onclick="updateGSTSectionByDate()" style="margin-left:10px;">Apply Date Filter</button>
+</div>
+
 
   <!-- ✅ Export Buttons -->
   <div style="margin-bottom: 20px;">
@@ -4059,13 +4069,15 @@ sgstByCategory = {};
     }
   });
 }
-function exportGSTtoCSV(filterInfo = {}) {
+function exportGSTtoCSV() {
   const selectedCategory = document.getElementById("gstCategoryFilter")?.value || "All Categories";
   const now = new Date().toLocaleString();
 
-  // Optional: filterInfo = { filterType: "Today", startDate: "2025-09-28", endDate: "2025-09-28" }
-  const dateInfo = filterInfo.startDate && filterInfo.endDate
-    ? `Date Range: ${filterInfo.startDate} to ${filterInfo.endDate}`
+  // Read start/end dates from inputs
+  const startDateInput = document.getElementById("gstStartDate")?.value;
+  const endDateInput = document.getElementById("gstEndDate")?.value;
+  const dateInfo = startDateInput && endDateInput
+    ? `Date Range: ${startDateInput} to ${endDateInput}`
     : "Date Range: All Dates";
 
   const headers = ["Category", "CGST", "SGST", "Total GST"];
@@ -4110,15 +4122,18 @@ function exportGSTtoCSV(filterInfo = {}) {
 
 
 
-async function exportGSTtoPDF(filterInfo = {}) {
+async function exportGSTtoPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
   const now = new Date().toLocaleString();
   const selectedCategory = document.getElementById("gstCategoryFilter")?.value || "All Categories";
 
-  const dateInfo = filterInfo.startDate && filterInfo.endDate
-    ? `Date Range: ${filterInfo.startDate} to ${filterInfo.endDate}`
+  // Read start/end dates from inputs
+  const startDateInput = document.getElementById("gstStartDate")?.value;
+  const endDateInput = document.getElementById("gstEndDate")?.value;
+  const dateInfo = startDateInput && endDateInput
+    ? `Date Range: ${startDateInput} to ${endDateInput}`
     : "Date Range: All Dates";
 
   // Header
