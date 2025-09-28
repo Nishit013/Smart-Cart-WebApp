@@ -4063,7 +4063,7 @@ function exportGSTtoCSV() {
   const selectedCategory = document.getElementById("gstCategoryFilter")?.value || "All Categories";
   const now = new Date().toLocaleString();
 
-  const headers = ["Category", "CGST (₹)", "SGST (₹)", "Total GST (₹)"];
+  const headers = ["Category", "CGST", "SGST", "Total GST"];
   const rows = [];
 
   const categories = new Set([
@@ -4144,7 +4144,7 @@ async function exportGSTtoPDF() {
   ]);
 
   doc.autoTable({
-    head: [["Category", "CGST (₹)", "SGST (₹)", "Total GST (₹)"]],
+    head: [["Category", "CGST", "SGST", "Total GST"]],
     body: tableData,
     startY: 45,
     styles: { halign: "right", fontSize: 10 },
