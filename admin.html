@@ -4060,6 +4060,9 @@ sgstByCategory = {};
   });
 }
 function exportGSTtoCSV() {
+  const selectedCategory = document.getElementById("gstCategoryFilter")?.value || "All Categories";
+  const now = new Date().toLocaleString();
+
   const headers = ["Category", "CGST (₹)", "SGST (₹)", "Total GST (₹)"];
   const rows = [];
 
@@ -4074,7 +4077,20 @@ function exportGSTtoCSV() {
     rows.push([cat, cgst.toFixed(2), sgst.toFixed(2), (cgst + sgst).toFixed(2)]);
   });
 
-  let csvContent = headers.join(",") + "\n";
+  // Add totals row
+  rows.push([
+    "Total",
+    document.getElementById("cgstValue").textContent.replace("₹", ""),
+    document.getElementById("sgstValue").textContent.replace("₹", ""),
+    document.getElementById("totalGstValue").textContent.replace("₹", "")
+  ]);
+
+  // Include filter info and generation time as first rows
+  let csvContent = `GST Collection Report\n`;
+  csvContent += `Category Filter: ${selectedCategory}\n`;
+  csvContent += `Generated on: ${now}\n\n`;
+
+  csvContent += headers.join(",") + "\n";
   rows.forEach(r => {
     csvContent += r.join(",") + "\n";
   });
@@ -4082,9 +4098,10 @@ function exportGSTtoCSV() {
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = "GST_Collection.csv";
+  link.download = `GST_Collection_${new Date().getTime()}.csv`;
   link.click();
 }
+
 
 
 async function exportGSTtoPDF() {
