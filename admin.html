@@ -3901,6 +3901,16 @@ function deleteSupplier(id){
 
 let cgstChart, sgstChart;
 
+// Helper to generate a consistent color from a string
+function stringToColor(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const h = hash % 360; // hue
+  return `hsl(${h}, 70%, 50%)`;
+}
+
 function updateGSTSection(filter = "all") {
   const now = new Date();
   const filteredCarts = Object.values(paidCarts).filter(cart => {
@@ -3921,10 +3931,9 @@ function updateGSTSection(filter = "all") {
     if (filter === "month") {
       return cartDate.getMonth() === now.getMonth() && cartDate.getFullYear() === now.getFullYear();
     }
-    return true; // all
+    return true;
   });
 
-  // Calculate totals
   let totalCGST = 0, totalSGST = 0;
   const cgstByCategory = {}, sgstByCategory = {};
 
@@ -3950,12 +3959,10 @@ function updateGSTSection(filter = "all") {
     });
   });
 
-  // Update summary boxes
   document.getElementById("cgstValue").textContent = "₹" + totalCGST.toFixed(2);
   document.getElementById("sgstValue").textContent = "₹" + totalSGST.toFixed(2);
   document.getElementById("totalGstValue").textContent = "₹" + (totalCGST + totalSGST).toFixed(2);
 
-  // Render charts
   const cgstCtx = document.getElementById("cgstChart").getContext("2d");
   const sgstCtx = document.getElementById("sgstChart").getContext("2d");
 
@@ -3969,7 +3976,7 @@ function updateGSTSection(filter = "all") {
       datasets: [{
         label: "CGST by Category",
         data: Object.values(cgstByCategory),
-        backgroundColor: Object.keys(cgstByCategory).map(() => `hsl(${Math.random()*360}, 70%, 50%)`)
+        backgroundColor: Object.keys(cgstByCategory).map(cat => stringToColor(cat))
       }]
     }
   });
@@ -3981,11 +3988,12 @@ function updateGSTSection(filter = "all") {
       datasets: [{
         label: "SGST by Category",
         data: Object.values(sgstByCategory),
-        backgroundColor: Object.keys(sgstByCategory).map(() => `hsl(${Math.random()*360}, 70%, 50%)`)
+        backgroundColor: Object.keys(sgstByCategory).map(cat => stringToColor(cat))
       }]
     }
   });
 }
+
 
 // Initialize GST section on load
 updateGSTSection("all");
