@@ -4091,8 +4091,15 @@ async function exportGSTtoPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
+  const now = new Date().toLocaleString();
+  const selectedCategory = document.getElementById("gstCategoryFilter")?.value || "All Categories";
+
+  // Header
   doc.setFontSize(16);
   doc.text("GST Collection Report", 14, 20);
+  doc.setFontSize(10);
+  doc.text(`Category Filter: ${selectedCategory}`, 14, 28);
+  doc.text(`Generated on: ${now}`, 14, 36);
 
   const tableData = [];
   const categories = new Set([
@@ -4103,7 +4110,12 @@ async function exportGSTtoPDF() {
   categories.forEach(cat => {
     const cgst = cgstByCategory[cat] || 0;
     const sgst = sgstByCategory[cat] || 0;
-    tableData.push([cat, cgst.toFixed(2), sgst.toFixed(2), (cgst + sgst).toFixed(2)]);
+    tableData.push([
+      cat,
+      cgst.toFixed(2),
+      sgst.toFixed(2),
+      (cgst + sgst).toFixed(2)
+    ]);
   });
 
   // Add totals at the end
@@ -4115,22 +4127,23 @@ async function exportGSTtoPDF() {
   ]);
 
   doc.autoTable({
-  head: [["Category", "CGST (₹)", "SGST (₹)", "Total GST (₹)"]],
-  body: tableData,
-  startY: 30,
-  styles: { halign: "right", fontSize: 10 },
-  headStyles: { fillColor: [50, 50, 50], textColor: 255 },
-  columnStyles: {
-    0: { halign: "left", cellWidth: 50 },  // Category
-    1: { cellWidth: 30 },                   // CGST
-    2: { cellWidth: 30 },                   // SGST
-    3: { cellWidth: 40 }                    // Total GST
-  },
-});
+    head: [["Category", "CGST (₹)", "SGST (₹)", "Total GST (₹)"]],
+    body: tableData,
+    startY: 45,
+    styles: { halign: "right", fontSize: 10 },
+    headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: "center" },
+    columnStyles: {
+      0: { halign: "left", cellWidth: 60 },
+      1: { cellWidth: 35 },
+      2: { cellWidth: 35 },
+      3: { cellWidth: 40 }
+    },
+    margin: { left: 14, right: 14 }
+  });
 
-
-  doc.save("GST_Collection.pdf");
+  doc.save(`GST_Report_${new Date().getTime()}.pdf`);
 }
+
 
 // Initialize GST section on load
 populateGSTCategories();
