@@ -3933,6 +3933,8 @@ function deleteSupplier(id){
 }
 
 let cgstChart, sgstChart;
+let cgstByCategory = {}, sgstByCategory = {}; // ← make global
+
 
 // Helper to generate a consistent color from a string
 function stringToColor(str) {
@@ -3967,6 +3969,96 @@ function populateGSTCategories() {
 
 
 
+
+
+function updateGSTSection(filter = "all") {
+  const now = new Date();
+  const selectedCategory = document.getElementById("gstCategoryFilter")?.value || "all"; // ← Add this line
+
+  const filteredCarts = Object.values(paidCarts).filter(cart => {
+    const ts = cart.paidAt || cart.paymentTime || Date.now();
+    const cartDate = new Date(ts);
+
+    if (filter === "today") return now.toDateString() === cartDate.toDateString();
+    if (filter === "week") {
+      const dayOfWeek = now.getDay();
+      const monday = new Date(now);
+      monday.setDate(now.getDate() - ((dayOfWeek + 6) % 7));
+      monday.setHours(0, 0, 0, 0);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(23, 59, 59, 999);
+      return cartDate >= monday && cartDate <= sunday;
+    }
+    if (filter === "month") {
+      return cartDate.getMonth() === now.getMonth() && cartDate.getFullYear() === now.getFullYear();
+    }
+    return true;
+  });
+
+  let totalCGST = 0, totalSGST = 0;
+  cgstByCategory = {};
+sgstByCategory = {};
+
+  filteredCarts.forEach(cart => {
+    const items = Object.values(cart.items || {});
+    items.forEach(item => {
+      // ← Add this check here to skip non-selected categories
+      if (selectedCategory !== "all" && item.category !== selectedCategory) return;
+
+      const price = Number(item.price || 0);
+      const qty = Number(item.qty || 0);
+      const cgstRate = Number(item.cgst || 0);
+      const sgstRate = Number(item.sgst || 0);
+      const totalTaxPercent = cgstRate + sgstRate;
+      const basePrice = price / (1 + totalTaxPercent / 100);
+
+      const cgstAmt = basePrice * (cgstRate / 100) * qty;
+      const sgstAmt = basePrice * (sgstRate / 100) * qty;
+
+      totalCGST += cgstAmt;
+      totalSGST += sgstAmt;
+
+      const cat = item.category || "Uncategorized";
+      cgstByCategory[cat] = (cgstByCategory[cat] || 0) + cgstAmt;
+      sgstByCategory[cat] = (sgstByCategory[cat] || 0) + sgstAmt;
+    });
+  });
+
+  document.getElementById("cgstValue").textContent = "₹" + totalCGST.toFixed(2);
+  document.getElementById("sgstValue").textContent = "₹" + totalSGST.toFixed(2);
+  document.getElementById("totalGstValue").textContent = "₹" + (totalCGST + totalSGST).toFixed(2);
+
+  const cgstCtx = document.getElementById("cgstChart").getContext("2d");
+  const sgstCtx = document.getElementById("sgstChart").getContext("2d");
+
+  if (cgstChart) cgstChart.destroy();
+  if (sgstChart) sgstChart.destroy();
+
+  cgstChart = new Chart(cgstCtx, {
+    type: "pie",
+    data: {
+      labels: Object.keys(cgstByCategory),
+      datasets: [{
+        label: "CGST by Category",
+        data: Object.values(cgstByCategory),
+        backgroundColor: Object.keys(cgstByCategory).map(cat => stringToColor(cat))
+      }]
+    }
+  });
+
+  sgstChart = new Chart(sgstCtx, {
+    type: "pie",
+    data: {
+      labels: Object.keys(sgstByCategory),
+      datasets: [{
+        label: "SGST by Category",
+        data: Object.values(sgstByCategory),
+        backgroundColor: Object.keys(sgstByCategory).map(cat => stringToColor(cat))
+      }]
+    }
+  });
+}
 function exportGSTtoCSV() {
   const headers = ["Category", "CGST (₹)", "SGST (₹)", "Total GST (₹)"];
   const rows = [];
@@ -4033,96 +4125,8 @@ async function exportGSTtoPDF() {
   doc.save("GST_Collection.pdf");
 }
 
-function updateGSTSection(filter = "all") {
-  const now = new Date();
-  const selectedCategory = document.getElementById("gstCategoryFilter")?.value || "all"; // ← Add this line
-
-  const filteredCarts = Object.values(paidCarts).filter(cart => {
-    const ts = cart.paidAt || cart.paymentTime || Date.now();
-    const cartDate = new Date(ts);
-
-    if (filter === "today") return now.toDateString() === cartDate.toDateString();
-    if (filter === "week") {
-      const dayOfWeek = now.getDay();
-      const monday = new Date(now);
-      monday.setDate(now.getDate() - ((dayOfWeek + 6) % 7));
-      monday.setHours(0, 0, 0, 0);
-      const sunday = new Date(monday);
-      sunday.setDate(monday.getDate() + 6);
-      sunday.setHours(23, 59, 59, 999);
-      return cartDate >= monday && cartDate <= sunday;
-    }
-    if (filter === "month") {
-      return cartDate.getMonth() === now.getMonth() && cartDate.getFullYear() === now.getFullYear();
-    }
-    return true;
-  });
-
-  let totalCGST = 0, totalSGST = 0;
-  const cgstByCategory = {}, sgstByCategory = {};
-
-  filteredCarts.forEach(cart => {
-    const items = Object.values(cart.items || {});
-    items.forEach(item => {
-      // ← Add this check here to skip non-selected categories
-      if (selectedCategory !== "all" && item.category !== selectedCategory) return;
-
-      const price = Number(item.price || 0);
-      const qty = Number(item.qty || 0);
-      const cgstRate = Number(item.cgst || 0);
-      const sgstRate = Number(item.sgst || 0);
-      const totalTaxPercent = cgstRate + sgstRate;
-      const basePrice = price / (1 + totalTaxPercent / 100);
-
-      const cgstAmt = basePrice * (cgstRate / 100) * qty;
-      const sgstAmt = basePrice * (sgstRate / 100) * qty;
-
-      totalCGST += cgstAmt;
-      totalSGST += sgstAmt;
-
-      const cat = item.category || "Uncategorized";
-      cgstByCategory[cat] = (cgstByCategory[cat] || 0) + cgstAmt;
-      sgstByCategory[cat] = (sgstByCategory[cat] || 0) + sgstAmt;
-    });
-  });
-
-  document.getElementById("cgstValue").textContent = "₹" + totalCGST.toFixed(2);
-  document.getElementById("sgstValue").textContent = "₹" + totalSGST.toFixed(2);
-  document.getElementById("totalGstValue").textContent = "₹" + (totalCGST + totalSGST).toFixed(2);
-
-  const cgstCtx = document.getElementById("cgstChart").getContext("2d");
-  const sgstCtx = document.getElementById("sgstChart").getContext("2d");
-
-  if (cgstChart) cgstChart.destroy();
-  if (sgstChart) sgstChart.destroy();
-
-  cgstChart = new Chart(cgstCtx, {
-    type: "pie",
-    data: {
-      labels: Object.keys(cgstByCategory),
-      datasets: [{
-        label: "CGST by Category",
-        data: Object.values(cgstByCategory),
-        backgroundColor: Object.keys(cgstByCategory).map(cat => stringToColor(cat))
-      }]
-    }
-  });
-
-  sgstChart = new Chart(sgstCtx, {
-    type: "pie",
-    data: {
-      labels: Object.keys(sgstByCategory),
-      datasets: [{
-        label: "SGST by Category",
-        data: Object.values(sgstByCategory),
-        backgroundColor: Object.keys(sgstByCategory).map(cat => stringToColor(cat))
-      }]
-    }
-  });
-}
-
-
 // Initialize GST section on load
+populateGSTCategories();
 updateGSTSection("all");
 
 </script>
