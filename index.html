@@ -664,23 +664,31 @@ function updateStockAfterPayment() {
       let summary = '';
 let total = 0;
 cartItems.forEach((item, i) => {
-  const subtotal = item.price * item.qty; // includes GST
+  const subtotal = item.price * item.qty; // price already includes GST
   total += subtotal;
 
-  // GST % values
   const cgst = item.cgst || 0;
   const sgst = item.sgst || 0;
   const totalTaxPercent = cgst + sgst;
 
-  // Base price (exclusive of GST)
-  const basePrice = subtotal / (1 + totalTaxPercent / 100);
+  // Correct base price (exclusive of GST)
+  const basePrice = item.price / (1 + totalTaxPercent / 100);
 
-  // Tax amounts
-  const cgstAmt = basePrice * (cgst / 100);
-  const sgstAmt = basePrice * (sgst / 100);
+  // CGST/SGST amount **per unit**
+  const cgstAmtPerUnit = basePrice * (cgst / 100);
+  const sgstAmtPerUnit = basePrice * (sgst / 100);
 
-  summary += `${i + 1}. ${item.name}\n   Price (incl. tax): ₹${item.price}\n   Qty: ${item.qty}\n   Subtotal: ₹${subtotal.toFixed(2)}\n   ➝ CGST (${cgst}%): ₹${cgstAmt.toFixed(2)} | SGST (${sgst}%): ₹${sgstAmt.toFixed(2)}\n\n`;
+  // CGST/SGST amount for quantity
+  const cgstAmtTotal = cgstAmtPerUnit * item.qty;
+  const sgstAmtTotal = sgstAmtPerUnit * item.qty;
+
+  summary += `${i + 1}. ${item.name}\n` +
+             `   Price (incl. tax): ₹${item.price}\n` +
+             `   Qty: ${item.qty}\n` +
+             `   Subtotal: ₹${subtotal.toFixed(2)}\n` +
+             `   ➝ CGST (${cgst}%): ₹${cgstAmtTotal.toFixed(2)} | SGST (${sgst}%): ₹${sgstAmtTotal.toFixed(2)}\n\n`;
 });
+
 summary += `\nTotal: ₹${total.toFixed(2)}`;
 
 
