@@ -1052,19 +1052,20 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   display: flex;
   gap: 40px;
   flex-wrap: wrap;
-  justify-content: center; /* center charts horizontally */
+  justify-content: space-around; /* space charts evenly */
 }
 
+
 .gst-charts > div {
-  flex: 1;
-  min-width: 300px;
-  max-width: 400px; /* keeps charts from stretching too wide */
+  flex: 0 1 45%; /* takes roughly 45% of container width */
+  min-width: 300px; 
+  max-width: 500px; /* optional max width */
 }
 
 .gst-charts canvas {
   width: 100% !important;
   height: auto !important;
-  aspect-ratio: 1 / 1; /* makes canvas square */
+  aspect-ratio: 1 / 1; /* keeps canvas square */
   background: #f9f9f9;
   border-radius: 10px;
   padding: 10px;
