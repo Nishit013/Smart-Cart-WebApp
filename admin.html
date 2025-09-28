@@ -3983,30 +3983,12 @@ function populateGSTCategories() {
 
 function updateGSTSection(filter = "all") {
   const now = new Date();
-  const selectedCategory = document.getElementById("gstCategoryFilter")?.value || "all";
-
-  const startDateInput = document.getElementById("gstStartDate")?.value;
-  const endDateInput = document.getElementById("gstEndDate")?.value;
-
-  let startDate = null, endDate = null;
-  if (startDateInput && endDateInput) {
-    startDate = new Date(startDateInput);
-    startDate.setHours(0, 0, 0, 0);
-    endDate = new Date(endDateInput);
-    endDate.setHours(23, 59, 59, 999);
-  }
+  const selectedCategory = document.getElementById("gstCategoryFilter")?.value || "all"; // ← Add this line
 
   const filteredCarts = Object.values(paidCarts).filter(cart => {
     const ts = cart.paidAt || cart.paymentTime || Date.now();
     const cartDate = new Date(ts);
 
-    // ✅ Date range filter (highest priority if both selected)
-    if (startDate && endDate) {
-      if (cartDate < startDate || cartDate > endDate) return false;
-      return true;
-    }
-
-    // ✅ Default filters
     if (filter === "today") return now.toDateString() === cartDate.toDateString();
     if (filter === "week") {
       const dayOfWeek = now.getDay();
@@ -4021,16 +4003,17 @@ function updateGSTSection(filter = "all") {
     if (filter === "month") {
       return cartDate.getMonth() === now.getMonth() && cartDate.getFullYear() === now.getFullYear();
     }
-    return true; // all
+    return true;
   });
 
   let totalCGST = 0, totalSGST = 0;
   cgstByCategory = {};
-  sgstByCategory = {};
+sgstByCategory = {};
 
   filteredCarts.forEach(cart => {
     const items = Object.values(cart.items || {});
     items.forEach(item => {
+      // ← Add this check here to skip non-selected categories
       if (selectedCategory !== "all" && item.category !== selectedCategory) return;
 
       const price = Number(item.price || 0);
@@ -4086,11 +4069,7 @@ function updateGSTSection(filter = "all") {
     }
   });
 }
-
 function exportGSTtoCSV() {
-  // 🔹 Force refresh with latest filters/date range
-  updateGSTSection(document.getElementById("gstFilter")?.value || "all");
-
   const selectedCategory = document.getElementById("gstCategoryFilter")?.value || "All Categories";
   const now = new Date().toLocaleString();
 
@@ -4140,10 +4119,10 @@ function exportGSTtoCSV() {
   link.click();
 }
 
-async function exportGSTtoPDF() {
-  // 🔹 Force refresh with latest filters/date range
-  updateGSTSection(document.getElementById("gstFilter")?.value || "all");
 
+
+
+async function exportGSTtoPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
