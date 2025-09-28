@@ -4059,9 +4059,14 @@ sgstByCategory = {};
     }
   });
 }
-function exportGSTtoCSV() {
+function exportGSTtoCSV(filterInfo = {}) {
   const selectedCategory = document.getElementById("gstCategoryFilter")?.value || "All Categories";
   const now = new Date().toLocaleString();
+
+  // Optional: filterInfo = { filterType: "Today", startDate: "2025-09-28", endDate: "2025-09-28" }
+  const dateInfo = filterInfo.startDate && filterInfo.endDate
+    ? `Date Range: ${filterInfo.startDate} to ${filterInfo.endDate}`
+    : "Date Range: All Dates";
 
   const headers = ["Category", "CGST", "SGST", "Total GST"];
   const rows = [];
@@ -4085,9 +4090,9 @@ function exportGSTtoCSV() {
     document.getElementById("totalGstValue").textContent.replace("₹", "")
   ]);
 
-  // Include filter info and generation time as first rows
   let csvContent = `GST Collection Report\n`;
   csvContent += `Category Filter: ${selectedCategory}\n`;
+  csvContent += `${dateInfo}\n`;
   csvContent += `Generated on: ${now}\n\n`;
 
   csvContent += headers.join(",") + "\n";
@@ -4104,19 +4109,25 @@ function exportGSTtoCSV() {
 
 
 
-async function exportGSTtoPDF() {
+
+async function exportGSTtoPDF(filterInfo = {}) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
   const now = new Date().toLocaleString();
   const selectedCategory = document.getElementById("gstCategoryFilter")?.value || "All Categories";
 
+  const dateInfo = filterInfo.startDate && filterInfo.endDate
+    ? `Date Range: ${filterInfo.startDate} to ${filterInfo.endDate}`
+    : "Date Range: All Dates";
+
   // Header
   doc.setFontSize(16);
   doc.text("GST Collection Report", 14, 20);
   doc.setFontSize(10);
   doc.text(`Category Filter: ${selectedCategory}`, 14, 28);
-  doc.text(`Generated on: ${now}`, 14, 36);
+  doc.text(`${dateInfo}`, 14, 36);
+  doc.text(`Generated on: ${now}`, 14, 44);
 
   const tableData = [];
   const categories = new Set([
@@ -4146,7 +4157,7 @@ async function exportGSTtoPDF() {
   doc.autoTable({
     head: [["Category", "CGST", "SGST", "Total GST"]],
     body: tableData,
-    startY: 45,
+    startY: 50,
     styles: { halign: "right", fontSize: 10 },
     headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: "center" },
     columnStyles: {
@@ -4160,6 +4171,7 @@ async function exportGSTtoPDF() {
 
   doc.save(`GST_Report_${new Date().getTime()}.pdf`);
 }
+
 
 
 // Initialize GST section on load
