@@ -2035,47 +2035,63 @@ function markAsPaid(cartId, selectedCoupon = null) {
   const timestamp = Date.now();
   const itemsArray = Object.values(cart.items || {});
 
-  // --- Step 2: Calculate totals ---
+  // --- Step 2: Calculate totals & GST ---
   let totalBeforeDiscount = 0;
+  let totalCGST = 0;
+  let totalSGST = 0;
+
   itemsArray.forEach(item => {
     const price = Number(item.price || 0);
     const qty = Number(item.qty || 0);
+    const cgst = Number(item.cgst || 0);
+    const sgst = Number(item.sgst || 0);
+
+    const totalTaxPercent = cgst + sgst;
+    const basePrice = price / (1 + totalTaxPercent / 100);
+    const cgstAmt = (basePrice * (cgst / 100)) * qty;
+    const sgstAmt = (basePrice * (sgst / 100)) * qty;
+
+    totalCGST += cgstAmt;
+    totalSGST += sgstAmt;
     totalBeforeDiscount += price * qty;
   });
 
-// --- Step 3: Apply discount ---
-let discount = 0;
-let appliedCouponCode = null;
+  const totalGST = totalCGST + totalSGST;
 
-if (selectedCoupon && Number(totalBeforeDiscount) >= Number(selectedCoupon.minPurchase)) {
-  if (selectedCoupon.discountType === "flat") {
-    // Flat discount = fixed value, capped by maxDiscount if provided
-    discount = Math.min(
-      Number(selectedCoupon.discountValue),
-      Number(selectedCoupon.maxDiscount || selectedCoupon.discountValue)
-    );
-  } else if (selectedCoupon.discountType === "percent") {
-    // Percentage discount = % of total, capped by maxDiscount
-    discount = Math.min(
-      (Number(totalBeforeDiscount) * Number(selectedCoupon.discountValue)) / 100,
-      Number(selectedCoupon.maxDiscount || (totalBeforeDiscount * selectedCoupon.discountValue) / 100)
-    );
+  // --- Step 3: Apply discount ---
+  let discount = 0;
+  let appliedCouponCode = null;
+
+  if (selectedCoupon && totalBeforeDiscount >= Number(selectedCoupon.minPurchase)) {
+    if (selectedCoupon.discountType === "flat") {
+      discount = Math.min(
+        Number(selectedCoupon.discountValue),
+        Number(selectedCoupon.maxDiscount || selectedCoupon.discountValue)
+      );
+    } else if (selectedCoupon.discountType === "percent") {
+      discount = Math.min(
+        (totalBeforeDiscount * Number(selectedCoupon.discountValue)) / 100,
+        Number(selectedCoupon.maxDiscount || (totalBeforeDiscount * selectedCoupon.discountValue) / 100)
+      );
+    }
+    appliedCouponCode = selectedCoupon.couponCode;
   }
-  appliedCouponCode = selectedCoupon.couponCode;
-}
 
-const finalPaid = totalBeforeDiscount - discount;
+  const finalPaid = totalBeforeDiscount - discount;
 
   // --- Step 4: Build bill summary ---
-  const summaryText = buildBillSummary(itemsArray, totalBeforeDiscount, discount);
+  const summaryText = buildBillSummary(itemsArray, totalBeforeDiscount, discount, totalCGST, totalSGST);
 
   // --- Step 5: Build paidData ---
   const paidData = {
     cartId: cart.cartId || cartId,
     items: cart.items || {},
     total: totalBeforeDiscount,
-    discount: discount,
+    discount,
     finalAmount: finalPaid,
+    totalCGST,
+    totalSGST,
+    totalGST,
     phone,
     paidAt: timestamp,
     paymentTime: timestamp,
@@ -2084,9 +2100,12 @@ const finalPaid = totalBeforeDiscount - discount;
     bill: {
       summary: summaryText,
       originalTotal: totalBeforeDiscount,
-      discount: discount,
-      finalPaid: finalPaid,
-      phone
+      discount,
+      finalPaid,
+      phone,
+      totalCGST,
+      totalSGST,
+      totalGST
     }
   };
 
@@ -2095,15 +2114,18 @@ const finalPaid = totalBeforeDiscount - discount;
     .then(() => db.ref("carts/" + cartId).update({
       total: totalBeforeDiscount,
       finalAmount: finalPaid,
-      discount: discount,
-      discountCoupon: selectedCoupon ? selectedCoupon.couponCode : null,
+      discount,
+      totalCGST,
+      totalSGST,
+      totalGST,
+      discountCoupon: appliedCouponCode,
       paymentStatus: "Paid",
       isActive: false,
       bill: paidData.bill,
       items: null // clear cart items
     }))
-    // Update stock quantity without creating stock history
     .then(() => {
+      // Update stock quantity without creating stock history
       const stockUpdates = itemsArray.map(item => {
         const barcode = item.barcode;
         const qty = Number(item.qty || 0);
@@ -2114,7 +2136,6 @@ const finalPaid = totalBeforeDiscount - discount;
           const currentStock = snap.val().stock || 0;
           const newStock = Math.max(0, currentStock - qty);
           return db.ref("products/" + barcode + "/stock").set(newStock);
-          // Do NOT push to stockMovements here
         });
       });
       return Promise.all(stockUpdates);
@@ -2130,7 +2151,7 @@ const finalPaid = totalBeforeDiscount - discount;
       productsData = snapProducts.val() || {};
       renderData();
       renderProductSales();
-      alert("✅ Cart marked as Paid with discount applied!");
+      alert("✅ Cart marked as Paid with discount & GST stored!");
     })
     .catch(err => {
       console.error("Error in markAsPaid:", err);
@@ -2138,19 +2159,33 @@ const finalPaid = totalBeforeDiscount - discount;
     });
 }
 
-// --- Helper function for bill summary ---
-function buildBillSummary(itemsArray, total, discount) {
+// --- Updated bill summary helper ---
+function buildBillSummary(itemsArray, total, discount, totalCGST, totalSGST) {
   let text = "";
   itemsArray.forEach((item, i) => {
     const price = Number(item.price || 0);
     const qty = Number(item.qty || 0);
-    text += `${i + 1}. ${item.name}\n   Price: ₹${price.toFixed(2)}\n   Qty: ${qty}\n   Subtotal: ₹${(price * qty).toFixed(2)}\n\n`;
+    const cgst = Number(item.cgst || 0);
+    const sgst = Number(item.sgst || 0);
+    const totalTaxPercent = cgst + sgst;
+    const basePrice = price / (1 + totalTaxPercent / 100);
+    const cgstAmt = (basePrice * (cgst / 100)) * qty;
+    const sgstAmt = (basePrice * (sgst / 100)) * qty;
+
+    text += `${i + 1}. ${item.name}\n` +
+            `   Price (incl. tax): ₹${price.toFixed(2)}\n` +
+            `   Qty: ${qty}\n` +
+            `   Subtotal: ₹${(price * qty).toFixed(2)}\n` +
+            `   ➝ CGST (${cgst}%): ₹${cgstAmt.toFixed(2)} | SGST (${sgst}%): ₹${sgstAmt.toFixed(2)}\n\n`;
   });
+
   text += `Total Before Discount: ₹${total.toFixed(2)}\n`;
   text += `Discount: -₹${discount.toFixed(2)}\n`;
   text += `Final Paid: ₹${(total - discount).toFixed(2)}\n`;
+  text += `Total CGST: ₹${totalCGST.toFixed(2)} | Total SGST: ₹${totalSGST.toFixed(2)} | Total GST: ₹${(totalCGST + totalSGST).toFixed(2)}\n`;
   return text;
 }
+
 
 
 
