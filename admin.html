@@ -3684,8 +3684,15 @@ function fetchCustomerBills() {
 
     // Assign unified timestamp for sorting
     bills.forEach(bill => {
-      bill.sortTime = Number(bill.paidAt ?? bill.paymentTime ?? Date.now());
-    });
+  if (bill.paidAt) {
+    bill.sortTime = Number(bill.paidAt); // already a number
+  } else if (bill.paymentTime) {
+    bill.sortTime = new Date(bill.paymentTime).getTime(); // convert ISO string to number
+  } else {
+    bill.sortTime = Date.now();
+  }
+});
+
 
     // Sort by latest paid first
     bills.sort((a, b) => b.sortTime - a.sortTime);
