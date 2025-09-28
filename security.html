@@ -389,6 +389,10 @@ function verifyCart() {
       }
 
       const latestBill = matchingBills[0];
+      const originalTotal = latestBill.total || latestBill.bill?.originalTotal || 0;
+const discount = latestBill.discount || latestBill.bill?.discount || 0;
+const finalAmount = latestBill.finalAmount || latestBill.bill?.finalPaid || originalTotal;
+
       const paidTime =
   latestBill.paidAt ||
   (latestBill.paymentTime ? new Date(latestBill.paymentTime).getTime() : 0) ||
@@ -405,7 +409,12 @@ function verifyCart() {
 
       html += `<div style="margin-bottom:15px; padding:10px; border:1px solid #ccc; border-radius:6px; background-color: var(--card); color: var(--text);">`;
       html += `<h4>Paid At: ${new Date(paidTime).toLocaleString()}</h4>`;
-      html += `<p><strong>Total:</strong> ₹${latestBill.total || 0}</p>`;
+      html += `<p><strong>Original Total:</strong> ₹${originalTotal}</p>`;
+if (discount > 0) {
+  html += `<p><strong>Discount:</strong> -₹${discount}</p>`;
+}
+html += `<p><strong>Final Paid:</strong> ₹${finalAmount}</p>`;
+
       html += `<p><strong>Total Items:</strong> ${totalItems}</p>`;
       html += `<p><strong>Payment Status:</strong> ${latestBill.paymentStatus || 'Paid'}</p>`;
       html += `<button onclick="toggleItemsBox('${itemsBoxId}')" style="margin-bottom:8px; padding:6px 12px; border:none; border-radius:4px; background: var(--primary); color:#fff; cursor:pointer;">Show/Hide Items</button>`;
@@ -425,7 +434,8 @@ function verifyCart() {
       const approver = localStorage.getItem("userName") || "Unknown";
       const approvedCart = {
         cartId,
-        total: latestBill.total || 0,
+        total: finalAmount,
+
         itemCount: (latestBill.items || []).length,
         approvedBy: approver,
         checkoutTime,
@@ -439,7 +449,8 @@ function verifyCart() {
       entryDiv.className = "history-entry";
       entryDiv.innerHTML = `
         ✅ <strong>${cartId}</strong> |
-        💰 ₹${latestBill.total || 0} |
+        💰 ₹${finalAmount} |
+
         🕒 ${checkoutTime} |
         👤 ${approver}
       `;
