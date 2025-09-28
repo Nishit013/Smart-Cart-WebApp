@@ -1048,11 +1048,29 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   font-weight: bold;
 }
 
+.gst-charts {
+  display: flex;
+  gap: 40px;
+  flex-wrap: wrap;
+  justify-content: center; /* center charts horizontally */
+}
+
+.gst-charts > div {
+  flex: 1;
+  min-width: 300px;
+  max-width: 400px; /* keeps charts from stretching too wide */
+}
+
 .gst-charts canvas {
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1; /* makes canvas square */
   background: #f9f9f9;
   border-radius: 10px;
   padding: 10px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
+
 
 </style>
 
