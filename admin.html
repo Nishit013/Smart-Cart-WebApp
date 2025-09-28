@@ -2396,7 +2396,8 @@ function renderSecurityTable(data = approvedCartsData) {
     <tr style="border-bottom: 1px solid #ccc;">
       <td style="padding: 8px;">${entry.cartId}</td>
       <td style="padding: 8px; text-align: center;">${entry.itemCount}</td>
-      <td style="padding: 8px;">₹${entry.total}</td>
+      <td style="padding: 8px;">₹${entry.finalamount || entry.total}</td>
+
       <td style="padding: 8px;">${entry.checkoutTime || formatTimestamp(entry.timestamp)}</td>
       <td style="padding: 8px;">${entry.approvedBy || '-'}</td>
     </tr>
