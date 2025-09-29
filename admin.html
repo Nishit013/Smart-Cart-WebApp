@@ -4078,7 +4078,23 @@ sgstByCategory = {};
 }
 function exportGSTtoCSV() {
   const selectedCategory = document.getElementById("gstCategoryFilter")?.value || "All Categories";
+  const filter = document.getElementById("gstFilter")?.value || "all";
   const now = new Date().toLocaleString();
+
+  let dateRangeText = "";
+  if (filter === "today") {
+    dateRangeText = "Today";
+  } else if (filter === "week") {
+    dateRangeText = "This Week";
+  } else if (filter === "month") {
+    dateRangeText = "This Month";
+  } else if (filter === "custom") {
+    const start = document.getElementById("gstStartDate").value;
+    const end = document.getElementById("gstEndDate").value;
+    dateRangeText = `${start} to ${end}`;
+  } else {
+    dateRangeText = "All Time";
+  }
 
   const headers = ["Category", "CGST", "SGST", "Total GST"];
   const rows = [];
@@ -4102,9 +4118,10 @@ function exportGSTtoCSV() {
     document.getElementById("totalGstValue").textContent.replace("₹", "")
   ]);
 
-  // Include filter info and generation time as first rows
+  // Include filter info
   let csvContent = `GST Collection Report\n`;
   csvContent += `Category Filter: ${selectedCategory}\n`;
+  csvContent += `Date Range: ${dateRangeText}\n`;
   csvContent += `Generated on: ${now}\n\n`;
 
   csvContent += headers.join(",") + "\n";
@@ -4121,19 +4138,37 @@ function exportGSTtoCSV() {
 
 
 
+
 async function exportGSTtoPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
-  const now = new Date().toLocaleString();
+  const filter = document.getElementById("gstFilter")?.value || "all";
   const selectedCategory = document.getElementById("gstCategoryFilter")?.value || "All Categories";
+  const now = new Date().toLocaleString();
+
+  let dateRangeText = "";
+  if (filter === "today") {
+    dateRangeText = "Today";
+  } else if (filter === "week") {
+    dateRangeText = "This Week";
+  } else if (filter === "month") {
+    dateRangeText = "This Month";
+  } else if (filter === "custom") {
+    const start = document.getElementById("gstStartDate").value;
+    const end = document.getElementById("gstEndDate").value;
+    dateRangeText = `${start} to ${end}`;
+  } else {
+    dateRangeText = "All Time";
+  }
 
   // Header
   doc.setFontSize(16);
   doc.text("GST Collection Report", 14, 20);
   doc.setFontSize(10);
   doc.text(`Category Filter: ${selectedCategory}`, 14, 28);
-  doc.text(`Generated on: ${now}`, 14, 36);
+  doc.text(`Date Range: ${dateRangeText}`, 14, 34);
+  doc.text(`Generated on: ${now}`, 14, 40);
 
   const tableData = [];
   const categories = new Set([
@@ -4163,7 +4198,7 @@ async function exportGSTtoPDF() {
   doc.autoTable({
     head: [["Category", "CGST", "SGST", "Total GST"]],
     body: tableData,
-    startY: 45,
+    startY: 50,
     styles: { halign: "right", fontSize: 10 },
     headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: "center" },
     columnStyles: {
