@@ -4082,19 +4082,20 @@ function exportGSTtoCSV() {
   const now = new Date().toLocaleString();
 
   let dateRangeText = "";
-  if (filter === "today") {
-    dateRangeText = "Today";
-  } else if (filter === "week") {
-    dateRangeText = "This Week";
-  } else if (filter === "month") {
-    dateRangeText = "This Month";
-  } else if (filter === "custom") {
-    const start = document.getElementById("gstStartDate").value;
-    const end = document.getElementById("gstEndDate").value;
-    dateRangeText = `${start} to ${end}`;
-  } else {
-    dateRangeText = "All Time";
-  }
+if (filter === "today") {
+  dateRangeText = "Today";
+} else if (filter === "week") {
+  dateRangeText = "This Week";
+} else if (filter === "month") {
+  dateRangeText = "This Month";
+} else if (filter === "custom") {
+  const start = document.getElementById("gstStartDate").value;
+  const end = document.getElementById("gstEndDate").value;
+  dateRangeText = start && end ? `${start} to ${end}` : "Custom Range";
+} else {
+  dateRangeText = "All Time";
+}
+
 
   const headers = ["Category", "CGST", "SGST", "Total GST"];
   const rows = [];
@@ -4148,19 +4149,20 @@ async function exportGSTtoPDF() {
   const now = new Date().toLocaleString();
 
   let dateRangeText = "";
-  if (filter === "today") {
-    dateRangeText = "Today";
-  } else if (filter === "week") {
-    dateRangeText = "This Week";
-  } else if (filter === "month") {
-    dateRangeText = "This Month";
-  } else if (filter === "custom") {
-    const start = document.getElementById("gstStartDate").value;
-    const end = document.getElementById("gstEndDate").value;
-    dateRangeText = `${start} to ${end}`;
-  } else {
-    dateRangeText = "All Time";
-  }
+if (filter === "today") {
+  dateRangeText = "Today";
+} else if (filter === "week") {
+  dateRangeText = "This Week";
+} else if (filter === "month") {
+  dateRangeText = "This Month";
+} else if (filter === "custom") {
+  const start = document.getElementById("gstStartDate").value;
+  const end = document.getElementById("gstEndDate").value;
+  dateRangeText = start && end ? `${start} to ${end}` : "Custom Range";
+} else {
+  dateRangeText = "All Time";
+}
+
 
   // Header
   doc.setFontSize(16);
