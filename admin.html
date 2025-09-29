@@ -4076,6 +4076,30 @@ sgstByCategory = {};
     }
   });
 }
+
+function formatDate(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+let dateRangeText = "";
+if (filter === "today") {
+  dateRangeText = "Today";
+} else if (filter === "week") {
+  dateRangeText = "This Week";
+} else if (filter === "month") {
+  dateRangeText = "This Month";
+} else if (filter === "custom") {
+  const start = document.getElementById("gstStartDate").value;
+  const end = document.getElementById("gstEndDate").value;
+  dateRangeText = start && end ? `${formatDate(start)} → ${formatDate(end)}` : "Custom Range";
+} else {
+  dateRangeText = "All Time";
+}
+
+
+
 function exportGSTtoCSV() {
   const selectedCategory = document.getElementById("gstCategoryFilter")?.value || "All Categories";
   const filter = document.getElementById("gstFilter")?.value || "all";
