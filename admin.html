@@ -4088,18 +4088,42 @@ function formatDate(dateStr) {
 
 // Get the date range text based on current filter & inputs
 function getGSTDateRangeText() {
-  const filter = document.getElementById("gstFilter")?.value || "all";
+    const filter = document.getElementById("gstFilter")?.value || "all";
+    const now = new Date();
 
-  if (filter === "today") return "Today";
-  if (filter === "week") return "This Week";
-  if (filter === "month") return "This Month";
-  if (filter === "custom") {
-    const start = document.getElementById("gstStartDate")?.value;
-    const end = document.getElementById("gstEndDate")?.value;
-    return start && end ? `${formatDate(start)} → ${formatDate(end)}` : "Custom Range";
-  }
-  return "All Time";
+    let startDate, endDate;
+
+    if (filter === "today") {
+        startDate = new Date(now); startDate.setHours(0,0,0,0);
+        endDate = new Date(now); endDate.setHours(23,59,59,999);
+    } else if (filter === "week") {
+        const dayOfWeek = now.getDay();
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - ((dayOfWeek + 6) % 7)); // Monday
+        startDate.setHours(0,0,0,0);
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 6); // Sunday
+        endDate.setHours(23,59,59,999);
+    } else if (filter === "month") {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        endDate.setHours(23,59,59,999);
+    } else if (filter === "custom") {
+        const startInput = document.getElementById("gstStartDate")?.value;
+        const endInput = document.getElementById("gstEndDate")?.value;
+        if (startInput && endInput) {
+            startDate = new Date(startInput + "T00:00:00");
+            endDate = new Date(endInput + "T23:59:59");
+        }
+    }
+
+    if (startDate && endDate) {
+        return `${formatDate(startDate)} → ${formatDate(endDate)}`;
+    } else {
+        return "All Time";
+    }
 }
+
 
 
 
