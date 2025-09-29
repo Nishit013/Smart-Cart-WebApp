@@ -4184,6 +4184,11 @@ async function exportGSTtoPDF() {
   const now = new Date().toLocaleString();
   const dateRangeText = getGSTDateRangeText(); // ✅ use helper
 
+
+  const font = "helvetica";
+  doc.setFont(font);
+
+  
   // Header
   doc.setFontSize(16);
   doc.text("GST Collection Report", 14, 20);
