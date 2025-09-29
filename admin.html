@@ -4079,33 +4079,35 @@ sgstByCategory = {};
 
 
 
+// Format a date string as DD-MMM-YYYY
 function formatDate(dateStr) {
   if (!dateStr) return "";
   const d = new Date(dateStr);
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+// Get the date range text based on current filter & inputs
+function getGSTDateRangeText() {
+  const filter = document.getElementById("gstFilter")?.value || "all";
+
+  if (filter === "today") return "Today";
+  if (filter === "week") return "This Week";
+  if (filter === "month") return "This Month";
+  if (filter === "custom") {
+    const start = document.getElementById("gstStartDate")?.value;
+    const end = document.getElementById("gstEndDate")?.value;
+    return start && end ? `${formatDate(start)} → ${formatDate(end)}` : "Custom Range";
+  }
+  return "All Time";
+}
+
+
 
 
 function exportGSTtoCSV() {
   const selectedCategory = document.getElementById("gstCategoryFilter")?.value || "All Categories";
-  const filter = document.getElementById("gstFilter")?.value || "all";
   const now = new Date().toLocaleString();
-
-  let dateRangeText = "";
-  if (filter === "today") {
-    dateRangeText = "Today";
-  } else if (filter === "week") {
-    dateRangeText = "This Week";
-  } else if (filter === "month") {
-    dateRangeText = "This Month";
-  } else if (filter === "custom") {
-    const start = document.getElementById("gstStartDate").value;
-    const end = document.getElementById("gstEndDate").value;
-    dateRangeText = start && end ? `${formatDate(start)} → ${formatDate(end)}` : "Custom Range";
-  } else {
-    dateRangeText = "All Time";
-  }
+  const dateRangeText = getGSTDateRangeText(); // ✅ use helper
 
   const headers = ["Category", "CGST", "SGST", "Total GST"];
   const rows = [];
@@ -4129,7 +4131,7 @@ function exportGSTtoCSV() {
     document.getElementById("totalGstValue").textContent.replace("₹", "")
   ]);
 
-  // Report content
+  // CSV content
   let csvContent = `GST Collection Report\n`;
   csvContent += `Category Filter: ${selectedCategory}\n`;
   csvContent += `Date Range: ${dateRangeText}\n`;
@@ -4153,25 +4155,9 @@ async function exportGSTtoPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
-  const filter = document.getElementById("gstFilter")?.value || "all";
   const selectedCategory = document.getElementById("gstCategoryFilter")?.value || "All Categories";
   const now = new Date().toLocaleString();
-
-  let dateRangeText = "";
-  if (filter === "today") {
-    dateRangeText = "Today";
-  } else if (filter === "week") {
-    dateRangeText = "This Week";
-  } else if (filter === "month") {
-    dateRangeText = "This Month";
-  } else if (filter === "custom") {
-    const start = document.getElementById("gstStartDate").value;
-    const end = document.getElementById("gstEndDate").value;
-    dateRangeText = start && end ? `${formatDate(start)} → ${formatDate(end)}` : "Custom Range";
-
-  } else {
-    dateRangeText = "All Time";
-  }
+  const dateRangeText = getGSTDateRangeText(); // ✅ use helper
 
   // Header
   doc.setFontSize(16);
@@ -4198,7 +4184,7 @@ async function exportGSTtoPDF() {
     ]);
   });
 
-  // Add totals at the end
+  // Totals
   tableData.push([
     "Total",
     document.getElementById("cgstValue").textContent.replace("₹", ""),
@@ -4223,6 +4209,7 @@ async function exportGSTtoPDF() {
 
   doc.save(`GST_Report_${new Date().getTime()}.pdf`);
 }
+
 
 
 // Initialize GST section on load
