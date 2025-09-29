@@ -1649,6 +1649,13 @@ background:rgba(0,0,0,0.5); z-index:999;"></div>
       <option value="all">All Categories</option>
       <!-- categories will be dynamically populated -->
     </select>
+
+    <label style="margin-left:20px;">From: </label>
+<input type="date" id="gstStartDate" onchange="updateGSTSection(document.getElementById('gstFilter').value)">
+
+<label style="margin-left:10px;">To: </label>
+<input type="date" id="gstEndDate" onchange="updateGSTSection(document.getElementById('gstFilter').value)">
+
   </div>
 
   <!-- ✅ Export Buttons -->
@@ -3973,13 +3980,20 @@ function populateGSTCategories() {
 
 function updateGSTSection(filter = "all") {
   const now = new Date();
-  const selectedCategory = document.getElementById("gstCategoryFilter")?.value || "all"; // ← Add this line
+  const selectedCategory = document.getElementById("gstCategoryFilter")?.value || "all";
+
+  // Get custom date range
+  const startDateInput = document.getElementById("gstStartDate").value;
+  const endDateInput = document.getElementById("gstEndDate").value;
+  const startDate = startDateInput ? new Date(startDateInput + "T00:00:00") : null;
+  const endDate = endDateInput ? new Date(endDateInput + "T23:59:59") : null;
 
   const filteredCarts = Object.values(paidCarts).filter(cart => {
     const ts = cart.paidAt || cart.paymentTime || Date.now();
     const cartDate = new Date(ts);
 
-    if (filter === "today") return now.toDateString() === cartDate.toDateString();
+    // Predefined filters
+    if (filter === "today" && now.toDateString() !== cartDate.toDateString()) return false;
     if (filter === "week") {
       const dayOfWeek = now.getDay();
       const monday = new Date(now);
@@ -3988,11 +4002,14 @@ function updateGSTSection(filter = "all") {
       const sunday = new Date(monday);
       sunday.setDate(monday.getDate() + 6);
       sunday.setHours(23, 59, 59, 999);
-      return cartDate >= monday && cartDate <= sunday;
+      if (cartDate < monday || cartDate > sunday) return false;
     }
-    if (filter === "month") {
-      return cartDate.getMonth() === now.getMonth() && cartDate.getFullYear() === now.getFullYear();
-    }
+    if (filter === "month" && !(cartDate.getMonth() === now.getMonth() && cartDate.getFullYear() === now.getFullYear())) return false;
+
+    // Custom date range filter
+    if (startDate && cartDate < startDate) return false;
+    if (endDate && cartDate > endDate) return false;
+
     return true;
   });
 
