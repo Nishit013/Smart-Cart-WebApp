@@ -1431,6 +1431,22 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   <button id="stockHistoryBtn" class="btn-secondary">Stock History</button>
 </div>
 
+<div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
+  <label>Supplier:
+    <select id="stockSupplierFilter">
+      <option value="">All Suppliers</option>
+    </select>
+  </label>
+
+  <label>Product:
+    <select id="stockProductFilter">
+      <option value="">All Products</option>
+    </select>
+  </label>
+</div>
+
+
+
   <!-- Inventory Table -->
   <div class="scroll-box" style="max-height: 600px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--accent);">
     <table class="security-table" id="inventoryTable" style="width: 100%; border-collapse: collapse;">
@@ -3540,40 +3556,84 @@ async function loadStockMovements() {
   const tbody = document.getElementById("stockHistoryTable").querySelector("tbody");
   tbody.innerHTML = "";
 
-  // fetch suppliers & products for mapping
   const suppliersSnap = await db.ref("suppliers").once("value");
   const productsSnap = await db.ref("products").once("value");
 
   const suppliers = suppliersSnap.val() || {};
   const products = productsSnap.val() || {};
 
+  const supplierFilter = document.getElementById("stockSupplierFilter");
+  const productFilter = document.getElementById("stockProductFilter");
+
+  // Populate supplier dropdown
+  supplierFilter.innerHTML = '<option value="">All Suppliers</option>';
+  Object.keys(suppliers).forEach(id => {
+    const opt = document.createElement("option");
+    opt.value = id;
+    opt.textContent = suppliers[id].name;
+    supplierFilter.appendChild(opt);
+  });
+
+  // Populate product dropdown
+  productFilter.innerHTML = '<option value="">All Products</option>';
+  Object.keys(products).forEach(id => {
+    const opt = document.createElement("option");
+    opt.value = id;
+    opt.textContent = products[id].name;
+    productFilter.appendChild(opt);
+  });
+
+  // Listen for stock movements
   db.ref("stockMovements").on("value", snapshot => {
-  tbody.innerHTML = "";
-  snapshot.forEach(child => {
-    let m = child.val();
-
-    // ONLY show PO-related entries
-    if (!m.type || !["Stock-In", "PO Received"].includes(m.type)) return;
-
-    const productName = products[m.productId]?.name || "Unknown Product";
-    const supplierNote = m.supplierNote?.replace(/Supplier (.+)/, (match, id) => {
-      return suppliers[id]?.name ? `Supplier: ${suppliers[id].name}` : match;
+    const movements = [];
+    snapshot.forEach(child => {
+      const m = child.val();
+      if (!m.type || !["Stock-In", "PO Received"].includes(m.type)) return;
+      movements.push({ id: child.key, ...m });
     });
 
-    tbody.innerHTML += `
-      <tr>
-        <td>${m.date}</td>
-        <td>${productName}</td>
-        <td>${m.qtyChange}</td>
-        <td>${m.type}</td>
-        <td>${m.currentStock}</td>
-        <td>${supplierNote || ""}</td>
-      </tr>
-    `;
-  });
-});
+    function renderTable() {
+      tbody.innerHTML = "";
+      const selectedSupplier = supplierFilter.value;
+      const selectedProduct = productFilter.value;
 
+      movements
+        .filter(m => {
+          let supplierMatch = true;
+          let productMatch = true;
+
+          if (selectedSupplier) supplierMatch = m.supplierId === selectedSupplier;
+          if (selectedProduct) productMatch = m.productId === selectedProduct;
+
+          return supplierMatch && productMatch;
+        })
+        .forEach(m => {
+          const productName = products[m.productId]?.name || "Unknown Product";
+          const supplierName = suppliers[m.supplierId]?.name || "";
+          const supplierNote = m.supplierNote || "";
+
+          tbody.innerHTML += `
+            <tr>
+              <td>${m.date}</td>
+              <td>${productName}</td>
+              <td>${m.qtyChange}</td>
+              <td>${m.type}</td>
+              <td>${m.currentStock}</td>
+              <td>${supplierName ? 'Supplier: ' + supplierName : supplierNote}</td>
+            </tr>
+          `;
+        });
+    }
+
+    // Initial render
+    renderTable();
+
+    // Re-render on filter change
+    supplierFilter.onchange = renderTable;
+    productFilter.onchange = renderTable;
+  });
 }
+
 
 // ✅ Modal Buttons
 document.getElementById("purchaseOrderBtn").onclick = () => {
