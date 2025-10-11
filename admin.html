@@ -1296,24 +1296,26 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   </form>
 
   <!-- Offers Table -->
-  <div class="scroll-box" style="margin-top: 15px;">
-    <table class="security-table" id="offersTable">
-      <thead>
-        <tr>
-          <th>Coupon Code</th>
-          <th>Type</th>
-          <th>Value</th>
-          <th>Min Purchase</th>
-          <th>Max Discount</th>
-          <th>Start Date</th>
-          <th>End Date</th>
-          <th>Status</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
+  <!-- Offers Table -->
+<div class="scroll-box" style="margin-top: 15px; max-height: 300px; overflow-y: auto;">
+  <table class="security-table" id="offersTable" style="width:100%; border-collapse: collapse;">
+    <thead>
+      <tr>
+        <th>Coupon Code</th>
+        <th>Type</th>
+        <th>Value</th>
+        <th>Min Purchase</th>
+        <th>Max Discount</th>
+        <th>Start Date</th>
+        <th>End Date</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
 </div>
 
 
