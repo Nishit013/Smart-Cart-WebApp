@@ -2961,8 +2961,27 @@ offerForm.addEventListener('submit', function(e) {
 // Listen for changes in Firebase to update table
 offersRef.on('value', snapshot => {
   offersTableBody.innerHTML = '';
+  const now = new Date();
+
   snapshot.forEach(child => {
     const offer = child.val();
+    const endDate = new Date(offer.endDate);
+    const startDate = new Date(offer.startDate);
+
+    // --- Auto update expired offers ---
+    let status = offer.status;
+    if (now > endDate && offer.status === "Active") {
+      status = "Inactive";
+      offersRef.child(child.key).update({ status: "Inactive" });
+    } else if (now < startDate && offer.status !== "Upcoming") {
+      status = "Upcoming";
+      offersRef.child(child.key).update({ status: "Upcoming" });
+    } else if (now >= startDate && now <= endDate && offer.status !== "Active") {
+      status = "Active";
+      offersRef.child(child.key).update({ status: "Active" });
+    }
+
+    // --- Render offer row ---
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${offer.couponCode}</td>
@@ -2972,14 +2991,13 @@ offersRef.on('value', snapshot => {
       <td>${offer.maxDiscount || 0}</td>
       <td>${offer.startDate}</td>
       <td>${offer.endDate}</td>
-      <td>${offer.status}</td>
-      <td>
-        <button onclick="deleteOffer('${child.key}')">Delete</button>
-      </td>
+      <td>${status}</td>
+      <td><button onclick="deleteOffer('${child.key}')">Delete</button></td>
     `;
     offersTableBody.appendChild(tr);
   });
 });
+
 
 // Delete offer function
 function deleteOffer(key) {
