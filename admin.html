@@ -4531,9 +4531,9 @@ function createUser() {
 
 
 function applyRolePermissions(role) {
-  // Define sections allowed for each role
+  // Sections allowed per role
   const permissions = {
-    admin: ['analytics', 'charts', 'carts', 'security', 'productSales', 'products', 'inventory', 'customerOffers', 'gstSection', 'createUserSection'],
+    admin: ['analytics', 'charts', 'carts', 'security', 'productSales', 'customerOffers', 'products', 'inventory', 'gstSection', 'createUserSection', 'customerDetails', 'supplierManagement'],
     cashier: ['carts', 'customerOffers'],
     salesManager: ['analytics', 'productSales', 'customerOffers'],
     productManager: ['products', 'inventory'],
@@ -4547,22 +4547,22 @@ function applyRolePermissions(role) {
 
   // Show allowed sections
   allowedSections.forEach(id => {
+    // For section divs
     const sec = document.getElementById(id);
     if (sec) sec.style.display = 'block';
   });
 
-  // Sidebar links
-  document.querySelectorAll('.sidebar a').forEach(link => {
-    const href = link.getAttribute('href');
-    if (!href) return;
-    const targetId = href.replace('#', '');
-    if (allowedSections.includes(targetId)) {
-      link.style.display = 'block';
-    } else {
-      link.style.display = 'none';
-    }
+  // Hide all sidebar links first
+  document.querySelectorAll('.sidebar a').forEach(link => link.style.display = 'none');
+
+  // Show allowed links
+  allowedSections.forEach(secId => {
+    let linkId = 'link' + secId.charAt(0).toUpperCase() + secId.slice(1); // Convert section ID to link ID
+    const link = document.getElementById(linkId);
+    if (link) link.style.display = 'block';
   });
 }
+
 
 
 </script>
