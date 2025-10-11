@@ -1431,21 +1431,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   <button id="stockHistoryBtn" class="btn-secondary">Stock History</button>
 </div>
 
-<div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
-  <label>Supplier:
-    <select id="stockSupplierFilter">
-      <option value="">All Suppliers</option>
-    </select>
-  </label>
-
-  <label>Product:
-    <select id="stockProductFilter">
-      <option value="">All Products</option>
-    </select>
-  </label>
-</div>
-
-
 
   <!-- Inventory Table -->
   <div class="scroll-box" style="max-height: 600px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--accent);">
@@ -1540,6 +1525,21 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   <h3>Stock Movement History</h3>
   <button id="exportStockBtn" class="btn-primary">Export CSV</button>
   <button id="exportStockPDF" class="btn-primary">Export PDF</button>
+</div>
+
+
+<div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
+  <label>Supplier:
+    <select id="stockSupplierFilter">
+      <option value="">All Suppliers</option>
+    </select>
+  </label>
+
+  <label>Product:
+    <select id="stockProductFilter">
+      <option value="">All Products</option>
+    </select>
+  </label>
 </div>
 
     <div class="scroll-box" style="max-height: 600px; overflow-y:auto;">
