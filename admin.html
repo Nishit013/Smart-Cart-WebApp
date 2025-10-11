@@ -2100,22 +2100,30 @@ function openCouponModal(cartId) {
   const cart = allCarts[cartId];
   if (!cart) return alert("Cart not found");
 
-  // Fetch active coupons from Firebase
+  const today = new Date().toISOString().split('T')[0];
+
+  // Fetch coupons & filter valid ones
   db.ref("offers").once("value").then(snapshot => {
     const offers = snapshot.val() || {};
-    const availableCoupons = Object.values(offers)
-      .filter(o => o.status && o.status.toLowerCase() === "active"); // case-insensitive
 
-    // Attach to cart
+    const availableCoupons = Object.values(offers).filter(o => {
+      const start = o.startDate || today;
+      const end = o.endDate || today;
+      const isWithinDate = today >= start && today <= end;
+      const isActive = (o.status && o.status.toLowerCase() === "active");
+      return isActive && isWithinDate;
+    });
+
     cart.discountCoupons = availableCoupons;
 
     const select = document.getElementById('couponSelect');
-    select.innerHTML = `<option value="">No Discount</option>`; // reset options
+    select.innerHTML = `<option value="">No Discount</option>`;
 
     availableCoupons.forEach((c, i) => {
       const opt = document.createElement('option');
       opt.value = i;
-      opt.text = `${c.couponCode} - ${c.discountPercent}% off up to ₹${c.maxDiscount}`;
+      const typeText = c.discountType === "percent" ? `% off` : ` flat ₹`;
+      opt.text = `${c.couponCode} - ${c.discountValue}${typeText} up to ₹${c.maxDiscount}`;
       select.appendChild(opt);
     });
 
@@ -2127,12 +2135,11 @@ function openCouponModal(cartId) {
       let selectedCoupon = null;
       if (selectedIndex !== "") selectedCoupon = availableCoupons[selectedIndex];
       closeCouponModal();
-
-      // Mark as paid with the selected coupon
       markAsPaid(cartId, selectedCoupon);
     };
   });
 }
+
 
 function closeCouponModal() {
   document.getElementById('couponModal').style.display = 'none';
@@ -2924,6 +2931,43 @@ const offersTableBody = document.querySelector('#offersTable tbody');
 
 // Firebase reference (replace 'offers' with your Firebase node for discounts)
 const offersRef = firebase.database().ref('offers');
+
+
+// ✅ STEP 1 — Automatically update offer statuses
+function autoUpdateCouponStatus() {
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+
+  offersRef.once("value").then(snapshot => {
+    const offers = snapshot.val() || {};
+
+    Object.keys(offers).forEach(key => {
+      const offer = offers[key];
+      const start = offer.startDate || today;
+      const end = offer.endDate || today;
+      let newStatus = offer.status || "inactive";
+
+      // ✅ Determine status by comparing today's date
+      if (today >= start && today <= end) {
+        newStatus = "active";
+      } else if (today > end) {
+        newStatus = "inactive";
+      } else if (today < start) {
+        newStatus = "upcoming";
+      }
+
+      // ✅ Update only if status changed
+      if (newStatus !== offer.status) {
+        offersRef.child(key).child("status").set(newStatus);
+      }
+    });
+  });
+}
+
+// ✅ Run automatically when admin panel loads
+window.addEventListener("load", () => {
+  autoUpdateCouponStatus();
+});
+
 
 // Listen for form submit
 offerForm.addEventListener('submit', function(e) {
