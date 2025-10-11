@@ -4556,19 +4556,26 @@ function applyRolePermissions(role) {
 
   const allowedSections = permissions[role] || [];
 
-  // Hide all sections first
-  document.querySelectorAll('.section, .customer-panel, .modal').forEach(sec => sec.style.display = 'none');
+  // 1️⃣ Hide all sections
+  Object.values(sectionToLink).forEach(linkId => {
+    const secId = linkId.replace('link','').toLowerCase();
+    const sec = document.getElementById(secId);
+    if(sec) sec.style.display = 'none';
+  });
 
-  // Show allowed sections
+  // 2️⃣ Show only allowed sections
   allowedSections.forEach(secId => {
     const sec = document.getElementById(secId);
     if(sec) sec.style.display = 'block';
   });
 
-  // Hide all sidebar links first
-  document.querySelectorAll('.sidebar a').forEach(link => link.style.display = 'none');
+  // 3️⃣ Hide all sidebar links
+  Object.values(sectionToLink).forEach(linkId => {
+    const link = document.getElementById(linkId);
+    if(link) link.style.display = 'none';
+  });
 
-  // Show allowed links
+  // 4️⃣ Show only allowed sidebar links
   allowedSections.forEach(secId => {
     const linkId = sectionToLink[secId];
     if(linkId) {
