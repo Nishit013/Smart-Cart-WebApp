@@ -1082,25 +1082,28 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 .filter-dropdown {
-  padding: 4px 8px;      /* smaller padding */
-  font-size: 13px;       /* smaller font */
-  border: 1px solid #ccc;
+  padding: 4px 8px;
+  font-size: 13px;
+  border: 1px solid var(--border-color, #ccc);
   border-radius: 4px;
-  background-color: #f8f8f8;
-  min-width: 120px;      /* smaller width */
+  background-color: var(--dropdown-bg, #f8f8f8);
+  color: var(--dropdown-text, #000);
+  min-width: 120px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
+/* Hover & focus */
 .filter-dropdown:hover {
-  border-color: #007bff;
+  border-color: var(--primary, #007bff);
 }
 
 .filter-dropdown:focus {
   outline: none;
-  border-color: #007bff;
+  border-color: var(--primary, #007bff);
   box-shadow: 0 0 4px rgba(0,123,255,0.3);
 }
+
 
 </style>
 
