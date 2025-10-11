@@ -1275,7 +1275,23 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 <div class="section" id="customerOffers">
   <h2 class="section-title">Customer Offers</h2>
 
-  <!-- Filters & Form -->
+  <!-- Filters -->
+  <div class="filters" style="display:flex; gap:10px; margin-bottom:10px;">
+    <select id="statusFilter" class="input-field">
+      <option value="">All Status</option>
+      <option value="active">Active</option>
+      <option value="inactive">Inactive</option>
+      <option value="upcoming">Upcoming</option>
+    </select>
+
+    <select id="typeFilter" class="input-field">
+      <option value="">All Types</option>
+      <option value="flat">Flat</option>
+      <option value="percentage">Percentage</option>
+    </select>
+  </div>
+
+  <!-- Add Offer Form -->
   <form id="offerForm" class="filters">
     <input type="text" id="couponCode" placeholder="Coupon Code" class="input-field" required>
     <input type="number" id="minPurchase" placeholder="Min Purchase Value" class="input-field" required>
@@ -1296,27 +1312,26 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   </form>
 
   <!-- Offers Table -->
-  <!-- Offers Table -->
-<div class="scroll-box" style="margin-top: 15px; max-height: 300px; overflow-y: auto;">
-  <table class="security-table" id="offersTable" style="width:100%; border-collapse: collapse;">
-    <thead>
-      <tr>
-        <th>Coupon Code</th>
-        <th>Type</th>
-        <th>Value</th>
-        <th>Min Purchase</th>
-        <th>Max Discount</th>
-        <th>Start Date</th>
-        <th>End Date</th>
-        <th>Status</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <div class="scroll-box" style="margin-top: 15px; max-height: 300px; overflow-y: auto;">
+    <table class="security-table" id="offersTable" style="width:100%; border-collapse: collapse;">
+      <thead>
+        <tr>
+          <th>Coupon Code</th>
+          <th>Type</th>
+          <th>Value</th>
+          <th>Min Purchase</th>
+          <th>Max Discount</th>
+          <th>Start Date</th>
+          <th>End Date</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
 </div>
 
-</div>
 
 
 
@@ -2988,6 +3003,7 @@ window.addEventListener("load", () => {
 
 
 // Listen for form submit
+// ===== Form Submission =====
 offerForm.addEventListener('submit', function(e) {
   e.preventDefault();
 
@@ -3008,7 +3024,6 @@ offerForm.addEventListener('submit', function(e) {
     return;
   }
 
-  // Push to Firebase
   offersRef.push(newOffer)
     .then(() => {
       alert('Offer added successfully!');
@@ -3020,11 +3035,36 @@ offerForm.addEventListener('submit', function(e) {
     });
 });
 
-// Listen for changes in Firebase to update table
-offersRef.on('value', snapshot => {
+// ===== Filters =====
+const statusFilter = document.getElementById('statusFilter');
+const typeFilter = document.getElementById('typeFilter');
+
+// ===== Render Offers Function =====
+function renderOffers(snapshot) {
   offersTableBody.innerHTML = '';
+  const today = new Date().toISOString().split('T')[0];
+
   snapshot.forEach(child => {
     const offer = child.val();
+
+    // Auto-update status
+    const start = offer.startDate;
+    const end = offer.endDate;
+    let status = offer.status;
+    if (today >= start && today <= end) status = "active";
+    else if (today > end) status = "inactive";
+    else if (today < start) status = "upcoming";
+
+    // Update Firebase if status changed
+    if (status !== offer.status) offersRef.child(child.key).child("status").set(status);
+
+    // Apply filters
+    const selectedStatus = statusFilter.value;
+    const selectedType = typeFilter.value;
+    if (selectedStatus && status !== selectedStatus) return;
+    if (selectedType && offer.discountType !== selectedType) return;
+
+    // Render table row
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${offer.couponCode}</td>
@@ -3034,14 +3074,22 @@ offersRef.on('value', snapshot => {
       <td>${offer.maxDiscount || 0}</td>
       <td>${offer.startDate}</td>
       <td>${offer.endDate}</td>
-      <td>${offer.status}</td>
+      <td>${status}</td>
       <td>
         <button onclick="deleteOffer('${child.key}')">Delete</button>
       </td>
     `;
     offersTableBody.appendChild(tr);
   });
-});
+}
+
+// ===== Listen for Firebase Changes =====
+offersRef.on('value', renderOffers);
+
+// ===== Re-render on Filter Change =====
+statusFilter.onchange = () => offersRef.once('value').then(renderOffers);
+typeFilter.onchange = () => offersRef.once('value').then(renderOffers);
+
 
 // Delete offer function
 function deleteOffer(key) {
