@@ -3537,19 +3537,22 @@ function receivePO(poId, productId, qty, supplierId) {
   // Update Stock
   db.ref("products/" + productId).once("value").then(snap => {
     let stock = snap.val().stock || 0;
-    db.ref("products/" + productId + "/stock").set(stock + qty);
+    const newStock = stock + qty;
+    db.ref("products/" + productId + "/stock").set(newStock);
 
-    // Log Stock Movement
+    // Log Stock Movement with supplierId
     db.ref("stockMovements").push({
       date: new Date().toLocaleString(),
       productId,
       qtyChange: "+" + qty,
       type: "Stock-In",
-      currentStock: stock + qty,
+      currentStock: newStock,
+      supplierId,                // <- add this
       supplierNote: "PO Received from Supplier " + supplierId
     });
   });
 }
+
 
 // ✅ Load Stock Movement History
 async function loadStockMovements() {
