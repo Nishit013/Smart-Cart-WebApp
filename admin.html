@@ -4531,25 +4531,38 @@ function createUser() {
 
 
 function applyRolePermissions(role) {
-  // Sections allowed per role
   const permissions = {
-    admin: ['analytics', 'charts', 'carts', 'security', 'productSales', 'customerOffers', 'products', 'inventory', 'gstSection', 'createUserSection', 'customerDetails', 'supplierManagement'],
-    cashier: ['carts', 'customerOffers'],
-    salesManager: ['analytics', 'productSales', 'customerOffers'],
-    productManager: ['products', 'inventory'],
-    accountant: ['analytics', 'gstSection', 'productSales']
+    admin: ['analytics','charts','carts','security','productSales','customerOffers','products','inventory','gstSection','createUserSection','customerDetailsPanel','supplierModal'],
+    cashier: ['carts','customerOffers'],
+    salesManager: ['analytics','productSales','customerOffers'],
+    productManager: ['products','inventory'],
+    accountant: ['analytics','gstSection','productSales']
+  };
+
+  const sectionToLink = {
+    analytics: 'linkAnalytics',
+    charts: 'linkCharts',
+    carts: 'linkCarts',
+    security: 'linkSecurity',
+    productSales: 'linkProductSales',
+    customerOffers: 'linkCustomerOffers',
+    products: 'linkProducts',
+    inventory: 'linkInventory',
+    gstSection: 'linkGST',
+    createUserSection: 'linkCreateUser',
+    customerDetailsPanel: 'linkCustomerDetails',
+    supplierModal: 'linkSupplierManagement'
   };
 
   const allowedSections = permissions[role] || [];
 
   // Hide all sections first
-  document.querySelectorAll('.section').forEach(sec => sec.style.display = 'none');
+  document.querySelectorAll('.section, .customer-panel, .modal').forEach(sec => sec.style.display = 'none');
 
   // Show allowed sections
-  allowedSections.forEach(id => {
-    // For section divs
-    const sec = document.getElementById(id);
-    if (sec) sec.style.display = 'block';
+  allowedSections.forEach(secId => {
+    const sec = document.getElementById(secId);
+    if(sec) sec.style.display = 'block';
   });
 
   // Hide all sidebar links first
@@ -4557,9 +4570,11 @@ function applyRolePermissions(role) {
 
   // Show allowed links
   allowedSections.forEach(secId => {
-    let linkId = 'link' + secId.charAt(0).toUpperCase() + secId.slice(1); // Convert section ID to link ID
-    const link = document.getElementById(linkId);
-    if (link) link.style.display = 'block';
+    const linkId = sectionToLink[secId];
+    if(linkId) {
+      const link = document.getElementById(linkId);
+      if(link) link.style.display = 'block';
+    }
   });
 }
 
