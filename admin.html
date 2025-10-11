@@ -1276,20 +1276,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   <h2 class="section-title">Customer Offers</h2>
 
   <!-- Filters -->
-  <div class="filters" style="display:flex; gap:10px; margin-bottom:10px;">
-    <select id="statusFilter" class="input-field">
-      <option value="">All Status</option>
-      <option value="active">Active</option>
-      <option value="inactive">Inactive</option>
-      <option value="upcoming">Upcoming</option>
-    </select>
 
-    <select id="typeFilter" class="input-field">
-      <option value="">All Types</option>
-      <option value="flat">Flat</option>
-      <option value="percentage">Percentage</option>
-    </select>
-  </div>
 
   <!-- Add Offer Form -->
   <form id="offerForm" class="filters">
@@ -1311,6 +1298,21 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     <button type="submit">Add Offer</button>
   </form>
 
+
+    <div class="filters" style="display:flex; gap:10px; margin-bottom:10px;">
+    <select id="statusFilter" class="input-field">
+      <option value="">All Status</option>
+      <option value="active">Active</option>
+      <option value="inactive">Inactive</option>
+      <option value="upcoming">Upcoming</option>
+    </select>
+
+    <select id="typeFilter" class="input-field">
+      <option value="">All Types</option>
+      <option value="flat">Flat</option>
+      <option value="percentage">Percentage</option>
+    </select>
+  </div>
   <!-- Offers Table -->
   <div class="scroll-box" style="margin-top: 15px; max-height: 300px; overflow-y: auto;">
     <table class="security-table" id="offersTable" style="width:100%; border-collapse: collapse;">
