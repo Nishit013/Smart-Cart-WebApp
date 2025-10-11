@@ -1082,16 +1082,15 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 .filter-dropdown {
-  padding: 4px 8px;
-  font-size: 13px;
-  border: 1px solid var(--border-color, #ccc);
-  border-radius: 4px;
-  background-color: var(--dropdown-bg, #f8f8f8);
-  color: var(--dropdown-text, #000);
-  min-width: 120px;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  width: auto;          /* small, compact */
+  display: inline-block; 
+  margin-right: 10px;    /* spacing between dropdowns */
+  font-size: 13px;       /* same as other inputs */
+  vertical-align: middle;
 }
+
+/* Let .input-field handle theme colors */
+
 
 /* Hover & focus */
 .filter-dropdown:hover {
@@ -1332,19 +1331,19 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 
     <div class="offer-filters">
-  <select id="statusFilter" class="filter-dropdown">
-    <option value="">All Status</option>
-    <option value="active">Active</option>
-    <option value="inactive">Inactive</option>
-    <option value="upcoming">Upcoming</option>
-  </select>
+  <select id="statusFilter" class="input-field filter-dropdown">
+  <option value="">All Status</option>
+  <option value="active">Active</option>
+  <option value="inactive">Inactive</option>
+  <option value="upcoming">Upcoming</option>
+</select>
 
-  <select id="typeFilter" class="filter-dropdown">
-    <option value="">All Types</option>
-    <option value="flat">Flat</option>
-    <option value="percentage">Percentage</option>
-  </select>
-</div>
+<select id="typeFilter" class="input-field filter-dropdown">
+  <option value="">All Types</option>
+  <option value="flat">Flat</option>
+  <option value="percentage">Percentage</option>
+</select>
+
 
   <!-- Offers Table -->
   <div class="scroll-box" style="margin-top: 15px; max-height: 300px; overflow-y: auto;">
