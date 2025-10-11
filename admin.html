@@ -2183,24 +2183,24 @@ function markAsPaid(cartId, selectedCoupon = null) {
 
   // --- Step 3: Apply discount ---
   let discount = 0;
-  let appliedCouponCode = null;
+let appliedCouponCode = null;
 
-  if (selectedCoupon && totalBeforeDiscount >= Number(selectedCoupon.minPurchase)) {
-    if (selectedCoupon.discountType === "flat") {
-      discount = Math.min(
-        Number(selectedCoupon.discountValue),
-        Number(selectedCoupon.maxDiscount || selectedCoupon.discountValue)
-      );
-    } else if (selectedCoupon.discountType === "percent") {
-      discount = Math.min(
-        (totalBeforeDiscount * Number(selectedCoupon.discountValue)) / 100,
-        Number(selectedCoupon.maxDiscount || (totalBeforeDiscount * selectedCoupon.discountValue) / 100)
-      );
+if (selectedCoupon && totalBeforeDiscount >= Number(selectedCoupon.minPurchase)) {
+  if (selectedCoupon.discountType === "flat") {
+    discount = Math.min(
+      Number(selectedCoupon.discountValue),
+      Number(selectedCoupon.maxDiscount || selectedCoupon.discountValue)
+    );
+  } else if (selectedCoupon.discountType === "percentage") { // <-- fix here
+    discount = (totalBeforeDiscount * Number(selectedCoupon.discountValue)) / 100;
+    if (selectedCoupon.maxDiscount > 0) {
+      discount = Math.min(discount, Number(selectedCoupon.maxDiscount));
     }
-    appliedCouponCode = selectedCoupon.couponCode;
   }
+  appliedCouponCode = selectedCoupon.couponCode;
+}
 
-  const finalPaid = totalBeforeDiscount - discount;
+const finalPaid = totalBeforeDiscount - discount;
 
   // --- Step 4: Build bill summary ---
   const summaryText = buildBillSummary(itemsArray, totalBeforeDiscount, discount, totalCGST, totalSGST);
