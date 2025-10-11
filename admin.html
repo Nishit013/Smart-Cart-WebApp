@@ -1081,13 +1081,18 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   align-items: center;
 }
 
+.filters-container {
+  margin-bottom: 10px;
+}
+
 .filter-dropdown {
-  width: auto;          /* small, compact */
+  width: auto;          /* compact width */
   display: inline-block; 
   margin-right: 10px;    /* spacing between dropdowns */
-  font-size: 13px;       /* same as other inputs */
+  font-size: 13px;
   vertical-align: middle;
 }
+
 
 /* Let .input-field handle theme colors */
 
@@ -1330,19 +1335,19 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   </form>
 
 
-    <div class="offer-filters">
+    <div class="filters-container">
   <select id="statusFilter" class="input-field filter-dropdown">
-  <option value="">All Status</option>
-  <option value="active">Active</option>
-  <option value="inactive">Inactive</option>
-  <option value="upcoming">Upcoming</option>
-</select>
+    <option value="">All Status</option>
+    <option value="active">Active</option>
+    <option value="inactive">Inactive</option>
+    <option value="upcoming">Upcoming</option>
+  </select>
 
-<select id="typeFilter" class="input-field filter-dropdown">
-  <option value="">All Types</option>
-  <option value="flat">Flat</option>
-  <option value="percentage">Percentage</option>
-</select>
+  <select id="typeFilter" class="input-field filter-dropdown">
+    <option value="">All Types</option>
+    <option value="flat">Flat</option>
+    <option value="percentage">Percentage</option>
+  </select>
 
 
   <!-- Offers Table -->
