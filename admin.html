@@ -1139,7 +1139,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
       <a href="javascript:void(0)" onclick="openSupplierModal()">
   <span>Supplier Management</span></a>
   <a href="#gstSection"><span>GST Collection</span></a>
-
+<a href="#createUserSection"> <span>Create User</span></a>
     </a>
   </div>
 
@@ -1766,6 +1766,23 @@ background:rgba(0,0,0,0.5); z-index:999;"></div>
 </div>
 
 
+<div id="createUserSection" class="section" style="padding:20px; display:block;">
+  <h2>Create User with Role</h2>
+  <div class="form-grid" style="gap:10px; max-width:400px;">
+    <input type="email" id="newUserEmail" placeholder="User Email">
+    <input type="password" id="newUserPassword" placeholder="Password">
+    <select id="newUserRole">
+      <option value="">Select Role</option>
+      <option value="cashier">Cashier</option>
+      <option value="salesManager">Sales Manager</option>
+      <option value="productManager">Product Manager</option>
+      <option value="accountant">Accountant</option>
+      <option value="admin">Admin</option>
+    </select>
+    <button onclick="createUser()">Create User</button>
+  </div>
+  <p id="createUserMsg" style="color:green; margin-top:10px;"></p>
+</div>
 
 
 <script>
@@ -4441,6 +4458,44 @@ async function exportGSTtoPDF() {
 // Initialize GST section on load
 populateGSTCategories();
 updateGSTSection("all");
+
+
+function createUser() {
+  const email = document.getElementById("newUserEmail").value;
+  const password = document.getElementById("newUserPassword").value;
+  const role = document.getElementById("newUserRole").value;
+  const msg = document.getElementById("createUserMsg");
+
+  if (!email || !password || !role) {
+    msg.style.color = "red";
+    msg.innerText = "Please fill all fields!";
+    return;
+  }
+
+  // Create user in Firebase Authentication
+  firebase.auth().createUserWithEmailAndPassword(email, password)
+    .then(userCredential => {
+      const user = userCredential.user;
+
+      // Save role in Realtime Database
+      firebase.database().ref("users/" + user.uid).set({
+        email: email,
+        role: role
+      }).then(() => {
+        msg.style.color = "green";
+        msg.innerText = `User ${email} created successfully as ${role}`;
+        // Clear input fields
+        document.getElementById("newUserEmail").value = "";
+        document.getElementById("newUserPassword").value = "";
+        document.getElementById("newUserRole").value = "";
+      });
+    })
+    .catch(error => {
+      msg.style.color = "red";
+      msg.innerText = error.message;
+    });
+}
+
 
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
