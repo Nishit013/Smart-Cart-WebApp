@@ -1115,33 +1115,33 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 <body>
 <div id="loginContainer" class="login-screen">
   <div class="login-card">
-    <h2>Admin Login</h2>
+    <h2> Admin Login</h2>
     <input type="email" id="email" placeholder="Email">
     <input type="password" id="password" placeholder="Password">
     <button onclick="login()">Login</button>
-    <p id="loginError" style="color:red; display:none;">❌ Invalid email or password</p>
+    <p id="loginError">❌ Invalid email or password</p>
   </div>
 </div>
 
-
 <div id="adminPanel" style="display:none;">
   <div class="sidebar">
-    <h2><span>Admin</span></h2>
+    <h2> <span>Admin</span></h2>
+    <a href="#analytics"> <span>Analytics</span></a>
+    <a href="#charts"> <span>Graphs</span></a>
+    <a href="#carts"> <span>Cart Details</span></a>
+    <a href="#security"> <span>Security</span></a>
+    <a href="#productSales"> <span>Product Sales</span></a> <!-- ✅ New link added -->
+    <a href="#customerOffers"> <span>Customer Offers</span></a> <!-- New link -->
+    <a href="#products"> <span>Product Management</span></a>
+    <a href="#inventory"><span>Inventory</span></a>
+    <a href="javascript:void(0)" onclick="toggleCustomerDetails()">
+      <span>Customer Details</span>
+      <a href="javascript:void(0)" onclick="openSupplierModal()">
+  <span>Supplier Management</span></a>
+  <a href="#gstSection"><span>GST Collection</span></a>
 
-    <a href="#analytics" id="linkAnalytics"><span>Analytics</span></a>
-    <a href="#charts" id="linkCharts"><span>Graphs</span></a>
-    <a href="#carts" id="linkCarts"><span>Cart Details</span></a>
-    <a href="#security" id="linkSecurity"><span>Security</span></a>
-    <a href="#productSales" id="linkProductSales"><span>Product Sales</span></a>
-    <a href="#customerOffers" id="linkCustomerOffers"><span>Customer Offers</span></a>
-    <a href="#products" id="linkProducts"><span>Product Management</span></a>
-    <a href="#inventory" id="linkInventory"><span>Inventory</span></a>
-    <a href="javascript:void(0)" id="linkCustomerDetails" onclick="toggleCustomerDetails()"><span>Customer Details</span></a>
-    <a href="javascript:void(0)" id="linkSupplierManagement" onclick="openSupplierModal()"><span>Supplier Management</span></a>
-    <a href="#gstSection" id="linkGST"><span>GST Collection</span></a>
-    <a href="#createUserSection" id="linkCreateUser"><span>Create User</span></a>
+    </a>
   </div>
-
 
 
 
@@ -1766,23 +1766,6 @@ background:rgba(0,0,0,0.5); z-index:999;"></div>
 </div>
 
 
-<div id="createUserSection" class="section" style="padding:20px; display:block;">
-  <h2>Create User with Role</h2>
-  <div class="form-grid" style="gap:10px; max-width:400px;">
-    <input type="email" id="newUserEmail" placeholder="User Email">
-    <input type="password" id="newUserPassword" placeholder="Password">
-    <select id="newUserRole">
-      <option value="">Select Role</option>
-      <option value="cashier">Cashier</option>
-      <option value="salesManager">Sales Manager</option>
-      <option value="productManager">Product Manager</option>
-      <option value="accountant">Accountant</option>
-      <option value="admin">Admin</option>
-    </select>
-    <button onclick="createUser()">Create User</button>
-  </div>
-  <p id="createUserMsg" style="color:green; margin-top:10px;"></p>
-</div>
 
 
 <script>
@@ -2507,53 +2490,20 @@ function getCartStatus(cart) {
 <script>
   const auth = firebase.auth();
 
-function login() {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-  const loginError = document.getElementById("loginError");
+  function login() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
 
-  loginError.style.display = "none";
-
-  if (!email || !password) {
-    loginError.innerText = "Please enter email and password";
-    loginError.style.display = "block";
-    return;
+    auth.signInWithEmailAndPassword(email, password)
+      .then((userCredential) => {
+        document.getElementById("loginContainer").style.display = "none";
+        document.getElementById("adminPanel").style.display = "block";
+      })
+      .catch((error) => {
+        console.error(error);
+        document.getElementById("loginError").style.display = "block";
+      });
   }
-
-  firebase.auth().signInWithEmailAndPassword(email, password)
-    .then(userCredential => {
-      const uid = userCredential.user.uid;
-
-      // Fetch role from Firebase Realtime Database
-      firebase.database().ref("users/" + uid).once("value")
-        .then(snapshot => {
-          const userData = snapshot.val();
-          if (!userData || !userData.role) {
-            loginError.innerText = "Role not assigned!";
-            loginError.style.display = "block";
-            return;
-          }
-
-          const role = userData.role;
-
-          // Hide login screen
-          document.getElementById("loginContainer").style.display = "none";
-          // Show admin panel
-          document.getElementById("adminPanel").style.display = "block";
-
-          // Apply role-based UI
-          applyRolePermissions(role);
-
-          // Update profile dropdown email
-          document.getElementById("userEmail").innerText = email;
-        });
-    })
-    .catch(error => {
-      loginError.innerText = error.message;
-      loginError.style.display = "block";
-    });
-}
-
 
   // 🔁 Auto-login on page reload
   auth.onAuthStateChanged((user) => {
@@ -4491,101 +4441,6 @@ async function exportGSTtoPDF() {
 // Initialize GST section on load
 populateGSTCategories();
 updateGSTSection("all");
-
-
-function createUser() {
-  const email = document.getElementById("newUserEmail").value;
-  const password = document.getElementById("newUserPassword").value;
-  const role = document.getElementById("newUserRole").value;
-  const msg = document.getElementById("createUserMsg");
-
-  if (!email || !password || !role) {
-    msg.style.color = "red";
-    msg.innerText = "Please fill all fields!";
-    return;
-  }
-
-  // Create user in Firebase Authentication
-  firebase.auth().createUserWithEmailAndPassword(email, password)
-    .then(userCredential => {
-      const user = userCredential.user;
-
-      // Save role in Realtime Database
-      firebase.database().ref("users/" + user.uid).set({
-        email: email,
-        role: role
-      }).then(() => {
-        msg.style.color = "green";
-        msg.innerText = `User ${email} created successfully as ${role}`;
-        // Clear input fields
-        document.getElementById("newUserEmail").value = "";
-        document.getElementById("newUserPassword").value = "";
-        document.getElementById("newUserRole").value = "";
-      });
-    })
-    .catch(error => {
-      msg.style.color = "red";
-      msg.innerText = error.message;
-    });
-}
-
-
-function applyRolePermissions(role) {
-  const permissions = {
-    admin: ['analytics','charts','carts','security','productSales','customerOffers','products','inventory','gstSection','createUserSection','customerDetailsPanel','supplierModal'],
-    cashier: ['carts','customerOffers'],
-    salesManager: ['analytics','productSales','customerOffers'],
-    productManager: ['products','inventory'],
-    accountant: ['analytics','gstSection','productSales']
-  };
-
-  const sectionToLink = {
-    analytics: 'linkAnalytics',
-    charts: 'linkCharts',
-    carts: 'linkCarts',
-    security: 'linkSecurity',
-    productSales: 'linkProductSales',
-    customerOffers: 'linkCustomerOffers',
-    products: 'linkProducts',
-    inventory: 'linkInventory',
-    gstSection: 'linkGST',
-    createUserSection: 'linkCreateUser',
-    customerDetailsPanel: 'linkCustomerDetails',
-    supplierModal: 'linkSupplierManagement'
-  };
-
-  const allowedSections = permissions[role] || [];
-
-  // 1️⃣ Hide all sections
-  Object.values(sectionToLink).forEach(linkId => {
-    const secId = linkId.replace('link','').toLowerCase();
-    const sec = document.getElementById(secId);
-    if(sec) sec.style.display = 'none';
-  });
-
-  // 2️⃣ Show only allowed sections
-  allowedSections.forEach(secId => {
-    const sec = document.getElementById(secId);
-    if(sec) sec.style.display = 'block';
-  });
-
-  // 3️⃣ Hide all sidebar links
-  Object.values(sectionToLink).forEach(linkId => {
-    const link = document.getElementById(linkId);
-    if(link) link.style.display = 'none';
-  });
-
-  // 4️⃣ Show only allowed sidebar links
-  allowedSections.forEach(secId => {
-    const linkId = sectionToLink[secId];
-    if(linkId) {
-      const link = document.getElementById(linkId);
-      if(link) link.style.display = 'block';
-    }
-  });
-}
-
-
 
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
