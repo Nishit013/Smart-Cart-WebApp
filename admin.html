@@ -1136,16 +1136,12 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     <a href="#inventory"><span>Inventory</span></a>
     <a href="javascript:void(0)" onclick="toggleCustomerDetails()">
       <span>Customer Details</span>
-    </a>
-    <a href="javascript:void(0)" onclick="openSupplierModal()">
-      <span>Supplier Management</span>
-    </a>
-    <a href="#gstSection"><span>GST Collection</span></a>
-    <!-- New Create User Section Link -->
-    <a href="#createUserSection"><span>Create User</span></a>
-  </div>
-</div>
+      <a href="javascript:void(0)" onclick="openSupplierModal()">
+  <span>Supplier Management</span></a>
+  <a href="#gstSection"><span>GST Collection</span></a>
 
+    </a>
+  </div>
 
 
 
@@ -1770,22 +1766,7 @@ background:rgba(0,0,0,0.5); z-index:999;"></div>
 </div>
 
 
-<div id="createUserSection" class="admin-section" style="display:none;">
-  <h2>Create New User</h2>
-  <form id="createUserForm">
-    <input type="email" id="userEmail" placeholder="Email" required>
-    <input type="password" id="userPassword" placeholder="Password" required>
-    <select id="userRole" required>
-      <option value="">Select Role</option>
-      <option value="admin">Admin</option>
-      <option value="sales_manager">Sales Manager</option>
-      <option value="product_manager">Product Manager</option>
-      <option value="cashier">Cashier</option>
-    </select>
-    <button type="submit">Create User</button>
-  </form>
-  <p id="createUserMsg"></p>
-</div>
+
 
 <script>
   const firebaseConfig = {
@@ -3054,7 +3035,11 @@ function autoUpdateCouponStatus() {
   });
 }
 
-
+// ✅ Run automatically when admin panel loads
+window.addEventListener("load", () => {
+  autoUpdateCouponStatus(); // run once
+  offersRef.on('value', renderOffers); // attach table listener after
+});
 
 
 // Listen for form submit
@@ -4457,62 +4442,6 @@ async function exportGSTtoPDF() {
 // Initialize GST section on load
 populateGSTCategories();
 updateGSTSection("all");
-
-
-
-const createUserForm = document.getElementById('createUserForm');
-const msg = document.getElementById('createUserMsg');
-
-createUserForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-
-  const email = document.getElementById('userEmail').value;
-  const password = document.getElementById('userPassword').value;
-  const role = document.getElementById('userRole').value;
-
-  // ✅ Create user in Firebase Authentication
-  auth.createUserWithEmailAndPassword(email, password)
-    .then(userCredential => {
-      const uid = userCredential.user.uid;
-
-      // ✅ Store email and role in Realtime Database
-      return db.ref('users/' + uid).set({
-        email: email,
-        role: role
-      });
-    })
-    .then(() => {
-      msg.textContent = "User created successfully!";
-      createUserForm.reset();
-    })
-    .catch(err => {
-      msg.textContent = "Error: " + err.message;
-      console.error(err);
-    });
-});
-
-// Select all sidebar links that point to sections
-const sidebarLinks = document.querySelectorAll('.sidebar a[href^="#"]');
-const sections = document.querySelectorAll('.admin-section');
-
-// Show section when link clicked, without hiding others
-sidebarLinks.forEach(link => {
-  link.addEventListener('click', (e) => {
-    e.preventDefault();
-
-    const targetId = link.getAttribute('href').substring(1);
-    const targetSection = document.getElementById(targetId);
-
-    if(targetSection) {
-      // toggle visibility: if hidden, show; if shown, keep shown
-      targetSection.style.display = 'block';
-      // optionally scroll to it
-      targetSection.scrollIntoView({ behavior: 'smooth' });
-    }
-  });
-});
-
-
 
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
