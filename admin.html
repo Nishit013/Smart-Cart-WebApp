@@ -1109,9 +1109,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 
-
-
-
 </style>
 
 </head>
@@ -1126,29 +1123,25 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   </div>
 </div>
 
-
-<!-- 🧭 MAIN ADMIN PANEL -->
 <div id="adminPanel" style="display:none;">
   <div class="sidebar">
-    <h2><span id="panelRoleTitle">Admin Panel</span></h2>
+    <h2> <span>Admin</span></h2>
+    <a href="#analytics"> <span>Analytics</span></a>
+    <a href="#charts"> <span>Graphs</span></a>
+    <a href="#carts"> <span>Cart Details</span></a>
+    <a href="#security"> <span>Security</span></a>
+    <a href="#productSales"> <span>Product Sales</span></a> <!-- ✅ New link added -->
+    <a href="#customerOffers"> <span>Customer Offers</span></a> <!-- New link -->
+    <a href="#products"> <span>Product Management</span></a>
+    <a href="#inventory"><span>Inventory</span></a>
+    <a href="javascript:void(0)" onclick="toggleCustomerDetails()">
+      <span>Customer Details</span>
+      <a href="javascript:void(0)" onclick="openSupplierModal()">
+  <span>Supplier Management</span></a>
+  <a href="#gstSection"><span>GST Collection</span></a>
 
-    <a href="#analytics" data-section="analytics"><span>Analytics</span></a>
-    <a href="#charts" data-section="charts"><span>Graphs</span></a>
-    <a href="#carts" data-section="carts"><span>Cart Details</span></a>
-    <a href="#security" data-section="security"><span>Security</span></a>
-    <a href="#productSales" data-section="productSales"><span>Product Sales</span></a>
-    <a href="#customerOffers" data-section="customerOffers"><span>Customer Offers</span></a>
-    <a href="#products" data-section="products"><span>Product Management</span></a>
-    <a href="#inventory" data-section="inventory"><span>Inventory</span></a>
-    <a href="javascript:void(0)" data-section="customers" onclick="toggleCustomerDetails()"><span>Customer Details</span></a>
-    <a href="javascript:void(0)" data-section="suppliers" onclick="openSupplierModal()"><span>Supplier Management</span></a>
-    <a href="#gstSection" data-section="gstSection"><span>GST Collection</span></a>
-
-    <a href="javascript:void(0)" onclick="logout()" class="logout-btn"><span>Logout</span></a>
+    </a>
   </div>
-
- 
-
 
 
 
@@ -1771,7 +1764,6 @@ background:rgba(0,0,0,0.5); z-index:999;"></div>
     </div>
   </div>
 </div>
-
 
 
 
@@ -2498,93 +2490,35 @@ function getCartStatus(cart) {
 <script>
   const auth = firebase.auth();
 
+  function login() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
 
-function login() {
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value.trim();
-
-    firebase.auth().signInWithEmailAndPassword(email, password)
-      .then(userCredential => {
-        const user = userCredential.user;
-        const userRef = firebase.database().ref('users/' + user.uid);
-
-        userRef.once('value').then(snapshot => {
-          const data = snapshot.val();
-          const role = data?.role || 'admin';
-
-          localStorage.setItem('userRole', role);
-          localStorage.setItem('userEmail', user.email);
-
-          document.getElementById('loginContainer').style.display = 'none';
-          document.getElementById('adminPanel').style.display = 'block';
-          document.getElementById('userEmail').innerText = user.email;
-          showSectionsForRole(role);
-        });
+    auth.signInWithEmailAndPassword(email, password)
+      .then((userCredential) => {
+        document.getElementById("loginContainer").style.display = "none";
+        document.getElementById("adminPanel").style.display = "block";
       })
-      .catch(error => {
+      .catch((error) => {
+        console.error(error);
         document.getElementById("loginError").style.display = "block";
       });
   }
 
-  // ================== Logout ==================
-  function logout() {
-    firebase.auth().signOut().then(() => {
-      localStorage.clear();
-      location.reload();
-    });
-  }
-
-  // ================== Auto Login ==================
-  firebase.auth().onAuthStateChanged(user => {
+  // 🔁 Auto-login on page reload
+  auth.onAuthStateChanged((user) => {
     if (user) {
-      const role = localStorage.getItem('userRole');
-      document.getElementById('loginContainer').style.display = 'none';
-      document.getElementById('adminPanel').style.display = 'block';
-      document.getElementById('userEmail').innerText = user.email;
-      showSectionsForRole(role);
-    } else {
-      document.getElementById('loginContainer').style.display = 'block';
-      document.getElementById('adminPanel').style.display = 'none';
+      document.getElementById("loginContainer").style.display = "none";
+      document.getElementById("adminPanel").style.display = "block";
     }
   });
-
-  // ================== Role-Based Section Visibility ==================
-  function showSectionsForRole(role) {
-    const allSections = document.querySelectorAll('.section');
-    const allLinks = document.querySelectorAll('.sidebar a');
-
-    allSections.forEach(sec => sec.style.display = 'none');
-    allLinks.forEach(link => link.style.display = 'none');
-
-    const accessMap = {
-      admin: ['analytics', 'charts', 'carts', 'security', 'productSales', 'customerOffers', 'products', 'inventory', 'customers', 'suppliers', 'gstSection'],
-      cashier: ['carts', 'analytics', 'customers'],
-      sales: ['analytics', 'charts', 'productSales', 'customerOffers', 'customers', 'gstSection'],
-      inventory: ['products', 'inventory', 'suppliers', 'gstSection'],
-      security: ['security']
-    };
-
-    const allowed = accessMap[role] || [];
-
-    allowed.forEach(id => {
-      document.querySelectorAll(`[data-section="${id}"]`).forEach(link => link.style.display = 'flex');
-      const el = document.getElementById(id);
-      if (el) el.style.display = 'block';
-    });
-
-    document.getElementById("panelRoleTitle").innerText = role.charAt(0).toUpperCase() + role.slice(1) + " Panel";
-  }
-
-  // Optional helper functions
-  function toggleCustomerDetails() {
-    document.getElementById('customers').style.display =
-      document.getElementById('customers').style.display === 'block' ? 'none' : 'block';
-  }
-
-  function openSupplierModal() {
-    document.getElementById('suppliers').style.display =
-      document.getElementById('suppliers').style.display === 'block' ? 'none' : 'block';
-  }
+  // 🔓 Logout function
+function logout() {
+  firebase.auth().signOut().then(() => {
+    document.getElementById("adminPanel").style.display = "none";
+    document.getElementById("loginContainer").style.display = "flex";
+  });
+}
 
 // ⏱️ Auto logout after 10 mins of inactivity
 let inactivityTimer;
@@ -3101,7 +3035,6 @@ function autoUpdateCouponStatus() {
   });
 }
 
-// ✅ Run automatically when admin panel loads
 
 
 
@@ -4505,9 +4438,6 @@ async function exportGSTtoPDF() {
 // Initialize GST section on load
 populateGSTCategories();
 updateGSTSection("all");
-
-
-
 
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
