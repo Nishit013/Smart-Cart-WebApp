@@ -1140,7 +1140,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     <a href="javascript:void(0)" data-section="customers" onclick="toggleCustomerDetails()"><span>Customer Details</span></a>
     <a href="javascript:void(0)" data-section="suppliers" onclick="openSupplierModal()"><span>Supplier Management</span></a>
     <a href="#gstSection" data-section="gstSection"><span>GST Collection</span></a>
-    <a href="#userManagement" data-section="userManagement"><span>User Management</span></a>
 
     <a href="javascript:void(0)" onclick="logout()" class="logout-btn"><span>Logout</span></a>
   </div>
@@ -1768,32 +1767,6 @@ background:rgba(0,0,0,0.5); z-index:999;"></div>
       <canvas id="sgstChart"></canvas>
     </div>
   </div>
-
-
-  <div id="userManagement" class="section" style="display:none;">
-  <h2>👤 User Management</h2>
-  <div class="user-form">
-    <input type="email" id="newUserEmail" placeholder="Enter user email">
-    <input type="password" id="newUserPassword" placeholder="Enter password">
-    <select id="newUserRole">
-      <option value="cashier">Cashier</option>
-      <option value="sales">Sales Manager</option>
-      <option value="product">Product Manager</option>
-      <option value="inventory">Inventory Manager</option>
-      <option value="admin">Admin</option>
-    </select>
-    <button onclick="createUser()">Create User</button>
-    <p id="userMessage"></p>
-  </div>
-
-  <h3>Existing Users</h3>
-  <table id="userTable">
-    <thead>
-      <tr><th>Email</th><th>Role</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</div>
 </div>
 
 
@@ -4530,48 +4503,6 @@ async function exportGSTtoPDF() {
 populateGSTCategories();
 updateGSTSection("all");
 
-
-
-function createUser() {
-  const email = document.getElementById('newUserEmail').value;
-  const password = document.getElementById('newUserPassword').value;
-  const role = document.getElementById('newUserRole').value;
-  const msg = document.getElementById('userMessage');
-
-  // Use Firebase Admin SDK logic via Cloud Function simulation using Realtime DB
-  // ⚠️ Because client-side JS cannot directly create other Firebase Auth users.
-  // We'll simulate account creation using a separate "pendingUsers" node.
-
-  firebase.database().ref('pendingUsers').push({
-    email, password, role, createdAt: new Date().toISOString()
-  });
-
-  msg.innerHTML = "✅ User creation request saved. Run admin script to approve.";
-  msg.style.color = "lightgreen";
-
-  document.getElementById('newUserEmail').value = '';
-  document.getElementById('newUserPassword').value = '';
-}
-function loadUsers() {
-  const tbody = document.querySelector('#userTable tbody');
-  const usersRef = firebase.database().ref('users');
-
-  usersRef.on('value', snapshot => {
-    tbody.innerHTML = '';
-    snapshot.forEach(child => {
-      const data = child.val();
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${data.email}</td><td>${data.role}</td>`;
-      tbody.appendChild(tr);
-    });
-  });
-}
-
-// Load on admin login
-function showSectionsForRole(role) {
-  // ... your existing code ...
-  if (role === 'admin') loadUsers();
-}
 
 
 
