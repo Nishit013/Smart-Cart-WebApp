@@ -4470,12 +4470,12 @@ createUserForm.addEventListener('submit', (e) => {
   const password = document.getElementById('userPassword').value;
   const role = document.getElementById('userRole').value;
 
-  // Create user in Firebase Authentication
+  // ✅ Create user in Firebase Authentication
   auth.createUserWithEmailAndPassword(email, password)
     .then(userCredential => {
       const uid = userCredential.user.uid;
 
-      // Store only email and role in Realtime Database
+      // ✅ Store email and role in Realtime Database
       return db.ref('users/' + uid).set({
         email: email,
         role: role
@@ -4487,8 +4487,10 @@ createUserForm.addEventListener('submit', (e) => {
     })
     .catch(err => {
       msg.textContent = "Error: " + err.message;
+      console.error(err);
     });
 });
+
 // Select all sidebar links that point to sections
 const sidebarLinks = document.querySelectorAll('.sidebar a[href^="#"]');
 const sections = document.querySelectorAll('.admin-section');
