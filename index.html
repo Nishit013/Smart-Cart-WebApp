@@ -502,14 +502,15 @@ document.addEventListener("DOMContentLoaded", () => {
       syncCartToFirebase();
     }
  
-    function clearCart(skipFirebase = false) {
+   function clearCart(skipFirebase = false) {
   cartItems = [];
   document.getElementById("cartItemsList").textContent = "No items scanned.";
   document.getElementById("totalPrice").textContent = "₹0";
   if (!skipFirebase) {
-    syncCartToFirebase(); // Only clear in Firebase if not paid
+    db.ref('carts/' + cartId).remove(); // ✅ clears from Firebase too
   }
 }
+
 
 
 
@@ -758,7 +759,7 @@ function updateStockAfterPayment() {
           bill: { summary: finalSummary }
         });
 
-        clearCart(true); // clears UI only
+        clearCart(); // clears UI only
         document.getElementById("checkoutBtn").disabled = false;
         document.getElementById("loading").style.display = "none";
       }).catch((error) => {
