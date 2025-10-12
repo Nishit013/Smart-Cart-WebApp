@@ -356,33 +356,45 @@ function loadCartFromFirebase() {
 });
 
  function watchCartPayment() {
+  let paymentHandled = false; // ✅ local flag to prevent duplicate actions
+
   db.ref("carts/" + cartId + "/paymentStatus").on("value", snapshot => {
-    if (snapshot.exists() && snapshot.val() === "Paid") {
+    if (!snapshot.exists()) return;
+    const status = snapshot.val();
+
+    // Run only once after marked as paid
+    if (status === "Paid" && !paymentHandled) {
+      paymentHandled = true;
       showToast("✅ Payment Successful (Marked Paid by Admin)");
 
-      // Fetch the bill saved by admin
       db.ref("carts/" + cartId + "/bill").once("value").then(snap => {
         if (snap.exists()) {
           const bill = snap.val();
 
-          // Generate PDF
-          generatePDF(
-            Object.values(cartItems || []),
-            bill.originalTotal || 0,
-            bill.discount || 0,
-            bill.finalPaid || bill.originalTotal
-          );
+          // ✅ Avoid blank PDF or WhatsApp if no valid bill data
+          if (!bill.summary || !bill.phone || bill.summary.trim() === "") {
+            console.log("⚠️ Skipping blank bill generation on page load.");
+            return;
+          }
 
-          // Send WhatsApp bill
-          sendWhatsAppBill(bill.summary, bill.phone || ""); 
+          // ✅ Only generate and send if there are items in cart (avoid blank bills)
+          if (cartItems && cartItems.length > 0) {
+            generatePDF(
+              Object.values(cartItems),
+              bill.originalTotal || 0,
+              bill.discount || 0,
+              bill.finalPaid || bill.originalTotal
+            );
+          }
 
-          // Clear local cart (but not overwrite Firebase again)
-          clearCart(true);
+          sendWhatsAppBill(bill.summary, bill.phone);
+          clearCart(true); // only clears UI, not Firebase
         }
       });
     }
   });
 }
+
 
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("cartNumber").textContent = "#" + cartId;
