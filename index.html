@@ -339,21 +339,15 @@ function loadCartFromFirebase() {
   }
 
   db.ref("carts/" + cartId).once("value").then(snapshot => {
-    if (!snapshot.exists()) return;
-
-    const cartData = snapshot.val();
-
-    // 🚫 Skip loading if cart is already paid or has no items
-    if (cartData.paymentStatus === "Paid") return;
-    if (!cartData.items || cartData.items.length === 0) return;
-
-    cartItems = cartData.items;
-    renderCart();
+    if (snapshot.exists()) {
+      const cartData = snapshot.val();
+      cartItems = cartData.items || [];
+      renderCart();
+    }
   }).catch(err => {
     console.error("Error loading cart:", err);
   });
 }
-
 
  
     document.addEventListener("DOMContentLoaded", () => {
@@ -361,9 +355,12 @@ function loadCartFromFirebase() {
   loadCartFromFirebase();
 });
 
- function watchCartPayment() {
+function watchCartPayment() {
   db.ref("carts/" + cartId + "/paymentStatus").on("value", snapshot => {
     if (snapshot.exists() && snapshot.val() === "Paid") {
+      // Only proceed if local cart has items
+      if (!cartItems || cartItems.length === 0) return;
+
       showToast("✅ Payment Successful (Marked Paid by Admin)");
 
       // Fetch the bill saved by admin
@@ -373,7 +370,7 @@ function loadCartFromFirebase() {
 
           // Generate PDF
           generatePDF(
-            Object.values(cartItems || []),
+            Object.values(cartItems),
             bill.originalTotal || 0,
             bill.discount || 0,
             bill.finalPaid || bill.originalTotal
@@ -389,6 +386,7 @@ function loadCartFromFirebase() {
     }
   });
 }
+
 
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("cartNumber").textContent = "#" + cartId;
@@ -551,6 +549,7 @@ function updateStockAfterPayment() {
 }
  
   async function generatePDF(cartItems, total, discount, finalAmount) {
+  if (!cartItems || cartItems.length === 0) return; // ❌ skip empty
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
@@ -653,6 +652,7 @@ function updateStockAfterPayment() {
  
  
     function sendWhatsAppBill(summary, phoneNumber) {
+  if (!cartItems || cartItems.length === 0) return; // ❌ skip empty
       const customerNumber = "91" + phoneNumber;
       const message = encodeURIComponent(" Smart Cart Bill\n\n" + summary);
       const url = `https://wa.me/${customerNumber}?text=${message}`;
