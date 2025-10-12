@@ -355,47 +355,34 @@ function loadCartFromFirebase() {
   loadCartFromFirebase();
 });
 
-function watchCartPayment() {
-  let paymentHandled = false; // flag for this session
+ function watchCartPayment() {
+  db.ref("carts/" + cartId + "/paymentStatus").on("value", snapshot => {
+    if (snapshot.exists() && snapshot.val() === "Paid") {
+      showToast("✅ Payment Successful (Marked Paid by Admin)");
 
-  // Get initial payment status once on page load
-  db.ref("carts/" + cartId + "/paymentStatus").once("value").then(snapshot => {
-    const initialStatus = snapshot.val() || "Pending";
+      // Fetch the bill saved by admin
+      db.ref("carts/" + cartId + "/bill").once("value").then(snap => {
+        if (snap.exists()) {
+          const bill = snap.val();
 
-    // Start watching for changes AFTER this initial status
-    db.ref("carts/" + cartId + "/paymentStatus").on("value", snap => {
-      if (!snap.exists()) return;
-      const status = snap.val();
+          // Generate PDF
+          generatePDF(
+            Object.values(cartItems || []),
+            bill.originalTotal || 0,
+            bill.discount || 0,
+            bill.finalPaid || bill.originalTotal
+          );
 
-      // ✅ Only run when status changes to Paid and it wasn't already Paid
-      if (status === "Paid" && initialStatus !== "Paid" && !paymentHandled) {
-        paymentHandled = true;
+          // Send WhatsApp bill
+          sendWhatsAppBill(bill.summary, bill.phone || ""); 
 
-        showToast("✅ Payment Successful");
-
-        db.ref("carts/" + cartId + "/bill").once("value").then(billSnap => {
-          if (!billSnap.exists()) return;
-          const bill = billSnap.val();
-
-          // Only generate PDF and send WhatsApp if there are valid items and bill data
-          if (bill.summary && bill.phone && cartItems && cartItems.length > 0) {
-            generatePDF(
-              Object.values(cartItems),
-              bill.originalTotal || 0,
-              bill.discount || 0,
-              bill.finalPaid || bill.originalTotal
-            );
-            sendWhatsAppBill(bill.summary, bill.phone);
-          }
-
-          clearCart(true); // UI only
-        }).catch(err => console.error("Error fetching bill:", err));
-      }
-    });
+          // Clear local cart (but not overwrite Firebase again)
+          clearCart(true);
+        }
+      });
+    }
   });
 }
-
-
 
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("cartNumber").textContent = "#" + cartId;
