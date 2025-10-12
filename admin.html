@@ -1136,12 +1136,16 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     <a href="#inventory"><span>Inventory</span></a>
     <a href="javascript:void(0)" onclick="toggleCustomerDetails()">
       <span>Customer Details</span>
-      <a href="javascript:void(0)" onclick="openSupplierModal()">
-  <span>Supplier Management</span></a>
-  <a href="#gstSection"><span>GST Collection</span></a>
-
     </a>
+    <a href="javascript:void(0)" onclick="openSupplierModal()">
+      <span>Supplier Management</span>
+    </a>
+    <a href="#gstSection"><span>GST Collection</span></a>
+    <!-- New Create User Section Link -->
+    <a href="#createUserSection"><span>Create User</span></a>
   </div>
+</div>
+
 
 
 
@@ -1766,6 +1770,22 @@ background:rgba(0,0,0,0.5); z-index:999;"></div>
 </div>
 
 
+<div class="create-user-card">
+  <h3>Create New User</h3>
+  <form id="createUserForm">
+    <input type="email" id="userEmail" placeholder="Email" required>
+    <input type="password" id="userPassword" placeholder="Password" required>
+    <select id="userRole" required>
+      <option value="">Select Role</option>
+      <option value="admin">Admin</option>
+      <option value="sales_manager">Sales Manager</option>
+      <option value="product_manager">Product Manager</option>
+      <option value="cashier">Cashier</option>
+    </select>
+    <button type="submit">Create User</button>
+  </form>
+  <p id="createUserMsg"></p>
+</div>
 
 
 <script>
@@ -4438,6 +4458,39 @@ async function exportGSTtoPDF() {
 // Initialize GST section on load
 populateGSTCategories();
 updateGSTSection("all");
+
+
+
+const createUserForm = document.getElementById('createUserForm');
+const msg = document.getElementById('createUserMsg');
+
+createUserForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+
+  const email = document.getElementById('userEmail').value;
+  const password = document.getElementById('userPassword').value;
+  const role = document.getElementById('userRole').value;
+
+  // Create user in Firebase Authentication
+  auth.createUserWithEmailAndPassword(email, password)
+    .then(userCredential => {
+      const uid = userCredential.user.uid;
+
+      // Store only email and role in Realtime Database
+      return db.ref('users/' + uid).set({
+        email: email,
+        role: role
+      });
+    })
+    .then(() => {
+      msg.textContent = "User created successfully!";
+      createUserForm.reset();
+    })
+    .catch(err => {
+      msg.textContent = "Error: " + err.message;
+    });
+});
+
 
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
