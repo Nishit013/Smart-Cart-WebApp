@@ -355,7 +355,7 @@ function loadCartFromFirebase() {
   loadCartFromFirebase();
 });
 
- function watchCartPayment() {
+function watchCartPayment() {
   let paymentHandled = false; // ✅ local flag to prevent duplicate actions
 
   db.ref("carts/" + cartId + "/paymentStatus").on("value", snapshot => {
@@ -368,32 +368,36 @@ function loadCartFromFirebase() {
       showToast("✅ Payment Successful (Marked Paid by Admin)");
 
       db.ref("carts/" + cartId + "/bill").once("value").then(snap => {
-        if (snap.exists()) {
-          const bill = snap.val();
+        if (!snap.exists()) return;
+        const bill = snap.val();
 
-          // ✅ Avoid blank PDF or WhatsApp if no valid bill data
-          if (!bill.summary || !bill.phone || bill.summary.trim() === "") {
-            console.log("⚠️ Skipping blank bill generation on page load.");
-            return;
-          }
+        // ✅ Skip if bill data is missing or empty
+        if (!bill.summary || !bill.phone || bill.summary.trim() === "") {
+          console.log("⚠️ Skipping blank bill generation on page load.");
+          return;
+        }
 
-          // ✅ Only generate and send if there are items in cart (avoid blank bills)
-          if (cartItems && cartItems.length > 0) {
-            generatePDF(
-              Object.values(cartItems),
-              bill.originalTotal || 0,
-              bill.discount || 0,
-              bill.finalPaid || bill.originalTotal
-            );
-          }
+        // ✅ Only generate PDF & WhatsApp if cart has items
+        if (cartItems && cartItems.length > 0) {
+          generatePDF(
+            Object.values(cartItems),
+            bill.originalTotal || 0,
+            bill.discount || 0,
+            bill.finalPaid || bill.originalTotal
+          );
 
           sendWhatsAppBill(bill.summary, bill.phone);
-          clearCart(true); // only clears UI, not Firebase
         }
+
+        // Clear UI cart only (does not overwrite Firebase)
+        clearCart(true);
+      }).catch(err => {
+        console.error("Error fetching bill:", err);
       });
     }
   });
 }
+
 
 
 document.addEventListener("DOMContentLoaded", () => {
