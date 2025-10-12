@@ -355,12 +355,9 @@ function loadCartFromFirebase() {
   loadCartFromFirebase();
 });
 
-function watchCartPayment() {
+ function watchCartPayment() {
   db.ref("carts/" + cartId + "/paymentStatus").on("value", snapshot => {
     if (snapshot.exists() && snapshot.val() === "Paid") {
-      // Only proceed if local cart has items
-      if (!cartItems || cartItems.length === 0) return;
-
       showToast("✅ Payment Successful (Marked Paid by Admin)");
 
       // Fetch the bill saved by admin
@@ -370,7 +367,7 @@ function watchCartPayment() {
 
           // Generate PDF
           generatePDF(
-            Object.values(cartItems),
+            Object.values(cartItems || []),
             bill.originalTotal || 0,
             bill.discount || 0,
             bill.finalPaid || bill.originalTotal
@@ -386,7 +383,6 @@ function watchCartPayment() {
     }
   });
 }
-
 
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("cartNumber").textContent = "#" + cartId;
@@ -502,15 +498,14 @@ document.addEventListener("DOMContentLoaded", () => {
       syncCartToFirebase();
     }
  
-   function clearCart(skipFirebase = false) {
+    function clearCart(skipFirebase = false) {
   cartItems = [];
   document.getElementById("cartItemsList").textContent = "No items scanned.";
   document.getElementById("totalPrice").textContent = "₹0";
   if (!skipFirebase) {
-    db.ref('carts/' + cartId).remove(); // ✅ clears from Firebase too
+    syncCartToFirebase(); // Only clear in Firebase if not paid
   }
 }
-
 
 
 
@@ -550,7 +545,6 @@ function updateStockAfterPayment() {
 }
  
   async function generatePDF(cartItems, total, discount, finalAmount) {
-  if (!cartItems || cartItems.length === 0) return; // ❌ skip empty
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
@@ -653,7 +647,6 @@ function updateStockAfterPayment() {
  
  
     function sendWhatsAppBill(summary, phoneNumber) {
-  if (!cartItems || cartItems.length === 0) return; // ❌ skip empty
       const customerNumber = "91" + phoneNumber;
       const message = encodeURIComponent(" Smart Cart Bill\n\n" + summary);
       const url = `https://wa.me/${customerNumber}?text=${message}`;
@@ -759,7 +752,7 @@ function updateStockAfterPayment() {
           bill: { summary: finalSummary }
         });
 
-        clearCart(); // clears UI only
+        clearCart(true); // clears UI only
         document.getElementById("checkoutBtn").disabled = false;
         document.getElementById("loading").style.display = "none";
       }).catch((error) => {
