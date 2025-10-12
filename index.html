@@ -339,15 +339,21 @@ function loadCartFromFirebase() {
   }
 
   db.ref("carts/" + cartId).once("value").then(snapshot => {
-    if (snapshot.exists()) {
-      const cartData = snapshot.val();
-      cartItems = cartData.items || [];
-      renderCart();
-    }
+    if (!snapshot.exists()) return;
+
+    const cartData = snapshot.val();
+
+    // 🚫 Skip loading if cart is already paid or has no items
+    if (cartData.paymentStatus === "Paid") return;
+    if (!cartData.items || cartData.items.length === 0) return;
+
+    cartItems = cartData.items;
+    renderCart();
   }).catch(err => {
     console.error("Error loading cart:", err);
   });
 }
+
 
  
     document.addEventListener("DOMContentLoaded", () => {
