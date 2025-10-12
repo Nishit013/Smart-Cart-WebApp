@@ -356,39 +356,45 @@ function loadCartFromFirebase() {
 });
 
 function watchCartPayment() {
-  let paymentHandled = false; // local flag for this page session
+  let paymentHandled = false; // flag for this session
 
-  db.ref("carts/" + cartId + "/paymentStatus").on("value", snapshot => {
-    if (!snapshot.exists()) return;
-    const status = snapshot.val();
+  // Get initial payment status once on page load
+  db.ref("carts/" + cartId + "/paymentStatus").once("value").then(snapshot => {
+    const initialStatus = snapshot.val() || "Pending";
 
-    // ✅ Only act when status changes to Paid after page load
-    if (status === "Paid" && !paymentHandled) {
-      paymentHandled = true; // mark as handled to prevent repeats
+    // Start watching for changes AFTER this initial status
+    db.ref("carts/" + cartId + "/paymentStatus").on("value", snap => {
+      if (!snap.exists()) return;
+      const status = snap.val();
 
-      showToast("✅ Payment Successful (Marked Paid by Admin)");
+      // ✅ Only run when status changes to Paid and it wasn't already Paid
+      if (status === "Paid" && initialStatus !== "Paid" && !paymentHandled) {
+        paymentHandled = true;
 
-      db.ref("carts/" + cartId + "/bill").once("value").then(billSnap => {
-        if (!billSnap.exists()) return;
-        const bill = billSnap.val();
+        showToast("✅ Payment Successful");
 
-        // ✅ Only generate PDF and send WhatsApp if there’s valid bill data and cart items
-        if (bill.summary && bill.phone && cartItems && cartItems.length > 0) {
-          generatePDF(
-            Object.values(cartItems),
-            bill.originalTotal || 0,
-            bill.discount || 0,
-            bill.finalPaid || bill.originalTotal
-          );
+        db.ref("carts/" + cartId + "/bill").once("value").then(billSnap => {
+          if (!billSnap.exists()) return;
+          const bill = billSnap.val();
 
-          sendWhatsAppBill(bill.summary, bill.phone);
-        }
+          // Only generate PDF and send WhatsApp if there are valid items and bill data
+          if (bill.summary && bill.phone && cartItems && cartItems.length > 0) {
+            generatePDF(
+              Object.values(cartItems),
+              bill.originalTotal || 0,
+              bill.discount || 0,
+              bill.finalPaid || bill.originalTotal
+            );
+            sendWhatsAppBill(bill.summary, bill.phone);
+          }
 
-        clearCart(true); // clear UI only
-      }).catch(err => console.error("Error fetching bill:", err));
-    }
+          clearCart(true); // UI only
+        }).catch(err => console.error("Error fetching bill:", err));
+      }
+    });
   });
 }
+
 
 
 document.addEventListener("DOMContentLoaded", () => {
