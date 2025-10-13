@@ -1109,6 +1109,29 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 
+
+
+/* 🔧 Align price and image URL inputs properly */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  align-items: center;
+}
+
+.form-grid input[type="number"],
+.form-grid input[type="text"],
+.form-grid select {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
 </style>
 
 </head>
