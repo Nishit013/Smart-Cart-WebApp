@@ -1109,6 +1109,53 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 
+
+/* ====== Uniform Modern Input Style ====== */
+.form-grid input,
+.form-grid select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  font-size: 15px;
+  outline: none;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+  height: 45px; /* ✅ Ensures uniform height for all inputs */
+}
+
+
+
+.form-grid input::-webkit-outer-spin-button,
+.form-grid input::-webkit-inner-spin-button {
+  -webkit-appearance: none; /* Removes spinner in Chrome */
+  margin: 0;
+}
+
+/* Placeholder color */
+.form-grid input::placeholder,
+.form-grid select {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Focus effect */
+.form-grid input:focus,
+.form-grid select:focus {
+  border-color: #00bcd4;
+  background: rgba(0, 188, 212, 0.15);
+  box-shadow: 0 0 8px rgba(0, 188, 212, 0.3);
+}
+
+/* Grid alignment fix */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 15px;
+}
+
+
 </style>
 
 </head>
