@@ -1110,37 +1110,49 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 
 
-/* ====== Uniform Modern Input Style ====== */
+/* ====== Uniform Modern Input + Dropdown Styling ====== */
 .form-grid input,
 .form-grid select {
   width: 100%;
   padding: 10px 14px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.07);
   color: #fff;
   font-size: 15px;
   outline: none;
   transition: all 0.3s ease;
   box-sizing: border-box;
-  height: 45px; /* ✅ Ensures uniform height for all inputs */
+  height: 45px; /* ✅ All inputs uniform height */
 }
 
-
+/* Fix for number input spinners */
 
 .form-grid input::-webkit-outer-spin-button,
 .form-grid input::-webkit-inner-spin-button {
-  -webkit-appearance: none; /* Removes spinner in Chrome */
+  -webkit-appearance: none;
   margin: 0;
 }
 
-/* Placeholder color */
-.form-grid input::placeholder,
-.form-grid select {
+/* Placeholder and text color fix */
+.form-grid input::placeholder {
   color: rgba(255, 255, 255, 0.6);
 }
 
-/* Focus effect */
+/* ====== Dropdown (Select) Fix ====== */
+.form-grid select {
+  background-color: rgba(255, 255, 255, 0.07);
+  color: #fff;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, #00bcd4 50%),
+                    linear-gradient(135deg, #00bcd4 50%, transparent 50%);
+  background-position: calc(100% - 20px) calc(1em + 2px),
+                       calc(100% - 15px) calc(1em + 2px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+/* Focus glow for all fields */
 .form-grid input:focus,
 .form-grid select:focus {
   border-color: #00bcd4;
@@ -1148,11 +1160,12 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   box-shadow: 0 0 8px rgba(0, 188, 212, 0.3);
 }
 
-/* Grid alignment fix */
+/* ====== Grid layout fix for perfect alignment ====== */
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 15px;
+  align-items: center; /* ✅ Ensures vertical alignment */
 }
 
 
