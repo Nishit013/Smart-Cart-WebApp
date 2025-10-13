@@ -1132,6 +1132,31 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   box-sizing: border-box;
 }
 
+
+
+/* 🔧 Fix unreadable gray text inside input boxes in light mode */
+body.light-mode input[type="text"],
+body.light-mode input[type="number"],
+body.light-mode input[type="file"],
+body.light-mode input[type="email"],
+body.light-mode input[type="password"],
+body.light-mode select,
+body.light-mode textarea {
+  background: #fff;           /* clean white background */
+  color: #111;                /* dark readable text */
+  border: 1px solid #ccc;
+}
+
+body.light-mode input::placeholder,
+body.light-mode textarea::placeholder {
+  color: #666;                /* subtle gray for placeholder */
+}
+
+body.light-mode select option {
+  color: #111;
+  background: #fff;
+}
+
 </style>
 
 </head>
