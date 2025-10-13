@@ -1158,6 +1158,122 @@ body.light-mode select option {
 }
 
 
+/* ====== Offer Form Layout ====== */
+#offerForm {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 15px;
+  background: var(--card);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  margin-bottom: 20px;
+  align-items: center;
+}
+
+#offerForm button {
+  grid-column: span 2; /* button spans 2 columns */
+  padding: 10px 20px;
+  background: var(--primary, #00bcd4);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s ease;
+}
+
+#offerForm button:hover {
+  background: #0097a7;
+  transform: translateY(-2px);
+}
+
+/* ====== Filters Row (Optional) ====== */
+.filters-container, .offer-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 15px;
+  align-items: center;
+}
+
+.filters-container .filter-dropdown,
+.offer-filters .filter-dropdown {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-size: 14px;
+  transition: 0.3s ease;
+}
+
+.filters-container .filter-dropdown:focus,
+.offer-filters .filter-dropdown:focus {
+  border-color: var(--primary, #00bcd4);
+  box-shadow: 0 0 8px rgba(0, 188, 212, 0.3);
+}
+
+/* ====== Table Styling ====== */
+.scroll-box {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 15px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+#offersTable th {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--accent);
+  text-transform: uppercase;
+  font-weight: 600;
+  padding: 10px;
+}
+
+#offersTable td {
+  padding: 10px;
+}
+
+/* ====== Status Badges ====== */
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.status-active {
+  background: rgba(0, 188, 212, 0.2);
+  color: #00bcd4;
+}
+
+.status-inactive {
+  background: rgba(255, 68, 68, 0.2);
+  color: #ff4444;
+}
+
+.status-upcoming {
+  background: rgba(255, 193, 7, 0.2);
+  color: #ffc107;
+}
+
+/* ====== Responsive Fix ====== */
+@media (max-width: 768px) {
+  #offerForm {
+    grid-template-columns: 1fr;
+  }
+  #offerForm button {
+    grid-column: span 1;
+    width: 100%;
+  }
+  .filters-container, .offer-filters {
+    flex-direction: column;
+  }
+}
 
 </style>
 
