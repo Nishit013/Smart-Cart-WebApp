@@ -355,17 +355,25 @@ function loadCartFromFirebase() {
   loadCartFromFirebase();
 });
 
- function watchCartPayment() {
+function watchCartPayment() {
+  let paymentHandled = false; // ✅ Prevents duplicate triggers
+
   db.ref("carts/" + cartId + "/paymentStatus").on("value", snapshot => {
-    if (snapshot.exists() && snapshot.val() === "Paid") {
+    const status = snapshot.val();
+    if (status === "Paid" && !paymentHandled) {
+      paymentHandled = true; // ✅ Mark as handled
       showToast("✅ Payment Successful (Marked Paid by Admin)");
 
-      // Fetch the bill saved by admin
+      // Fetch bill data
       db.ref("carts/" + cartId + "/bill").once("value").then(snap => {
         if (snap.exists()) {
           const bill = snap.val();
 
-          // Generate PDF
+          // Prevent re-trigger even if user reloads
+          if (sessionStorage.getItem(`billHandled_${cartId}`)) return;
+          sessionStorage.setItem(`billHandled_${cartId}`, "true");
+
+          // Generate PDF only once
           generatePDF(
             Object.values(cartItems || []),
             bill.originalTotal || 0,
@@ -373,16 +381,18 @@ function loadCartFromFirebase() {
             bill.finalPaid || bill.originalTotal
           );
 
-          // Send WhatsApp bill
-          sendWhatsAppBill(bill.summary, bill.phone || ""); 
+          // Send WhatsApp bill only once
+          if (bill.summary && bill.phone) {
+            sendWhatsAppBill(bill.summary, bill.phone);
+          }
 
-          // Clear local cart (but not overwrite Firebase again)
           clearCart(true);
         }
       });
     }
   });
 }
+
 
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("cartNumber").textContent = "#" + cartId;
