@@ -356,33 +356,41 @@ function loadCartFromFirebase() {
 });
 
  function watchCartPayment() {
-  db.ref("carts/" + cartId + "/paymentStatus").on("value", snapshot => {
-    if (snapshot.exists() && snapshot.val() === "Paid") {
+  let paymentHandled = false; // local flag to prevent multiple triggers per session
+
+  const ref = db.ref("carts/" + cartId);
+
+  ref.on("value", snapshot => {
+    const data = snapshot.val() || {};
+
+    // ✅ Only trigger if Paid and not handled yet
+    if (data.paymentStatus === "Paid" && !data.handled && !paymentHandled) {
+      paymentHandled = true;
+
       showToast("✅ Payment Successful (Marked Paid by Admin)");
 
-      // Fetch the bill saved by admin
-      db.ref("carts/" + cartId + "/bill").once("value").then(snap => {
-        if (snap.exists()) {
-          const bill = snap.val();
+      const bill = data.bill || {};
+      
+      // Generate PDF
+      generatePDF(
+        Object.values(cartItems || []),
+        bill.originalTotal || data.total || 0,
+        bill.discount || data.discount || 0,
+        bill.finalPaid || data.finalAmount || data.total || 0
+      );
 
-          // Generate PDF
-          generatePDF(
-            Object.values(cartItems || []),
-            bill.originalTotal || 0,
-            bill.discount || 0,
-            bill.finalPaid || bill.originalTotal
-          );
+      // Send WhatsApp bill
+      sendWhatsAppBill(bill.summary || "", bill.phone || "");
 
-          // Send WhatsApp bill
-          sendWhatsAppBill(bill.summary, bill.phone || ""); 
+      // Clear cart UI only (not Firebase)
+      clearCart(true);
 
-          // Clear local cart (but not overwrite Firebase again)
-          clearCart(true);
-        }
-      });
+      // ✅ Mark as handled in Firebase
+      ref.update({ handled: true });
     }
   });
 }
+
 
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("cartNumber").textContent = "#" + cartId;
@@ -742,15 +750,18 @@ function updateStockAfterPayment() {
 
       const paidKey = cartId + "_" + Date.now();
       db.ref('paidCarts/' + paidKey).set(paidCartData).then(() => {
-        db.ref('carts/' + cartId).update({
-          paymentStatus: "Paid",
-          finalAmount,
-          discount,
-          totalCGST,
-          totalSGST,
-          totalGST,
-          bill: { summary: finalSummary }
-        });
+        // After payment is successful
+db.ref('carts/' + cartId).update({
+  paymentStatus: "Paid",
+  finalAmount,
+  discount,
+  totalCGST,
+  totalSGST,
+  totalGST,
+  bill: { summary: finalSummary },
+  handled: true // ✅ mark handled immediately
+});
+
 
         clearCart(true); // clears UI only
         document.getElementById("checkoutBtn").disabled = false;
