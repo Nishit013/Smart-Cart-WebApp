@@ -335,19 +335,27 @@ const bleName = cartId ? "ESP32-" + cartId.toUpperCase() : null;
 function loadCartFromFirebase() {
   if (!cartId) {
     console.warn("No cartId found in URL. No cart data will be loaded.");
-    return; // Stop if no QR ID
+    return;
   }
 
   db.ref("carts/" + cartId).once("value").then(snapshot => {
     if (snapshot.exists()) {
       const cartData = snapshot.val();
-      cartItems = cartData.items || [];
+
+      // Only load items if payment not done
+      if (cartData.paymentStatus !== "Paid") {
+        cartItems = cartData.items || [];
+      } else {
+        cartItems = []; // clear local cart if already paid
+      }
+
       renderCart();
     }
   }).catch(err => {
     console.error("Error loading cart:", err);
   });
 }
+
 
  
     document.addEventListener("DOMContentLoaded", () => {
