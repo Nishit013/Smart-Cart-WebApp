@@ -1277,6 +1277,21 @@ body.light-mode select option {
   background: rgba(0, 188, 212, 0.1);
   cursor: pointer;
 }
+/* Wrapper for status + button */
+.status-button-wrapper {
+  display: flex;
+  gap: 10px;           /* space between dropdown and button */
+}
+
+.status-button-wrapper .input-field {
+  flex: 1;             /* dropdown takes remaining space */
+}
+
+.status-button-wrapper .btn-primary {
+  flex-shrink: 0;      /* button stays its natural size */
+  padding: 10px 16px;
+  align-self: flex-end; /* aligns with bottom of dropdown */
+}
 
 </style>
 
@@ -1522,19 +1537,18 @@ body.light-mode select option {
         <input type="date" id="endDate" class="input-field" required>
       </div>
 
-      <div class="form-group">
-        <label for="status">Status</label>
-        <select id="status" class="input-field" required>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-        </select>
-      </div>
-    </div>
+      <!-- Status + Add Offer Button -->
+<div class="form-group status-button-group">
+  <label for="status">Status</label>
+  <div class="status-button-wrapper">
+    <select id="status" class="input-field" required>
+      <option value="active">Active</option>
+      <option value="inactive">Inactive</option>
+    </select>
+    <button type="submit" class="btn-primary">Add Offer</button>
+  </div>
+</div>
 
-    <div class="form-actions">
-      <button type="submit" class="btn-primary">Add Offer</button>
-    </div>
-  </form>
 
   <!-- Filters -->
   <div class="filters-container">
