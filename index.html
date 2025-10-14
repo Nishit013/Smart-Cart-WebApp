@@ -355,42 +355,34 @@ function loadCartFromFirebase() {
   loadCartFromFirebase();
 });
 
-// Place this at the top of your script
-let paymentHandled = false;
-
-function watchCartPayment() {
+ function watchCartPayment() {
   db.ref("carts/" + cartId + "/paymentStatus").on("value", snapshot => {
-    if (!snapshot.exists() || snapshot.val() !== "Paid") return;
+    if (snapshot.exists() && snapshot.val() === "Paid") {
+      showToast("✅ Payment Successful (Marked Paid by Admin)");
 
-    // Prevent repeated handling
-    if (paymentHandled) return;
-    paymentHandled = true;
+      // Fetch the bill saved by admin
+      db.ref("carts/" + cartId + "/bill").once("value").then(snap => {
+        if (snap.exists()) {
+          const bill = snap.val();
 
-    showToast("✅ Payment Successful (Marked Paid by Admin)");
+          // Generate PDF
+          generatePDF(
+            Object.values(cartItems || []),
+            bill.originalTotal || 0,
+            bill.discount || 0,
+            bill.finalPaid || bill.originalTotal
+          );
 
-    // Fetch the bill saved by admin
-    db.ref("carts/" + cartId + "/bill").once("value").then(snap => {
-      if (snap.exists()) {
-        const bill = snap.val();
+          // Send WhatsApp bill
+          sendWhatsAppBill(bill.summary, bill.phone || ""); 
 
-        // Generate PDF
-        generatePDF(
-          Object.values(cartItems || []),
-          bill.originalTotal || 0,
-          bill.discount || 0,
-          bill.finalPaid || bill.originalTotal
-        );
-
-        // Send WhatsApp bill
-        sendWhatsAppBill(bill.summary, bill.phone || ""); 
-
-        // Clear local cart (but not overwrite Firebase again)
-        clearCart(true);
-      }
-    });
+          // Clear local cart (but not overwrite Firebase again)
+          clearCart(true);
+        }
+      });
+    }
   });
 }
-
 
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("cartNumber").textContent = "#" + cartId;
