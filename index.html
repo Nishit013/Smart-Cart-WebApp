@@ -356,27 +356,29 @@ function loadCartFromFirebase() {
 });
 
  function watchCartPayment() {
-  const paymentFlagKey = `bill_done_${cartId}`; // unique per cart
+  const paymentFlagKey = `bill_done_${cartId}`;
 
   db.ref("carts/" + cartId + "/paymentStatus").on("value", snapshot => {
-    if (snapshot.exists() && snapshot.val() === "Paid") {
-      // ✅ prevent duplicate or reload trigger
+    const status = snapshot.val();
+
+    if (status === "Paid") {
+      // If this cart already handled in this session, skip
       if (sessionStorage.getItem(paymentFlagKey)) return;
 
+      // Otherwise, mark it handled
       sessionStorage.setItem(paymentFlagKey, "true");
 
       showToast("✅ Payment Successful (Marked Paid by Admin)");
 
-      // Fetch the bill saved by admin
+      // Fetch bill data for this cart
       db.ref("carts/" + cartId + "/bill").once("value").then(snap => {
         if (snap.exists()) {
           const bill = snap.val();
-
-          // Generate PDF only if there are items in the bill
           const items = Array.isArray(bill.items)
             ? bill.items
-            : Object.values(cartItems || []);
+            : Object.values(cartItems || {});
 
+          // ✅ Generate PDF only once, if items exist
           if (items.length > 0) {
             generatePDF(
               items,
@@ -386,13 +388,15 @@ function loadCartFromFirebase() {
             );
           }
 
-          // Send WhatsApp bill only once
+          // ✅ Send WhatsApp summary once
           if (bill.summary && bill.summary.trim() !== "") {
             sendWhatsAppBill(bill.summary, bill.phone || "");
           }
 
-          // Clear local cart UI only
+          // ✅ Clear local UI cart (not Firebase)
           clearCart(true);
+        } else {
+          console.warn("⚠️ Bill data not found in Firebase for cart:", cartId);
         }
       });
     }
@@ -400,14 +404,16 @@ function loadCartFromFirebase() {
 }
 
 
-// ✅ Hide old cart items after successful payment (even after reload)
+
+
+// ✅ When user reloads after successful payment, keep cart clear
 window.addEventListener("DOMContentLoaded", () => {
   const paymentFlagKey = `bill_done_${cartId}`;
   if (sessionStorage.getItem(paymentFlagKey)) {
-    // Clear UI cart (local only)
-    clearCart(true);
+    clearCart(true); // ensures empty cart UI even after reload
   }
 });
+
 
 
 document.addEventListener("DOMContentLoaded", () => {
