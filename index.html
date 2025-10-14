@@ -355,39 +355,39 @@ function loadCartFromFirebase() {
   loadCartFromFirebase();
 });
 
+// Place this at the top of your script
+let paymentHandled = false;
+
 function watchCartPayment() {
   db.ref("carts/" + cartId + "/paymentStatus").on("value", snapshot => {
-    if (!snapshot.exists()) return;
+    if (!snapshot.exists() || snapshot.val() !== "Paid") return;
 
-    const status = snapshot.val();
+    // Prevent repeated handling
+    if (paymentHandled) return;
+    paymentHandled = true;
 
-    // ✅ Prevent duplicate trigger after payment has already been handled once
-    if (status === "Paid" && !sessionStorage.getItem(`billDone_${cartId}`)) {
-      sessionStorage.setItem(`billDone_${cartId}`, "true");
+    showToast("✅ Payment Successful (Marked Paid by Admin)");
 
-      showToast("✅ Payment Successful (Marked Paid by Admin)");
+    // Fetch the bill saved by admin
+    db.ref("carts/" + cartId + "/bill").once("value").then(snap => {
+      if (snap.exists()) {
+        const bill = snap.val();
 
-      // Fetch the bill saved by admin
-      db.ref("carts/" + cartId + "/bill").once("value").then(snap => {
-        if (snap.exists()) {
-          const bill = snap.val();
+        // Generate PDF
+        generatePDF(
+          Object.values(cartItems || []),
+          bill.originalTotal || 0,
+          bill.discount || 0,
+          bill.finalPaid || bill.originalTotal
+        );
 
-          // Generate PDF only if bill data exists
-          generatePDF(
-            Object.values(cartItems || []),
-            bill.originalTotal || 0,
-            bill.discount || 0,
-            bill.finalPaid || bill.originalTotal
-          );
+        // Send WhatsApp bill
+        sendWhatsAppBill(bill.summary, bill.phone || ""); 
 
-          // Send WhatsApp bill once
-          sendWhatsAppBill(bill.summary, bill.phone || "");
-
-          // Clear local cart (UI only, not deleting Firebase)
-          clearCart(true);
-        }
-      });
-    }
+        // Clear local cart (but not overwrite Firebase again)
+        clearCart(true);
+      }
+    });
   });
 }
 
