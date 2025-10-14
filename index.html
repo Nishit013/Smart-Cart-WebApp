@@ -355,25 +355,41 @@ function loadCartFromFirebase() {
   loadCartFromFirebase();
 });
 
-let paymentHandled = false;
-
-function watchCartPayment() {
-  if (!cartId) return;
+ function watchCartPayment() {
+  const paymentHandledKey = `paymentHandled_${cartId}`; // unique key per cart
 
   db.ref("carts/" + cartId + "/paymentStatus").on("value", snapshot => {
-    if (!snapshot.exists()) return;
-    const status = snapshot.val();
+    if (snapshot.exists() && snapshot.val() === "Paid") {
 
-    if (status === "Paid" && !paymentHandled) {
-      paymentHandled = true; // ✅ Prevent repeats
-      showToast("✅ Payment marked as Paid by Admin");
+      // Check if we already handled this payment
+      const alreadyHandled = localStorage.getItem(paymentHandledKey);
+      if (alreadyHandled === "true") {
+        console.log("💡 Payment already processed earlier. Skipping PDF/WhatsApp.");
+        return; // stop here, don't generate again
+      }
 
+      showToast("✅ Payment Successful (Marked Paid by Admin)");
+
+      // Fetch the bill saved by admin
       db.ref("carts/" + cartId + "/bill").once("value").then(snap => {
         if (snap.exists()) {
           const bill = snap.val();
-          generatePDF(Object.values(cartItems || []), bill.originalTotal || 0, bill.discount || 0, bill.finalPaid || bill.originalTotal);
+
+          // Generate PDF and send WhatsApp only once
+          generatePDF(
+            Object.values(cartItems || []),
+            bill.originalTotal || 0,
+            bill.discount || 0,
+            bill.finalPaid || bill.originalTotal
+          );
+
           sendWhatsAppBill(bill.summary, bill.phone || "");
+
+          // Clear cart
           clearCart(true);
+
+          // ✅ Mark as handled to prevent duplicate generation
+          localStorage.setItem(paymentHandledKey, "true");
         }
       });
     }
@@ -383,6 +399,7 @@ function watchCartPayment() {
 
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("cartNumber").textContent = "#" + cartId;
+  localStorage.removeItem(`paymentHandled_${cartId}`);
   loadCartFromFirebase();
   watchCartPayment(); // 👈 Added line
 });
@@ -706,8 +723,6 @@ function updateStockAfterPayment() {
     name: "Smart Cart Pro",
     description: "Smart Cart Payment",
     handler: function (response) {
-if (sessionStorage.getItem("paymentDone") === "true") return;
-sessionStorage.setItem("paymentDone", "true");
 
       updateStockAfterPayment();
 
