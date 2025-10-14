@@ -350,51 +350,57 @@ function loadCartFromFirebase() {
 }
 
  
-    document.addEventListener("DOMContentLoaded", () => {
+  document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("cartNumber").textContent = "#" + cartId;
+
+  // Reset payment handled flags when user opens new cart
+  db.ref("carts/" + cartId).update({ billGeneratedHandled: false });
+  localStorage.removeItem(`paymentHandled_${cartId}`);
+
   loadCartFromFirebase();
+  watchCartPayment();
 });
+
 
  function watchCartPayment() {
   const paymentHandledKey = `paymentHandled_${cartId}`; // unique key per cart
 
-  db.ref("carts/" + cartId + "/paymentStatus").on("value", snapshot => {
-    if (snapshot.exists() && snapshot.val() === "Paid") {
+  db.ref("carts/" + cartId).on("value", snapshot => {
+    const data = snapshot.val();
+    if (!data) return;
 
-      // Check if we already handled this payment
+    // ✅ 1. Only act if marked as Paid and not already handled
+    if (data.paymentStatus === "Paid" && !data.billGeneratedHandled) {
+      // ✅ 2. Local check (browser memory)
       const alreadyHandled = localStorage.getItem(paymentHandledKey);
       if (alreadyHandled === "true") {
-        console.log("💡 Payment already processed earlier. Skipping PDF/WhatsApp.");
-        return; // stop here, don't generate again
+        console.log("💡 Already handled locally, skipping...");
+        return;
       }
 
       showToast("✅ Payment Successful (Marked Paid by Admin)");
 
-      // Fetch the bill saved by admin
-      db.ref("carts/" + cartId + "/bill").once("value").then(snap => {
-        if (snap.exists()) {
-          const bill = snap.val();
+      if (data.bill && data.bill.summary) {
+        generatePDF(
+          Object.values(data.items || []),
+          data.finalAmount + (data.discount || 0),
+          data.discount || 0,
+          data.finalAmount
+        );
 
-          // Generate PDF and send WhatsApp only once
-          generatePDF(
-            Object.values(cartItems || []),
-            bill.originalTotal || 0,
-            bill.discount || 0,
-            bill.finalPaid || bill.originalTotal
-          );
+        sendWhatsAppBill(data.bill.summary, data.phone || "");
+        clearCart(true);
 
-          sendWhatsAppBill(bill.summary, bill.phone || "");
+        // ✅ Mark handled locally
+        localStorage.setItem(paymentHandledKey, "true");
 
-          // Clear cart
-          clearCart(true);
-
-          // ✅ Mark as handled to prevent duplicate generation
-          localStorage.setItem(paymentHandledKey, "true");
-        }
-      });
+        // ✅ Also mark handled in Firebase so even reload won’t repeat
+        db.ref("carts/" + cartId).update({ billGeneratedHandled: true });
+      }
     }
   });
 }
+
 
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -757,14 +763,16 @@ function updateStockAfterPayment() {
       const paidKey = cartId + "_" + Date.now();
       db.ref('paidCarts/' + paidKey).set(paidCartData).then(() => {
         db.ref('carts/' + cartId).update({
-          paymentStatus: "Paid",
-          finalAmount,
-          discount,
-          totalCGST,
-          totalSGST,
-          totalGST,
-          bill: { summary: finalSummary }
-        });
+  paymentStatus: "Paid",
+  billGenerated: true,  // ✅ NEW FLAG
+  finalAmount,
+  discount,
+  totalCGST,
+  totalSGST,
+  totalGST,
+  bill: { summary: finalSummary }
+});
+
 
         clearCart(true); // clears UI only
         document.getElementById("checkoutBtn").disabled = false;
