@@ -669,7 +669,7 @@ function updateStockAfterPayment() {
       window.open(url, "_blank");
     }
  
-    function checkout() {
+  function checkout() {
   const phone = document.getElementById("phone").value.trim();
   if (!/^\d{10}$/.test(phone)) return showToast("📵 Invalid phone number.");
   if (cartItems.length === 0) return showToast("❌ Cart is empty. Please scan some items.");
@@ -683,23 +683,16 @@ function updateStockAfterPayment() {
   let totalSGST = 0;
 
   cartItems.forEach((item, i) => {
-    const subtotal = item.price * item.qty; // price already includes GST
+    const subtotal = item.price * item.qty;
     total += subtotal;
 
     const cgst = item.cgst || 0;
     const sgst = item.sgst || 0;
     const totalTaxPercent = cgst + sgst;
 
-    // Base price (exclusive of GST)
     const basePrice = item.price / (1 + totalTaxPercent / 100);
-
-    // CGST/SGST amount per unit
-    const cgstAmtPerUnit = basePrice * (cgst / 100);
-    const sgstAmtPerUnit = basePrice * (sgst / 100);
-
-    // CGST/SGST amount for quantity
-    const cgstAmtTotal = cgstAmtPerUnit * item.qty;
-    const sgstAmtTotal = sgstAmtPerUnit * item.qty;
+    const cgstAmtTotal = (basePrice * (cgst / 100)) * item.qty;
+    const sgstAmtTotal = (basePrice * (sgst / 100)) * item.qty;
 
     totalCGST += cgstAmtTotal;
     totalSGST += sgstAmtTotal;
@@ -713,10 +706,14 @@ function updateStockAfterPayment() {
 
   summary += `\nTotal: ₹${total.toFixed(2)}`;
 
-  const totalGST = totalCGST + totalSGST;
-
   let discount = parseFloat(discountAmountEl.textContent.replace(/[₹,]/g, "")) || 0;
   let finalAmount = total - discount;
+
+  // Append discount info to summary just like mark-as-paid
+  if (discount > 0) {
+    summary += `\nDiscount: -₹${discount.toFixed(2)}\n`;
+    summary += `Final Amount: ₹${finalAmount.toFixed(2)}`;
+  }
 
   const options = {
     key: "rzp_live_es0XjKaI61byUK",
@@ -726,22 +723,7 @@ function updateStockAfterPayment() {
     description: "Smart Cart Payment",
     handler: function (response) {
 
-      updateStockAfterPayment();
-
-      showToast("✅ Payment Successful");
-
-      // Update summary with discount
-      let finalSummary = summary;
-      if (discount > 0) {
-        finalSummary += `\nDiscount: -₹${discount.toFixed(2)}\n`;
-        finalSummary += `Final Amount: ₹${finalAmount.toFixed(2)}`;
-      }
-
-      // Generate PDF & WhatsApp
-      generatePDF(cartItems, total, discount, finalAmount);
-      sendWhatsAppBill(finalSummary, phone);
-
-      // Store discounted bill in Firebase with GST totals
+      // ✅ Only store in Firebase, don't generate PDF/WhatsApp yet
       const paidCartData = {
         cartId,
         items: cartItems,
@@ -750,36 +732,37 @@ function updateStockAfterPayment() {
         finalAmount,
         totalCGST,
         totalSGST,
-        totalGST,
+        totalGST: totalCGST + totalSGST,
         phone,
         paymentTime: new Date().toISOString(),
-        bill: { summary: finalSummary }
+        bill: { summary } // same summary as mark-as-paid
       };
 
       const paidKey = cartId + "_" + Date.now();
-      db.ref('paidCarts/' + paidKey).set(paidCartData).then(() => {
-        // After payment is successful
-db.ref('carts/' + cartId).update({
-  paymentStatus: "Paid",
-  finalAmount,
-  discount,
-  totalCGST,
-  totalSGST,
-  totalGST,
-  bill: { summary: finalSummary },
-  handled: true // ✅ mark handled immediately
-});
+      db.ref('paidCarts/' + paidKey).set(paidCartData)
+        .then(() => {
+          // Update cart status in Firebase
+          db.ref('carts/' + cartId).update({
+            paymentStatus: "Paid",
+            finalAmount,
+            discount,
+            totalCGST,
+            totalSGST,
+            totalGST: totalCGST + totalSGST,
+            bill: { summary },
+            handled: false // watchCartPayment() will handle PDF & WhatsApp
+          });
 
-
-        clearCart(true); // clears UI only
-        document.getElementById("checkoutBtn").disabled = false;
-        document.getElementById("loading").style.display = "none";
-      }).catch((error) => {
-        showToast("⚠️ Error storing bill in Firebase.");
-        console.error(error);
-        document.getElementById("checkoutBtn").disabled = false;
-        document.getElementById("loading").style.display = "none";
-      });
+          clearCart(true); // clears UI only
+          document.getElementById("checkoutBtn").disabled = false;
+          document.getElementById("loading").style.display = "none";
+        })
+        .catch((error) => {
+          showToast("⚠️ Error storing bill in Firebase.");
+          console.error(error);
+          document.getElementById("checkoutBtn").disabled = false;
+          document.getElementById("loading").style.display = "none";
+        });
     },
     prefill: { contact: phone },
     theme: { color: "#00bcd4" }
@@ -794,6 +777,7 @@ db.ref('carts/' + cartId).update({
     document.getElementById("loading").style.display = "none";
   });
 }
+
 
  
     setInterval(() => {
