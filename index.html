@@ -400,6 +400,16 @@ function loadCartFromFirebase() {
 }
 
 
+// ✅ Hide old cart items after successful payment (even after reload)
+window.addEventListener("DOMContentLoaded", () => {
+  const paymentFlagKey = `bill_done_${cartId}`;
+  if (sessionStorage.getItem(paymentFlagKey)) {
+    // Clear UI cart (local only)
+    clearCart(true);
+  }
+});
+
+
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("cartNumber").textContent = "#" + cartId;
   loadCartFromFirebase();
