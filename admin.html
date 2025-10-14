@@ -1162,7 +1162,6 @@ body.light-mode select option {
 
 
 /* Form grid layout */
-/* Form grid */
 .offer-form .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -1202,18 +1201,11 @@ body.light-mode select option {
   outline: none;
 }
 
-/* Status + Button inline */
-.status-inline .status-button-wrapper {
-  display: flex;
-  gap: 10px;         /* spacing between dropdown and button */
-  align-items: flex-end; /* align button with bottom of dropdown */
+/* Form submit button */
+.form-actions {
+  text-align: right;
 }
 
-.status-inline .status-button-wrapper select {
-  flex: 1;           /* dropdown takes full available space */
-}
-
-/* Button styling */
 .btn-primary {
   padding: 10px 20px;
   border-radius: 8px;
@@ -1230,19 +1222,19 @@ body.light-mode select option {
 }
 
 /* Filters alignment */
+/* Compact filter dropdowns */
 .filters-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 12px;              /* spacing between filters */
   margin-bottom: 15px;
   align-items: center;
 }
 
-/* Compact filter dropdowns */
 .filters-container .filter-dropdown {
-  width: 160px;
-  padding: 6px 10px;
-  font-size: 13px;
+  width: 160px;           /* fixed compact width */
+  padding: 6px 10px;      /* smaller padding for compact look */
+  font-size: 13px;        /* slightly smaller font */
   border-radius: 6px;
   border: 1px solid var(--border);
   background: var(--card);
@@ -1260,6 +1252,7 @@ body.light-mode select option {
   border-color: var(--accent);
   box-shadow: 0 0 4px var(--accent);
 }
+
 
 /* Table scroll box */
 .scroll-box {
@@ -1284,7 +1277,6 @@ body.light-mode select option {
   background: rgba(0, 188, 212, 0.1);
   cursor: pointer;
 }
-
 
 
 </style>
@@ -1531,18 +1523,18 @@ body.light-mode select option {
         <input type="date" id="endDate" class="input-field" required>
       </div>
 
-        <div class="form-group status-inline">
-        <label for="status">Status</label>
-        <div class="status-button-wrapper">
-          <select id="status" class="input-field" required>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-          <button type="submit" class="btn-primary">Add Offer</button>
-        </div>
-      </div>
-    </div>
-  </form>
+      <!-- Status + Add Offer Button -->
+<div class="form-group status-button-group">
+  <label for="status">Status</label>
+  <div class="status-button-wrapper">
+    <select id="status" class="input-field" required>
+      <option value="active">Active</option>
+      <option value="inactive">Inactive</option>
+    </select>
+    <button type="submit" class="btn-primary">Add Offer</button>
+  </div>
+</div>
+
 
   <!-- Filters -->
   <div class="filters-container">
