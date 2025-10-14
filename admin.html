@@ -1203,18 +1203,14 @@ body.light-mode select option {
 }
 
 /* Status + Button inline */
-.status-grid {
-  display: grid;
-  grid-template-columns: 1fr auto; /* dropdown fills space, button stays compact */
-  gap: 10px;
-  align-items: end; /* aligns button to bottom of dropdown */
+.status-inline .status-button-wrapper {
+  display: flex;
+  gap: 10px;         /* spacing between dropdown and button */
+  align-items: flex-end; /* align button with bottom of dropdown */
 }
 
-.status-grid label {
-  grid-column: 1 / -1; /* label spans both columns */
-  margin-bottom: 6px;
-  font-weight: 600;
-  color: var(--text);
+.status-inline .status-button-wrapper select {
+  flex: 1;           /* dropdown takes full available space */
 }
 
 /* Button styling */
@@ -1288,6 +1284,7 @@ body.light-mode select option {
   background: rgba(0, 188, 212, 0.1);
   cursor: pointer;
 }
+
 
 
 </style>
@@ -1534,13 +1531,15 @@ body.light-mode select option {
         <input type="date" id="endDate" class="input-field" required>
       </div>
 
-        <div class="form-group status-grid">
+        <div class="form-group status-inline">
         <label for="status">Status</label>
-        <select id="status" class="input-field" required>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-        </select>
-        <button type="submit" class="btn-primary">Add Offer</button>
+        <div class="status-button-wrapper">
+          <select id="status" class="input-field" required>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+          <button type="submit" class="btn-primary">Add Offer</button>
+        </div>
       </div>
     </div>
   </form>
