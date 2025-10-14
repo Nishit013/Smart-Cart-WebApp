@@ -356,8 +356,15 @@ function loadCartFromFirebase() {
 });
 
  function watchCartPayment() {
+  const paymentFlagKey = `bill_done_${cartId}`; // unique per cart
+
   db.ref("carts/" + cartId + "/paymentStatus").on("value", snapshot => {
     if (snapshot.exists() && snapshot.val() === "Paid") {
+      // ✅ prevent duplicate or reload trigger
+      if (sessionStorage.getItem(paymentFlagKey)) return;
+
+      sessionStorage.setItem(paymentFlagKey, "true");
+
       showToast("✅ Payment Successful (Marked Paid by Admin)");
 
       // Fetch the bill saved by admin
@@ -365,24 +372,33 @@ function loadCartFromFirebase() {
         if (snap.exists()) {
           const bill = snap.val();
 
-          // Generate PDF
-          generatePDF(
-            Object.values(cartItems || []),
-            bill.originalTotal || 0,
-            bill.discount || 0,
-            bill.finalPaid || bill.originalTotal
-          );
+          // Generate PDF only if there are items in the bill
+          const items = Array.isArray(bill.items)
+            ? bill.items
+            : Object.values(cartItems || []);
 
-          // Send WhatsApp bill
-          sendWhatsAppBill(bill.summary, bill.phone || ""); 
+          if (items.length > 0) {
+            generatePDF(
+              items,
+              bill.originalTotal || bill.total || 0,
+              bill.discount || 0,
+              bill.finalPaid || bill.finalAmount || bill.originalTotal || 0
+            );
+          }
 
-          // Clear local cart (but not overwrite Firebase again)
+          // Send WhatsApp bill only once
+          if (bill.summary && bill.summary.trim() !== "") {
+            sendWhatsAppBill(bill.summary, bill.phone || "");
+          }
+
+          // Clear local cart UI only
           clearCart(true);
         }
       });
     }
   });
 }
+
 
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("cartNumber").textContent = "#" + cartId;
