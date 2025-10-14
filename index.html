@@ -356,24 +356,26 @@ function loadCartFromFirebase() {
 });
 
 function watchCartPayment() {
-  let paymentHandled = false; // ✅ Prevents duplicate triggers
+  let paymentHandled = false; // local flag to stop duplicates
 
   db.ref("carts/" + cartId + "/paymentStatus").on("value", snapshot => {
     const status = snapshot.val();
+
+    // Trigger only when status changes to Paid
     if (status === "Paid" && !paymentHandled) {
-      paymentHandled = true; // ✅ Mark as handled
+      paymentHandled = true;
+
+      // ✅ Prevent running again after reload
+      if (sessionStorage.getItem(`paymentDone_${cartId}`)) return;
+      sessionStorage.setItem(`paymentDone_${cartId}`, "true");
+
       showToast("✅ Payment Successful (Marked Paid by Admin)");
 
-      // Fetch bill data
+      // Fetch bill info
       db.ref("carts/" + cartId + "/bill").once("value").then(snap => {
-        if (snap.exists()) {
-          const bill = snap.val();
-
-          // Prevent re-trigger even if user reloads
-          if (sessionStorage.getItem(`billHandled_${cartId}`)) return;
-          sessionStorage.setItem(`billHandled_${cartId}`, "true");
-
-          // Generate PDF only once
+        const bill = snap.val();
+        if (bill) {
+          // Generate bill and WhatsApp only once
           generatePDF(
             Object.values(cartItems || []),
             bill.originalTotal || 0,
@@ -381,17 +383,14 @@ function watchCartPayment() {
             bill.finalPaid || bill.originalTotal
           );
 
-          // Send WhatsApp bill only once
-          if (bill.summary && bill.phone) {
-            sendWhatsAppBill(bill.summary, bill.phone);
-          }
-
-          clearCart(true);
+          sendWhatsAppBill(bill.summary || "", bill.phone || "");
+          clearCart(true); // ✅ keep your original working clearCart
         }
       });
     }
   });
 }
+
 
 
 document.addEventListener("DOMContentLoaded", () => {
