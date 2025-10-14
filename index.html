@@ -357,47 +357,42 @@ function loadCartFromFirebase() {
 
 
 function watchCartPayment() {
+  let lastStatus = null;
   let paymentHandled = false;
 
   db.ref("carts/" + cartId + "/paymentStatus").on("value", snapshot => {
     const status = snapshot.val();
 
-    if (status === "Paid") {
-      // Check if already handled in this session
-      if (sessionStorage.getItem(`handled_${cartId}`)) return;
+    // Only act when status changes to "Paid"
+    if (status === "Paid" && lastStatus !== "Paid" && !paymentHandled) {
+      paymentHandled = true;
+      sessionStorage.setItem(`handled_${cartId}`, "true");
 
-      // ✅ Run only once per cart
-      if (!paymentHandled) {
-        paymentHandled = true;
-        sessionStorage.setItem(`handled_${cartId}`, "true");
+      showToast("✅ Payment Successful (Marked Paid by Admin)");
 
-        showToast("✅ Payment Successful (Marked Paid by Admin)");
+      db.ref("carts/" + cartId + "/bill").once("value").then(snap => {
+        const bill = snap.val();
+        if (!bill) return;
 
-        db.ref("carts/" + cartId + "/bill").once("value").then(snap => {
-          const bill = snap.val();
-          if (!bill) return;
+        // ✅ Generate PDF & WhatsApp only once
+        generatePDF(
+          Object.values(cartItems || []),
+          bill.originalTotal || 0,
+          bill.discount || 0,
+          bill.finalPaid || bill.originalTotal
+        );
 
-          // ✅ generate bill once
-          generatePDF(
-            Object.values(cartItems || []),
-            bill.originalTotal || 0,
-            bill.discount || 0,
-            bill.finalPaid || bill.originalTotal
-          );
+        if (bill.summary && bill.phone) {
+          sendWhatsAppBill(bill.summary, bill.phone);
+        }
 
-          // ✅ send WhatsApp message once
-          if (bill.summary && bill.phone) {
-            sendWhatsAppBill(bill.summary, bill.phone);
-          }
-
-          // ✅ your existing clearCart function (no deletion)
-          clearCart(true);
-        });
-      }
+        clearCart(true); // your existing clear logic
+      });
     }
+
+    lastStatus = status; // ✅ Update for next comparison
   });
 }
-
 
 
 
