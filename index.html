@@ -355,27 +355,29 @@ function loadCartFromFirebase() {
   loadCartFromFirebase();
 });
 
+
 function watchCartPayment() {
-  let paymentHandled = false; // local flag to stop duplicates
+  let paymentHandled = false;
 
   db.ref("carts/" + cartId + "/paymentStatus").on("value", snapshot => {
     const status = snapshot.val();
 
-    // Trigger only when status changes to Paid
-    if (status === "Paid" && !paymentHandled) {
-      paymentHandled = true;
+    if (status === "Paid") {
+      // Check if already handled in this session
+      if (sessionStorage.getItem(`handled_${cartId}`)) return;
 
-      // ✅ Prevent running again after reload
-      if (sessionStorage.getItem(`paymentDone_${cartId}`)) return;
-      sessionStorage.setItem(`paymentDone_${cartId}`, "true");
+      // ✅ Run only once per cart
+      if (!paymentHandled) {
+        paymentHandled = true;
+        sessionStorage.setItem(`handled_${cartId}`, "true");
 
-      showToast("✅ Payment Successful (Marked Paid by Admin)");
+        showToast("✅ Payment Successful (Marked Paid by Admin)");
 
-      // Fetch bill info
-      db.ref("carts/" + cartId + "/bill").once("value").then(snap => {
-        const bill = snap.val();
-        if (bill) {
-          // Generate bill and WhatsApp only once
+        db.ref("carts/" + cartId + "/bill").once("value").then(snap => {
+          const bill = snap.val();
+          if (!bill) return;
+
+          // ✅ generate bill once
           generatePDF(
             Object.values(cartItems || []),
             bill.originalTotal || 0,
@@ -383,13 +385,19 @@ function watchCartPayment() {
             bill.finalPaid || bill.originalTotal
           );
 
-          sendWhatsAppBill(bill.summary || "", bill.phone || "");
-          clearCart(true); // ✅ keep your original working clearCart
-        }
-      });
+          // ✅ send WhatsApp message once
+          if (bill.summary && bill.phone) {
+            sendWhatsAppBill(bill.summary, bill.phone);
+          }
+
+          // ✅ your existing clearCart function (no deletion)
+          clearCart(true);
+        });
+      }
     }
   });
 }
+
 
 
 
