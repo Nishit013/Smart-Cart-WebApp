@@ -355,65 +355,30 @@ function loadCartFromFirebase() {
   loadCartFromFirebase();
 });
 
- function watchCartPayment() {
-  const paymentFlagKey = `bill_done_${cartId}`;
+let paymentHandled = false;
+
+function watchCartPayment() {
+  if (!cartId) return;
 
   db.ref("carts/" + cartId + "/paymentStatus").on("value", snapshot => {
+    if (!snapshot.exists()) return;
     const status = snapshot.val();
 
-    if (status === "Paid") {
-      // If this cart already handled in this session, skip
-      if (sessionStorage.getItem(paymentFlagKey)) return;
+    if (status === "Paid" && !paymentHandled) {
+      paymentHandled = true; // ✅ Prevent repeats
+      showToast("✅ Payment marked as Paid by Admin");
 
-      // Otherwise, mark it handled
-      sessionStorage.setItem(paymentFlagKey, "true");
-
-      showToast("✅ Payment Successful (Marked Paid by Admin)");
-
-      // Fetch bill data for this cart
       db.ref("carts/" + cartId + "/bill").once("value").then(snap => {
         if (snap.exists()) {
           const bill = snap.val();
-          const items = Array.isArray(bill.items)
-            ? bill.items
-            : Object.values(cartItems || {});
-
-          // ✅ Generate PDF only once, if items exist
-          if (items.length > 0) {
-            generatePDF(
-              items,
-              bill.originalTotal || bill.total || 0,
-              bill.discount || 0,
-              bill.finalPaid || bill.finalAmount || bill.originalTotal || 0
-            );
-          }
-
-          // ✅ Send WhatsApp summary once
-          if (bill.summary && bill.summary.trim() !== "") {
-            sendWhatsAppBill(bill.summary, bill.phone || "");
-          }
-
-          // ✅ Clear local UI cart (not Firebase)
+          generatePDF(Object.values(cartItems || []), bill.originalTotal || 0, bill.discount || 0, bill.finalPaid || bill.originalTotal);
+          sendWhatsAppBill(bill.summary, bill.phone || "");
           clearCart(true);
-        } else {
-          console.warn("⚠️ Bill data not found in Firebase for cart:", cartId);
         }
       });
     }
   });
 }
-
-
-
-
-// ✅ When user reloads after successful payment, keep cart clear
-window.addEventListener("DOMContentLoaded", () => {
-  const paymentFlagKey = `bill_done_${cartId}`;
-  if (sessionStorage.getItem(paymentFlagKey)) {
-    clearCart(true); // ensures empty cart UI even after reload
-  }
-});
-
 
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -741,6 +706,8 @@ function updateStockAfterPayment() {
     name: "Smart Cart Pro",
     description: "Smart Cart Payment",
     handler: function (response) {
+if (sessionStorage.getItem("paymentDone") === "true") return;
+sessionStorage.setItem("paymentDone", "true");
 
       updateStockAfterPayment();
 
