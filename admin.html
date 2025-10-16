@@ -3206,34 +3206,34 @@ function exportCategorySalesCSV() {
 firebase.initializeApp(firebaseConfig);
 const offerForm = document.getElementById('offerForm');
 const offersTableBody = document.querySelector('#offersTable tbody');
-
-// Firebase reference (replace 'offers' with your Firebase node for discounts)
 const offersRef = firebase.database().ref('offers');
 
+// ===== Filters =====
+const statusFilter = document.getElementById('statusFilter');
+const typeFilter = document.getElementById('typeFilter');
 
-// ✅ STEP 1 — Automatically update offer statuses
+// ===== Debounce Helper =====
+let renderTimeout = null;
+function debounceRender(snapshot) {
+  clearTimeout(renderTimeout);
+  renderTimeout = setTimeout(() => renderOffers(snapshot), 150);
+}
+
+// ✅ STEP 1 — Auto-update offer statuses (run manually or once on load)
 function autoUpdateCouponStatus() {
-  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-
+  const today = new Date().toISOString().split('T')[0];
   offersRef.once("value").then(snapshot => {
     const offers = snapshot.val() || {};
-
     Object.keys(offers).forEach(key => {
       const offer = offers[key];
       const start = offer.startDate || today;
       const end = offer.endDate || today;
       let newStatus = offer.status || "inactive";
 
-      // ✅ Determine status by comparing today's date
-      if (today >= start && today <= end) {
-        newStatus = "active";
-      } else if (today > end) {
-        newStatus = "inactive";
-      } else if (today < start) {
-        newStatus = "upcoming";
-      }
+      if (today >= start && today <= end) newStatus = "active";
+      else if (today > end) newStatus = "inactive";
+      else if (today < start) newStatus = "upcoming";
 
-      // ✅ Update only if status changed
       if (newStatus !== offer.status) {
         offersRef.child(key).child("status").set(newStatus);
       }
@@ -3241,16 +3241,14 @@ function autoUpdateCouponStatus() {
   });
 }
 
-// ✅ Run automatically when admin panel loads
+// ===== Load once and attach listeners =====
 window.addEventListener("load", () => {
-  autoUpdateCouponStatus(); // run once
-  offersRef.on('value', renderOffers); // attach table listener after
+  autoUpdateCouponStatus(); // run only once after load
+  offersRef.on('value', debounceRender); // single listener for all updates
 });
 
-
-// Listen for form submit
 // ===== Form Submission =====
-offerForm.addEventListener('submit', function(e) {
+offerForm.addEventListener('submit', e => {
   e.preventDefault();
 
   const newOffer = {
@@ -3264,12 +3262,12 @@ offerForm.addEventListener('submit', function(e) {
     status: document.getElementById('status').value
   };
 
-  // Simple validation
   if (!newOffer.couponCode || !newOffer.discountType) {
     alert('Please fill all required fields!');
     return;
   }
 
+  // Push new offer only once
   offersRef.push(newOffer)
     .then(() => {
       alert('Offer added successfully!');
@@ -3281,10 +3279,6 @@ offerForm.addEventListener('submit', function(e) {
     });
 });
 
-// ===== Filters =====
-const statusFilter = document.getElementById('statusFilter');
-const typeFilter = document.getElementById('typeFilter');
-
 // ===== Render Offers Function =====
 function renderOffers(snapshot) {
   offersTableBody.innerHTML = '';
@@ -3293,16 +3287,18 @@ function renderOffers(snapshot) {
   snapshot.forEach(child => {
     const offer = child.val();
 
-    // Auto-update status
     const start = offer.startDate;
     const end = offer.endDate;
     let status = offer.status;
+
     if (today >= start && today <= end) status = "active";
     else if (today > end) status = "inactive";
     else if (today < start) status = "upcoming";
 
-    // Update Firebase if status changed
-    if (status !== offer.status) offersRef.child(child.key).child("status").set(status);
+    // Update Firebase only if changed
+    if (status !== offer.status) {
+      offersRef.child(child.key).child("status").set(status);
+    }
 
     // Apply filters
     const selectedStatus = statusFilter.value;
@@ -3310,7 +3306,6 @@ function renderOffers(snapshot) {
     if (selectedStatus && status !== selectedStatus) return;
     if (selectedType && offer.discountType !== selectedType) return;
 
-    // Render table row
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${offer.couponCode}</td>
@@ -3321,28 +3316,23 @@ function renderOffers(snapshot) {
       <td>${offer.startDate}</td>
       <td>${offer.endDate}</td>
       <td>${status}</td>
-      <td>
-        <button onclick="deleteOffer('${child.key}')">Delete</button>
-      </td>
+      <td><button onclick="deleteOffer('${child.key}')">Delete</button></td>
     `;
     offersTableBody.appendChild(tr);
   });
 }
 
-// ===== Listen for Firebase Changes =====
-offersRef.on('value', renderOffers);
-
-// ===== Re-render on Filter Change =====
-statusFilter.onchange = () => offersRef.once('value').then(renderOffers);
-typeFilter.onchange = () => offersRef.once('value').then(renderOffers);
-
-
-// Delete offer function
+// ===== Delete Offer =====
 function deleteOffer(key) {
   if (confirm('Are you sure to delete this offer?')) {
     offersRef.child(key).remove();
   }
 }
+
+// ===== Re-render on Filter Change =====
+statusFilter.onchange = () => offersRef.once('value').then(renderOffers);
+typeFilter.onchange = () => offersRef.once('value').then(renderOffers);
+
 
 function populateSupplierDropdowns() {
   db.ref("suppliers").once("value").then(snapshot => {
