@@ -825,20 +825,27 @@ function updateCartTotalForCoupons() {
 
 
 // Dropdown population remains the same
+// ✅ Populate coupon dropdown
 db.ref("offers").on("value", function(snapshot) {
   couponDropdown.innerHTML = '<option value="">-- Choose a coupon --</option>';
-  const today = new Date();
+
+  const todayDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+
   snapshot.forEach(childSnapshot => {
     const offer = childSnapshot.val();
-    const start = new Date(offer.startDate);
-    const end = new Date(offer.endDate);
+    if (!offer.startDate || !offer.endDate) return; // safety check
 
-    if (offer.status === "active" && today >= start && today <= end) {
+    const startDate = new Date(offer.startDate).toISOString().split('T')[0];
+    const endDate = new Date(offer.endDate).toISOString().split('T')[0];
+
+    // ✅ Compare only date strings (ignores time)
+    if (offer.status === "active" && todayDate >= startDate && todayDate <= endDate) {
       const option = document.createElement("option");
+      const discountText =
+        offer.discountType === "percentage"
+          ? `${offer.discountValue}%`
+          : `₹${offer.discountValue}`;
       option.value = childSnapshot.key;
-      const discountText = offer.discountType === 'percentage' 
-        ? `${offer.discountValue}%` 
-        : `₹${offer.discountValue}`;
       option.textContent = `${offer.couponCode || offer.code} - ${discountText} off`;
       couponDropdown.appendChild(option);
     }
@@ -846,7 +853,7 @@ db.ref("offers").on("value", function(snapshot) {
 });
 
 
-// Apply coupon
+// ✅ Apply coupon logic
 applyCouponBtn.addEventListener("click", function() {
   const couponId = couponDropdown.value;
   if (!couponId) return alert("Please select a coupon.");
@@ -855,36 +862,37 @@ applyCouponBtn.addEventListener("click", function() {
     const offer = snapshot.val();
     if (!offer) return alert("Coupon not found.");
 
+    // Check min purchase
     if (cartTotal < offer.minPurchase) {
       return alert(`Minimum purchase of ₹${offer.minPurchase} required.`);
     }
 
+    // Calculate discount
     let discount = 0;
-    if (offer.discountType === "flat") discount = offer.discountValue;
-    else if (offer.discountType === "percentage") {
+    if (offer.discountType === "flat") {
+      discount = offer.discountValue;
+    } else if (offer.discountType === "percentage") {
       discount = (cartTotal * offer.discountValue) / 100;
       if (offer.maxDiscount > 0) discount = Math.min(discount, offer.maxDiscount);
     }
 
-    discount = Math.min(discount, cartTotal);
+    discount = Math.min(discount, cartTotal); // cap discount to total
 
-    // Show discount with ₹ symbol
+    // Update UI
     discountAmountEl.textContent = `₹${discount.toFixed(2)}`;
     finalTotalEl.textContent = `₹${(cartTotal - discount).toFixed(2)}`;
 
-    // Animation effect
-    discountAmountEl.style.transition = "0.3s";
-    finalTotalEl.style.transition = "0.3s";
-    discountAmountEl.style.color = "#00e676";
-    finalTotalEl.style.color = "#00e676";
+    // Animation
+    discountAmountEl.style.transition = finalTotalEl.style.transition = "0.3s";
+    discountAmountEl.style.color = finalTotalEl.style.color = "#00e676";
     setTimeout(() => {
-      discountAmountEl.style.color = "#fff";
-      finalTotalEl.style.color = "#fff";
+      discountAmountEl.style.color = finalTotalEl.style.color = "#fff";
     }, 500);
 
     alert(`Coupon "${offer.couponCode || offer.code}" applied!`);
   });
 });
+
 
 </script>
 </body>
