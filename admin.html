@@ -1904,19 +1904,21 @@ body.light-mode select option {
 <!-- Discount Coupon Modal -->
 <!-- Discount Coupon Modal -->
 <div id="couponModal" class="modal">
-  <div class="modal-content">
+  <div class="modal-content" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center;">
     <h3>Select Discount Coupon</h3>
-    <select id="couponSelect">
+    <select id="couponSelect" style="width:100%; padding:10px; margin-top:10px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text);">
       <option value="">No Discount</option>
     </select>
     <br><br>
-    <button id="applyCouponBtn">Apply Coupon</button>
-    <button onclick="closeCouponModal()">Cancel</button>
+    <div style="display:flex; justify-content:space-between; gap:10px;">
+      <button id="applyCouponBtn" style="flex:1; padding:10px; border:none; border-radius:8px; background:var(--accent); color:#fff; font-weight:600; cursor:pointer; transition:all 0.3s ease;">Apply Coupon</button>
+      <button onclick="closeCouponModal()" style="flex:1; padding:10px; border:none; border-radius:8px; background:var(--border); color:var(--text); font-weight:600; cursor:pointer; transition:all 0.3s ease;">Cancel</button>
+    </div>
   </div>
 </div>
 
 <div id="overlay" class="overlay"></div>
-kground:rgba(0,0,0,0.5); z-index:999;"></div>
+
 
 <div id="gstSection" class="admin-section" style="padding:20px;">
   <h2>GST Collection</h2>
