@@ -4185,7 +4185,20 @@ function fetchCustomerBills() {
       const col = document.createElement("td");
       col.colSpan = 4;
 
-      let itemHTML = `<div style="padding:12px; background:var(--card); color:var(--text); border-radius:8px; font-size:14px; line-height:1.6;">`;
+      let itemHTML = `
+  <div style="
+    padding: 16px 18px;
+    background: var(--card);
+    color: var(--text);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    font-size: 14px;
+    line-height: 1.6;
+    margin-top: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    transition: background 0.3s, color 0.3s, box-shadow 0.3s;
+  ">
+`;
 
       if (items.length > 0) {
         itemHTML += "<strong style='display:block; margin-bottom:6px;'>Items Purchased:</strong>";
