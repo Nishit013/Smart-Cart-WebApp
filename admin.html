@@ -2687,8 +2687,8 @@ function getCartStatus(cart) {
 <script>
   async function downloadPDF(cartId) {
     const cart = allCarts[cartId];
-    if (!cart || !cart.bill || !cart.bill.summary) {
-      alert("❌ Bill summary not available for this cart.");
+    if (!cart || !cart.bill || !cart.bill.items) {
+      alert("❌ Item details not available for this cart.");
       return;
     }
 
@@ -2696,10 +2696,10 @@ function getCartStatus(cart) {
     const doc = new jsPDF();
     let y = 20;
 
-    // 🧾 Header
+    // ===== HEADER =====
     doc.setFontSize(16);
     doc.setFont(undefined, "bold");
-    doc.text("Smart Cart Pro", 20, y);
+    doc.text("Smart Cart Pro – Invoice", 20, y);
     doc.setFont(undefined, "normal");
     doc.setFontSize(10);
     doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y + 6);
@@ -2714,33 +2714,98 @@ function getCartStatus(cart) {
       doc.text(`Customer: ${cart.bill.phone}`, 20, y + 17);
     }
 
-    // Divider line
+    // Divider
     doc.setLineWidth(0.4);
     doc.line(20, y + 20, 190, y + 20);
     y += 28;
 
-    // 🧺 Bill Details
+    // ===== ITEM TABLE =====
     doc.setFontSize(11);
-    const lines = cart.bill.summary.split("\n").filter(line => line.trim() !== "");
-    lines.forEach(line => {
-      // Highlight total/final lines in bold
-      if (/total|final|amount|discount/i.test(line)) {
-        doc.setFont(undefined, "bold");
-      } else {
-        doc.setFont(undefined, "normal");
-      }
-      doc.text(line, 25, y);
+    doc.setFont(undefined, "bold");
+    doc.text("Item", 20, y);
+    doc.text("CGST", 80, y);
+    doc.text("SGST", 100, y);
+    doc.text("Price", 125, y);
+    doc.text("Qty", 155, y);
+    doc.text("Total", 185, y, { align: "right" });
+    doc.setFont(undefined, "normal");
+
+    y += 6;
+    doc.line(20, y, 190, y);
+    y += 6;
+
+    let totalCGST = 0,
+        totalSGST = 0,
+        subtotal = 0;
+
+    cart.bill.items.forEach(item => {
+      const price = item.price || 0;
+      const qty = item.qty || 1;
+      const cgst = item.cgst || 0;
+      const sgst = item.sgst || 0;
+
+      const basePrice = price / (1 + (cgst + sgst) / 100);
+      const cgstAmt = basePrice * (cgst / 100);
+      const sgstAmt = basePrice * (sgst / 100);
+      const total = price * qty;
+
+      doc.text(item.name || "-", 20, y);
+      doc.text(`₹${cgstAmt.toFixed(2)}`, 80, y);
+      doc.text(`₹${sgstAmt.toFixed(2)}`, 100, y);
+      doc.text(`₹${price.toFixed(2)}`, 125, y);
+      doc.text(`${qty}`, 155, y);
+      doc.text(`₹${total.toFixed(2)}`, 185, y, { align: "right" });
+
+      totalCGST += cgstAmt * qty;
+      totalSGST += sgstAmt * qty;
+      subtotal += total;
+
       y += 7;
+      if (y > 260) {
+        doc.addPage();
+        y = 20;
+      }
     });
 
-    // Divider before footer
     y += 4;
-    doc.setLineWidth(0.2);
     doc.line(20, y, 190, y);
     y += 8;
 
-    // 🧩 Footer
+    // ===== TOTALS =====
+    const discount = cart.bill.discount || 0;
+    const finalAmount = cart.bill.finalAmount || subtotal - discount;
+
     doc.setFont(undefined, "normal");
+    doc.text("Subtotal:", 150, y);
+    doc.text(`₹${subtotal.toFixed(2)}`, 185, y, { align: "right" });
+    y += 6;
+
+    doc.text("Total CGST:", 150, y);
+    doc.text(`₹${totalCGST.toFixed(2)}`, 185, y, { align: "right" });
+    y += 6;
+
+    doc.text("Total SGST:", 150, y);
+    doc.text(`₹${totalSGST.toFixed(2)}`, 185, y, { align: "right" });
+    y += 6;
+
+    if (discount > 0) {
+      doc.setTextColor(200, 0, 0);
+      doc.text("Discount:", 150, y);
+      doc.text(`-₹${discount.toFixed(2)}`, 185, y, { align: "right" });
+      doc.setTextColor(0, 0, 0);
+      y += 6;
+    }
+
+    doc.setFont(undefined, "bold");
+    doc.text("Final Amount:", 150, y);
+    doc.text(`₹${finalAmount.toFixed(2)}`, 185, y, { align: "right" });
+    doc.setFont(undefined, "normal");
+    y += 10;
+
+    // ===== FOOTER =====
+    doc.setLineWidth(0.2);
+    doc.line(20, y, 190, y);
+    y += 8;
     doc.setFontSize(9);
     doc.text("Generated via Smart Cart Pro Admin Panel", 20, y);
     y += 5;
@@ -2748,7 +2813,7 @@ function getCartStatus(cart) {
     y += 5;
     doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
 
-    // 💾 Save
+    // ===== SAVE PDF =====
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
   }
