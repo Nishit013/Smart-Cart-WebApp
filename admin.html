@@ -2701,6 +2701,7 @@ async function downloadPDF(cartId) {
   doc.setFontSize(16);
   doc.text("SMART CART PRO", 105, y, { align: "center" });
   y += 8;
+
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.text("Campus Store - Hall 1, Block B, Tech Street", 105, y, { align: "center" });
@@ -2708,74 +2709,91 @@ async function downloadPDF(cartId) {
   doc.text("GSTIN: 24XXXXXXX1Z9", 105, y, { align: "center" });
   y += 5;
   doc.text("TAX INVOICE", 105, y, { align: "center" });
-  y += 8;
-  doc.setLineWidth(0.3);
-  doc.line(20, y, 190, y);
   y += 10;
 
-  // ===== ITEMS TABLE =====
-  const lines = cart.bill.summary.split("\n").filter(line => line.trim() !== "");
-  const itemLines = lines.filter(line => line.match(/\bx\s*\d+/i)); // lines with "x" for quantity
-
-  if (itemLines.length > 0) {
-    doc.setFontSize(11);
-    doc.text("Items", 25, y);
-    doc.text("Qty", 100, y);
-    doc.text("Price", 140, y);
-    doc.text("Total", 180, y, { align: "right" });
-    y += 5;
-    doc.setLineWidth(0.2);
-    doc.line(20, y, 190, y);
-    y += 6;
-
-    itemLines.forEach(line => {
-      // Try to extract parts like "Product x2 - ₹40"
-      const match = line.match(/(.*)\s+x\s*(\d+)\s*[-:₹]*\s*(\d+(\.\d+)?)/i);
-      if (match) {
-        const itemName = match[1].trim();
-        const qty = match[2];
-        const price = match[3];
-        const total = (parseFloat(price) * parseInt(qty)).toFixed(2);
-
-        doc.text(itemName, 25, y);
-        doc.text(qty, 105, y);
-        doc.text(`₹${price}`, 140, y);
-        doc.text(`₹${total}`, 185, y, { align: "right" });
-        y += 6;
-      }
-    });
-
-    y += 4;
-    doc.setLineWidth(0.2);
-    doc.line(20, y, 190, y);
-    y += 10;
-  }
-
-  // ===== TOTALS / SUMMARY =====
-  const discountMatch = cart.bill.summary.match(/Discount[:\-]?\s*₹?(\d+(\.\d+)?)/i);
-  const totalMatch = cart.bill.summary.match(/Total[:\-]?\s*₹?(\d+(\.\d+)?)/i);
-  const finalMatch = cart.bill.summary.match(/Final[:\-]?\s*₹?(\d+(\.\d+)?)/i);
-
-  const discount = discountMatch ? parseFloat(discountMatch[1]) : 0;
-  const total = totalMatch ? parseFloat(totalMatch[1]) : 0;
-  const final = finalMatch ? parseFloat(finalMatch[1]) : total - discount;
-
+  // ===== CUSTOMER & CART INFO =====
   doc.setFontSize(11);
-  doc.text("Subtotal:", 140, y);
-  doc.text(`₹${total.toFixed(2)}`, 185, y, { align: "right" });
+  const phone = cart.bill.phone || cart.phone || "Not Available";
+  const paymentTime = cart.bill.time || cart.time || "N/A";
+  doc.text(`Cart ID: ${cartId}`, 20, y);
+  doc.text(`Customer Phone: ${phone}`, 120, y);
   y += 6;
-  if (discount > 0) {
-    doc.setTextColor(200, 0, 0);
-    doc.text("Discount:", 140, y);
-    doc.text(`-₹${discount.toFixed(2)}`, 185, y, { align: "right" });
-    doc.setTextColor(0, 0, 0);
-    y += 6;
-  }
+  doc.text(`Payment Time: ${paymentTime}`, 20, y);
+  y += 8;
+
+  doc.setLineWidth(0.2);
+  doc.line(20, y, 190, y);
+  y += 8;
+
+  // ===== ITEM TABLE =====
+  const lines = cart.bill.summary.split("\n").filter(l => l.trim() !== "");
+  const itemLines = [];
+  const totalLines = [];
+
+  // Split summary lines into items and totals
+  lines.forEach(line => {
+    if (
+      line.toLowerCase().includes("total") ||
+      line.toLowerCase().includes("final") ||
+      line.toLowerCase().includes("discount")
+    ) {
+      totalLines.push(line.trim());
+    } else {
+      itemLines.push(line.trim());
+    }
+  });
+
+  // Table Header
   doc.setFont("helvetica", "bold");
-  doc.text("Final Amount:", 140, y);
-  doc.text(`₹${final.toFixed(2)}`, 185, y, { align: "right" });
+  doc.text("Item", 25, y);
+  doc.text("Qty", 100, y);
+  doc.text("Price", 140, y);
+  doc.text("Total", 185, y, { align: "right" });
+  y += 5;
+
+  doc.setLineWidth(0.1);
+  doc.line(20, y, 190, y);
+  y += 6;
   doc.setFont("helvetica", "normal");
-  y += 12;
+
+  // Table Rows
+  itemLines.forEach(line => {
+    // Try to detect name, qty, price
+    const match =
+      line.match(/(.*?)[-:xX]\s*(\d+)\s*[-:₹]?\s*(\d+(\.\d+)?)/i) ||
+      line.match(/(.*?)[-:₹]\s*(\d+(\.\d+)?)/i);
+
+    if (match) {
+      const name = match[1].trim();
+      const qty = match[2] ? match[2] : "1";
+      const price = match[3] ? match[3] : "";
+      const total = price ? (parseFloat(price) * parseInt(qty)).toFixed(2) : price;
+
+      doc.text(name, 25, y);
+      doc.text(qty, 105, y);
+      doc.text(price ? `₹${price}` : "-", 140, y);
+      doc.text(total ? `₹${total}` : "-", 185, y, { align: "right" });
+    } else {
+      // fallback line if not in item format
+      doc.text(line, 25, y);
+    }
+    y += 6;
+  });
+
+  // Draw line before totals
+  y += 4;
+  doc.setLineWidth(0.2);
+  doc.line(20, y, 190, y);
+  y += 8;
+
+  // ===== TOTALS =====
+  doc.setFont("helvetica", "bold");
+  totalLines.forEach(line => {
+    doc.text(line, 120, y);
+    y += 6;
+  });
+  doc.setFont("helvetica", "normal");
+  y += 8;
 
   // ===== FOOTER =====
   doc.setFontSize(9);
@@ -2786,10 +2804,9 @@ async function downloadPDF(cartId) {
   doc.text("Generated via Admin Panel", 20, y);
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
+  doc.save(`SmartCart_${cartId}_Invoice_${timestamp}.pdf`);
 }
 </script>
-
 
 <script>
   const auth = firebase.auth();
