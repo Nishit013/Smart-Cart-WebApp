@@ -2685,141 +2685,47 @@ function getCartStatus(cart) {
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-async function downloadPDF(cartId) {
-  const cart = allCarts[cartId];
-  if (!cart || !cart.bill || !cart.bill.items || cart.bill.items.length === 0) {
-    alert("❌ Complete bill details not available for this cart.");
-    return;
-  }
-
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  let y = 20;
-
-  // === HEADER ===
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.text("SMART CART PRO", 105, y, { align: "center" });
-  y += 8;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text("Campus Store - Hall 1, Block B, Tech Street", 105, y, { align: "center" });
-  y += 5;
-  doc.text("GSTIN: 24XXXXXXX1Z9", 105, y, { align: "center" });
-  y += 5;
-  doc.text("TAX INVOICE", 105, y, { align: "center" });
-  y += 8;
-
-  doc.setLineWidth(0.3);
-  doc.line(20, y, 190, y);
-  y += 8;
-
-  // === CUSTOMER DETAILS ===
-  doc.setFontSize(11);
-  if (cart.bill.customerName)
-    doc.text(`Customer: ${cart.bill.customerName}`, 20, y);
-  if (cart.bill.phone)
-    doc.text(`Phone: ${cart.bill.phone}`, 150, y, { align: "right" });
-  y += 6;
-
-  const now = new Date();
-  doc.text(`Date: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`, 20, y);
-  y += 10;
-
-  // === TABLE HEADER ===
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text("Item", 20, y);
-  doc.text("Qty", 90, y);
-  doc.text("Price", 110, y);
-  doc.text("CGST", 130, y);
-  doc.text("SGST", 150, y);
-  doc.text("Total", 190, y, { align: "right" });
-  doc.setFont("helvetica", "normal");
-  y += 4;
-  doc.line(20, y, 190, y);
-  y += 6;
-
-  // === ITEM TABLE ===
-  let subtotal = 0, totalCGST = 0, totalSGST = 0;
-  cart.bill.items.forEach(item => {
-    const name = item.name || "Unnamed";
-    const qty = item.qty || 1;
-    const price = item.price || 0;
-    const cgst = item.cgst || 0;
-    const sgst = item.sgst || 0;
-    const base = price / (1 + (cgst + sgst) / 100);
-    const cgstAmt = base * (cgst / 100);
-    const sgstAmt = base * (sgst / 100);
-    const total = price * qty;
-
-    subtotal += total;
-    totalCGST += cgstAmt * qty;
-    totalSGST += sgstAmt * qty;
-
-    if (y > 270) {  // Add new page if content exceeds limit
-      doc.addPage();
-      y = 20;
+  async function downloadPDF(cartId) {
+    const cart = allCarts[cartId];
+    if (!cart || !cart.bill || !cart.bill.summary) {
+      alert("❌ Bill summary not available for this cart.");
+      return;
     }
 
-    doc.text(name, 20, y);
-    doc.text(String(qty), 90, y);
-    doc.text(`₹${price.toFixed(2)}`, 110, y);
-    doc.text(`₹${cgstAmt.toFixed(2)}`, 130, y);
-    doc.text(`₹${sgstAmt.toFixed(2)}`, 150, y);
-    doc.text(`₹${total.toFixed(2)}`, 190, y, { align: "right" });
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    let y = 20;
+
+    doc.setFontSize(14);
+    doc.text("Smart Cart Pro – Invoice", 20, y);
+    y += 10;
+
+    doc.setFontSize(10);
+    doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
+    y += 5;
+    doc.text("TAX INVOICE", 150, y - 5);
+    doc.text("GSTIN: 24XXXXXXX1Z9", 20, y);
+    y += 5;
+
+    doc.setLineWidth(0.1);
+    doc.line(20, y, 190, y);
     y += 6;
-  });
 
-  y += 4;
-  doc.line(20, y, 190, y);
-  y += 8;
+    const lines = cart.bill.summary.split("\n");
+    doc.setFontSize(11);
+    lines.forEach(line => {
+      doc.text(line, 20, y);
+      y += 6;
+    });
 
-  // === TOTAL SECTION ===
-  doc.setFont("helvetica", "bold");
-  doc.text("Subtotal:", 150, y);
-  doc.text(`₹${subtotal.toFixed(2)}`, 190, y, { align: "right" });
-  y += 6;
+    y += 5;
+    doc.setFontSize(9);
+    doc.text("Generated via Admin Panel", 20, y);
 
-  doc.text("Total CGST:", 150, y);
-  doc.text(`₹${totalCGST.toFixed(2)}`, 190, y, { align: "right" });
-  y += 6;
-
-  doc.text("Total SGST:", 150, y);
-  doc.text(`₹${totalSGST.toFixed(2)}`, 190, y, { align: "right" });
-  y += 6;
-
-  if (cart.bill.discount && cart.bill.discount > 0) {
-    doc.setTextColor(200, 0, 0);
-    doc.text("Discount:", 150, y);
-    doc.text(`-₹${cart.bill.discount.toFixed(2)}`, 190, y, { align: "right" });
-    doc.setTextColor(0, 0, 0);
-    y += 6;
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
   }
-
-  const finalAmount =
-    subtotal + totalCGST + totalSGST - (cart.bill.discount || 0);
-
-  doc.setFontSize(12);
-  doc.text("Final Amount:", 150, y);
-  doc.text(`₹${finalAmount.toFixed(2)}`, 190, y, { align: "right" });
-  y += 10;
-
-  // === FOOTER ===
-  doc.setFontSize(9);
-  doc.text("This is a computer-generated invoice and doesn't require a signature.", 20, y);
-  y += 5;
-  doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
-  y += 5;
-  doc.text("Generated via Admin Panel", 20, y);
-
-  // === SAVE PDF ===
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
-}
 </script>
-
-
 <script>
   const auth = firebase.auth();
 
