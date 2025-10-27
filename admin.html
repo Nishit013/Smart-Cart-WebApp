@@ -2687,121 +2687,105 @@ function getCartStatus(cart) {
 <script>
   async function downloadPDF(cartId) {
     const cart = allCarts[cartId];
-    if (!cart || !cart.bill || !cart.bill.items) {
-      alert("❌ No item details available for this cart.");
+    if (!cart || !cart.bill || !cart.bill.summary) {
+      alert("❌ Bill summary not available for this cart.");
       return;
     }
 
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
     let y = 20;
 
     // ===== HEADER =====
-    doc.setFontSize(14);
-    doc.text("Smart Cart Pro – Invoice", 20, y);
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("SMART CART PRO", 20, y);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, (y += 6));
+    doc.text("GSTIN: 24XXXXXXX1Z9", 20, (y += 5));
+    doc.text("TAX INVOICE", 160, y - 10);
+    y += 5;
+
+    // Cart details
+    doc.setFontSize(10);
+    doc.text(`Cart ID: ${cartId}`, 20, y);
+    if (cart.bill.phone) doc.text(`Customer: ${cart.bill.phone}`, 130, y);
+    y += 5;
+    doc.text(`Date: ${new Date(cart.bill.timestamp || Date.now()).toLocaleString()}`, 20, y);
+    y += 5;
+
+    // Line separator
+    doc.setLineWidth(0.2);
+    doc.line(20, y, 190, y);
+    y += 8;
+
+    // ===== ITEM TABLE FROM SUMMARY =====
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("Item Details", 20, y);
+    doc.setFont("helvetica", "normal");
     y += 8;
 
     doc.setFontSize(10);
-    doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
-    y += 5;
-    doc.text("GSTIN: 24XXXXXXX1Z9", 20, y);
-    doc.text("TAX INVOICE", 150, y - 5);
-    y += 5;
+    const lines = cart.bill.summary.split("\n");
 
-    doc.text(`Date: ${new Date(cart.bill.date || Date.now()).toLocaleString()}`, 20, y);
-    y += 5;
-    doc.text(`Cart ID: ${cartId}`, 20, y);
-    if (cart.bill.phone) doc.text(`Customer: ${cart.bill.phone}`, 150, y);
+    // Draw a box around item details for better look
+    const boxStartY = y - 4;
+    lines.forEach(line => {
+      if (line.trim() !== "") {
+        doc.text(line, 22, y);
+        y += 6;
+      }
+    });
+    const boxEndY = y + 2;
+
+    // Border box for summary section
+    doc.setDrawColor(180, 180, 180);
+    doc.rect(20, boxStartY - 2, 170, boxEndY - boxStartY, "S");
+
+    y = boxEndY + 6;
+
+    // ===== TOTALS & FOOTER =====
+    doc.setLineWidth(0.2);
+    doc.line(20, y, 190, y);
     y += 8;
 
+    doc.setFontSize(11);
+    doc.text("Final Invoice Summary", 20, y);
+    y += 6;
+
+    // If you have separate bill data like total, discount, etc.
+    if (cart.bill.total) {
+      doc.setFontSize(10);
+      doc.text(`Subtotal: ₹${cart.bill.total.toFixed(2)}`, 20, y);
+      y += 5;
+    }
+    if (cart.bill.discount) {
+      doc.text(`Discount: ₹${cart.bill.discount.toFixed(2)}`, 20, y);
+      y += 5;
+    }
+    if (cart.bill.finalAmount) {
+      doc.setFont("helvetica", "bold");
+      doc.text(`Total Payable: ₹${cart.bill.finalAmount.toFixed(2)}`, 20, y);
+      doc.setFont("helvetica", "normal");
+      y += 8;
+    }
+
+    // ===== FOOTER =====
     doc.setLineWidth(0.1);
     doc.line(20, y, 190, y);
     y += 8;
 
-    // ===== ITEM TABLE =====
-    doc.setFontSize(11);
-    doc.text("Item", 20, y);
-    doc.text("Qty", 90, y);
-    doc.text("Price", 120, y);
-    doc.text("Total", 170, y, { align: "right" });
-    y += 5;
-
-    doc.line(20, y, 190, y);
-    y += 6;
-
-    let total = 0, totalCGST = 0, totalSGST = 0;
-
-    const items = Object.values(cart.bill.items);
-    items.forEach(item => {
-      const name = item.name || "Unnamed Item";
-      const qty = item.qty || 1;
-      const price = item.price || 0;
-      const sgst = item.sgst || 0;
-      const cgst = item.cgst || 0;
-      const basePrice = price / (1 + (sgst + cgst) / 100);
-      const sgstAmt = basePrice * (sgst / 100);
-      const cgstAmt = basePrice * (cgst / 100);
-      const subtotal = price * qty;
-
-      doc.setFontSize(10);
-      doc.text(name, 20, y);
-      doc.text(`${qty}`, 95, y);
-      doc.text(`₹${price.toFixed(2)}`, 120, y);
-      doc.text(`₹${subtotal.toFixed(2)}`, 190, y, { align: "right" });
-
-      total += subtotal;
-      totalCGST += cgstAmt * qty;
-      totalSGST += sgstAmt * qty;
-      y += 6;
-    });
-
-    // ===== SUMMARY SECTION =====
-    y += 3;
-    doc.line(20, y, 190, y);
-    y += 8;
-
-    doc.setFontSize(11);
-    doc.text("Total CGST:", 120, y);
-    doc.text(`₹${totalCGST.toFixed(2)}`, 190, y, { align: "right" });
-    y += 6;
-
-    doc.text("Total SGST:", 120, y);
-    doc.text(`₹${totalSGST.toFixed(2)}`, 190, y, { align: "right" });
-    y += 6;
-
-    doc.text("Subtotal:", 120, y);
-    doc.text(`₹${total.toFixed(2)}`, 190, y, { align: "right" });
-    y += 6;
-
-    // Discount and Final amount
-    const discount = cart.bill.discount || 0;
-    const finalAmount = cart.bill.finalAmount || (total - discount);
-
-    if (discount > 0) {
-      doc.setTextColor(200, 0, 0);
-      doc.text("Discount:", 120, y);
-      doc.text(`-₹${discount.toFixed(2)}`, 190, y, { align: "right" });
-      doc.setTextColor(0, 0, 0);
-      y += 6;
-    }
-
-    doc.setFont(undefined, "bold");
-    doc.text("Final Amount:", 120, y);
-    doc.text(`₹${finalAmount.toFixed(2)}`, 190, y, { align: "right" });
-    doc.setFont(undefined, "normal");
-    y += 10;
-
-    // ===== FOOTER =====
     doc.setFontSize(9);
-    doc.text("This is a computer-generated invoice and does not require a signature.", 20, y);
+    doc.text("This is a computer-generated invoice and doesn't require a signature.", 20, y);
     y += 5;
     doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
     y += 5;
     doc.text("Generated via Admin Panel", 20, y);
 
-    // ===== SAVE PDF =====
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
+    doc.save(`SmartCart_Invoice_${cartId}_${timestamp}.pdf`);
   }
 </script>
 
