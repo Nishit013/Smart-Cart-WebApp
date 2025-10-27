@@ -351,11 +351,14 @@
 
 
 function verifyCart() {
-  const cartId = document.getElementById("cartIdInput").value.trim().toUpperCase();
-  if (!cartId.startsWith("CART")) {
-    alert("❌ Invalid Cart ID. It should start with 'CART'.");
+  let cartInput = document.getElementById("cartIdInput").value.trim().toUpperCase();
+  if (!cartInput) {
+    alert("❌ Please enter a cart number.");
     return;
   }
+
+  // Automatically prefix "CART" if missing
+  let cartId = cartInput.startsWith("CART") ? cartInput : `CART${cartInput}`;
 
   const detailsDiv = document.getElementById("cartDetails");
   detailsDiv.innerHTML = `<p>🔄 Searching latest paid bill for <strong>${cartId}</strong>...</p>`;
@@ -371,19 +374,22 @@ function verifyCart() {
         return;
       }
 
-      // Filter bills where the key contains cartId or bill.cartId matches
+      // Filter bills for that cart
       const matchingBills = Object.entries(allBills)
         .filter(([key, val]) => {
           const upperKey = key.toUpperCase();
-          return upperKey.includes(`_${cartId}`) || upperKey.startsWith(`${cartId}_`) || (val.bill?.cartId?.toUpperCase() === cartId);
+          return (
+            upperKey.includes(`_${cartId}`) ||
+            upperKey.startsWith(`${cartId}_`) ||
+            (val.bill?.cartId?.toUpperCase() === cartId)
+          );
         })
         .map(([key, val]) => ({ key, ...val }))
         .sort((a, b) => {
-  const timeA = a.paidAt || (a.paymentTime ? new Date(a.paymentTime).getTime() : (a.bill?.paymentTime ? new Date(a.bill.paymentTime).getTime() : 0));
-  const timeB = b.paidAt || (b.paymentTime ? new Date(b.paymentTime).getTime() : (b.bill?.paymentTime ? new Date(b.bill.paymentTime).getTime() : 0));
-  return timeB - timeA;
-});
-
+          const timeA = a.paidAt || (a.paymentTime ? new Date(a.paymentTime).getTime() : (a.bill?.paymentTime ? new Date(a.bill.paymentTime).getTime() : 0));
+          const timeB = b.paidAt || (b.paymentTime ? new Date(b.paymentTime).getTime() : (b.bill?.paymentTime ? new Date(b.bill.paymentTime).getTime() : 0));
+          return timeB - timeA;
+        });
 
       if (matchingBills.length === 0) {
         detailsDiv.innerHTML = `<p>❌ No paid bill found for <strong>${cartId}</strong>.</p>`;
@@ -392,14 +398,14 @@ function verifyCart() {
 
       const latestBill = matchingBills[0];
       const originalTotal = latestBill.total || latestBill.bill?.originalTotal || 0;
-const discount = latestBill.discount || latestBill.bill?.discount || 0;
-const finalAmount = latestBill.finalAmount || latestBill.bill?.finalPaid || originalTotal;
+      const discount = latestBill.discount || latestBill.bill?.discount || 0;
+      const finalAmount = latestBill.finalAmount || latestBill.bill?.finalPaid || originalTotal;
 
       const paidTime =
-  latestBill.paidAt ||
-  (latestBill.paymentTime ? new Date(latestBill.paymentTime).getTime() : 0) ||
-  (latestBill.bill?.paymentTime ? new Date(latestBill.bill.paymentTime).getTime() : 0) ||
-  Date.now();
+        latestBill.paidAt ||
+        (latestBill.paymentTime ? new Date(latestBill.paymentTime).getTime() : 0) ||
+        (latestBill.bill?.paymentTime ? new Date(latestBill.bill.paymentTime).getTime() : 0) ||
+        Date.now();
 
       const totalItems = (latestBill.items || []).reduce((acc, item) => acc + (item.qty || 0), 0);
       const itemsBoxId = `itemsBoxLatest`;
@@ -412,10 +418,10 @@ const finalAmount = latestBill.finalAmount || latestBill.bill?.finalPaid || orig
       html += `<div style="margin-bottom:15px; padding:10px; border:1px solid #ccc; border-radius:6px; background-color: var(--card); color: var(--text);">`;
       html += `<h4>Paid At: ${new Date(paidTime).toLocaleString()}</h4>`;
       html += `<p><strong>Original Total:</strong> ₹${originalTotal}</p>`;
-if (discount > 0) {
-  html += `<p><strong>Discount:</strong> -₹${discount}</p>`;
-}
-html += `<p><strong>Final Paid:</strong> ₹${finalAmount}</p>`;
+      if (discount > 0) {
+        html += `<p><strong>Discount:</strong> -₹${discount}</p>`;
+      }
+      html += `<p><strong>Final Paid:</strong> ₹${finalAmount}</p>`;
 
       html += `<p><strong>Total Items:</strong> ${totalItems}</p>`;
       html += `<p><strong>Payment Status:</strong> ${latestBill.paymentStatus || 'Paid'}</p>`;
@@ -427,7 +433,7 @@ html += `<p><strong>Final Paid:</strong> ₹${finalAmount}</p>`;
       });
       html += `</ul></div>`;
       html += `<p><strong>Last Updated:</strong> ${latestBill.lastUpdated ? new Date(latestBill.lastUpdated).toLocaleString() : ''}</p>`;
-      html += `</div></div>`; // close inner and outer container
+      html += `</div></div>`;
 
       detailsDiv.innerHTML = html;
 
@@ -437,7 +443,6 @@ html += `<p><strong>Final Paid:</strong> ₹${finalAmount}</p>`;
       const approvedCart = {
         cartId,
         total: finalAmount,
-
         itemCount: (latestBill.items || []).length,
         approvedBy: approver,
         checkoutTime,
@@ -452,20 +457,18 @@ html += `<p><strong>Final Paid:</strong> ₹${finalAmount}</p>`;
       entryDiv.innerHTML = `
         ✅ <strong>${cartId}</strong> |
         💰 ₹${finalAmount} |
-
         🕒 ${checkoutTime} |
         👤 ${approver}
       `;
       historyList.prepend(entryDiv);
-
     }).catch(err => {
       detailsDiv.innerHTML = `<p>❌ Error fetching paid bills: ${err.message}</p>`;
     });
-
   }).catch(err => {
     detailsDiv.innerHTML = `<p>❌ Error fetching cart status: ${err.message}</p>`;
   });
 }
+
 function toggleItems(id) {
   const el = document.getElementById(id);
   if (!el) return;
