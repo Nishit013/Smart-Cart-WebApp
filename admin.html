@@ -2687,8 +2687,8 @@ function getCartStatus(cart) {
 <script>
 async function downloadPDF(cartId) {
   const cart = allCarts[cartId];
-  if (!cart || !cart.items || !cart.bill) {
-    alert("❌ Complete bill details not available for this cart.");
+  if (!cart || !cart.bill || !cart.bill.summary) {
+    alert("❌ Bill summary not available for this cart.");
     return;
   }
 
@@ -2708,83 +2708,62 @@ async function downloadPDF(cartId) {
   doc.text("GSTIN: 24XXXXXXX1Z9", 105, y, { align: "center" });
   y += 5;
   doc.text("TAX INVOICE", 105, y, { align: "center" });
-  y += 10;
-
+  y += 8;
   doc.setLineWidth(0.3);
   doc.line(20, y, 190, y);
   y += 10;
 
-  // ===== BILL META =====
-  doc.setFontSize(11);
-  const phone = cart.bill.phone || "N/A";
-  const time = cart.bill.time ? new Date(cart.bill.time).toLocaleString() : new Date().toLocaleString();
-  doc.text(`Cart ID: ${cartId}`, 20, y);
-  doc.text(`Phone: ${phone}`, 120, y);
-  y += 6;
-  doc.text(`Date: ${time}`, 20, y);
-  y += 10;
+  // ===== ITEMS TABLE =====
+  const lines = cart.bill.summary.split("\n").filter(line => line.trim() !== "");
+  const itemLines = lines.filter(line => line.match(/\bx\s*\d+/i)); // lines with "x" for quantity
 
-  // ===== TABLE HEADER =====
-  doc.setFont("helvetica", "bold");
-  doc.text("Item", 20, y);
-  doc.text("CGST", 85, y);
-  doc.text("SGST", 110, y);
-  doc.text("Final Price", 140, y);
-  doc.text("Qty", 170, y);
-  doc.text("Total", 190, y, { align: "right" });
-  y += 5;
-  doc.setLineWidth(0.1);
-  doc.line(20, y, 190, y);
-  y += 6;
-
-  // ===== TABLE BODY =====
-  doc.setFont("helvetica", "normal");
-  let total = 0, totalCGST = 0, totalSGST = 0;
-  Object.values(cart.items).forEach(item => {
-    const price = item.price || 0;
-    const qty = item.qty || item.quantity || 1;
-    const sgst = item.sgst || 0;
-    const cgst = item.cgst || 0;
-    const basePrice = price / (1 + (sgst + cgst) / 100);
-    const sgstAmt = basePrice * (sgst / 100);
-    const cgstAmt = basePrice * (cgst / 100);
-    const subtotal = price * qty;
-
-    doc.text(item.name || "Unnamed Item", 20, y);
-    doc.text(`₹${cgstAmt.toFixed(2)}`, 85, y);
-    doc.text(`₹${sgstAmt.toFixed(2)}`, 110, y);
-    doc.text(`₹${price.toFixed(2)}`, 140, y);
-    doc.text(`${qty}`, 170, y);
-    doc.text(`₹${subtotal.toFixed(2)}`, 190, y, { align: "right" });
-
+  if (itemLines.length > 0) {
+    doc.setFontSize(11);
+    doc.text("Items", 25, y);
+    doc.text("Qty", 100, y);
+    doc.text("Price", 140, y);
+    doc.text("Total", 180, y, { align: "right" });
+    y += 5;
+    doc.setLineWidth(0.2);
+    doc.line(20, y, 190, y);
     y += 6;
-    total += subtotal;
-    totalCGST += cgstAmt * qty;
-    totalSGST += sgstAmt * qty;
 
-    if (y > 270) { doc.addPage(); y = 20; }
-  });
+    itemLines.forEach(line => {
+      // Try to extract parts like "Product x2 - ₹40"
+      const match = line.match(/(.*)\s+x\s*(\d+)\s*[-:₹]*\s*(\d+(\.\d+)?)/i);
+      if (match) {
+        const itemName = match[1].trim();
+        const qty = match[2];
+        const price = match[3];
+        const total = (parseFloat(price) * parseInt(qty)).toFixed(2);
 
-  y += 4;
-  doc.line(20, y, 190, y);
-  y += 6;
+        doc.text(itemName, 25, y);
+        doc.text(qty, 105, y);
+        doc.text(`₹${price}`, 140, y);
+        doc.text(`₹${total}`, 185, y, { align: "right" });
+        y += 6;
+      }
+    });
 
-  // ===== SUMMARY =====
-  const discount = cart.bill.discount || 0;
-  const finalAmount = cart.bill.finalAmount || total - discount;
+    y += 4;
+    doc.setLineWidth(0.2);
+    doc.line(20, y, 190, y);
+    y += 10;
+  }
 
-  doc.text("Total CGST:", 140, y);
-  doc.text(`₹${totalCGST.toFixed(2)}`, 185, y, { align: "right" });
-  y += 6;
+  // ===== TOTALS / SUMMARY =====
+  const discountMatch = cart.bill.summary.match(/Discount[:\-]?\s*₹?(\d+(\.\d+)?)/i);
+  const totalMatch = cart.bill.summary.match(/Total[:\-]?\s*₹?(\d+(\.\d+)?)/i);
+  const finalMatch = cart.bill.summary.match(/Final[:\-]?\s*₹?(\d+(\.\d+)?)/i);
 
-  doc.text("Total SGST:", 140, y);
-  doc.text(`₹${totalSGST.toFixed(2)}`, 185, y, { align: "right" });
-  y += 6;
+  const discount = discountMatch ? parseFloat(discountMatch[1]) : 0;
+  const total = totalMatch ? parseFloat(totalMatch[1]) : 0;
+  const final = finalMatch ? parseFloat(finalMatch[1]) : total - discount;
 
+  doc.setFontSize(11);
   doc.text("Subtotal:", 140, y);
   doc.text(`₹${total.toFixed(2)}`, 185, y, { align: "right" });
   y += 6;
-
   if (discount > 0) {
     doc.setTextColor(200, 0, 0);
     doc.text("Discount:", 140, y);
@@ -2792,25 +2771,13 @@ async function downloadPDF(cartId) {
     doc.setTextColor(0, 0, 0);
     y += 6;
   }
-
   doc.setFont("helvetica", "bold");
   doc.text("Final Amount:", 140, y);
-  doc.text(`₹${finalAmount.toFixed(2)}`, 185, y, { align: "right" });
+  doc.text(`₹${final.toFixed(2)}`, 185, y, { align: "right" });
   doc.setFont("helvetica", "normal");
   y += 12;
 
-  // ===== OPTIONAL SUMMARY TEXT =====
-  if (cart.bill.summary) {
-    const summaryLines = cart.bill.summary.split("\n").filter(line => line.trim() !== "");
-    doc.setFontSize(10);
-    summaryLines.forEach(line => {
-      doc.text(line.trim(), 25, y);
-      y += 5;
-    });
-  }
-
   // ===== FOOTER =====
-  y += 10;
   doc.setFontSize(9);
   doc.text("This is a computer-generated invoice and doesn't require a signature.", 20, y);
   y += 5;
@@ -2822,6 +2789,7 @@ async function downloadPDF(cartId) {
   doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
 }
 </script>
+
 
 <script>
   const auth = firebase.auth();
