@@ -2687,8 +2687,8 @@ function getCartStatus(cart) {
 <script>
   async function downloadPDF(cartId) {
     const cart = allCarts[cartId];
-    if (!cart || !cart.bill || !cart.bill.summary) {
-      alert("❌ Bill summary not available for this cart.");
+    if (!cart || !cart.bill) {
+      alert("❌ Bill details not available for this cart.");
       return;
     }
 
@@ -2701,14 +2701,14 @@ function getCartStatus(cart) {
     doc.setFontSize(16);
     doc.text("SMART CART PRO", 105, y, { align: "center" });
     y += 8;
-    doc.setFontSize(11);
     doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
     doc.text("Campus Store - Hall 1, Block B, Tech Street", 105, y, { align: "center" });
     y += 5;
     doc.text("GSTIN: 24XXXXXXX1Z9", 105, y, { align: "center" });
     y += 8;
 
-    // Divider line
+    // Divider
     doc.setLineWidth(0.5);
     doc.line(20, y, 190, y);
     y += 10;
@@ -2733,16 +2733,14 @@ function getCartStatus(cart) {
     doc.line(20, y, 190, y);
     y += 8;
 
-    // 🛒 Item Table Header
+    // 🛒 Items Table Header
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.text("Item", 22, y);
-    doc.text("Qty", 90, y);
-    doc.text("Price", 120, y);
-    doc.text("Total", 160, y);
-    y += 5;
-
-    doc.setLineWidth(0.1);
+    doc.text("Qty", 100, y);
+    doc.text("Price", 130, y);
+    doc.text("Total", 170, y);
+    y += 4;
     doc.line(20, y, 190, y);
     y += 6;
 
@@ -2750,17 +2748,24 @@ function getCartStatus(cart) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
 
-    if (cart.items) {
-      cart.items.forEach((item) => {
+    let items = [];
+    if (cart.bill.items && Array.isArray(cart.bill.items)) {
+      items = cart.bill.items;
+    } else if (cart.items && Array.isArray(cart.items)) {
+      items = cart.items;
+    }
+
+    if (items.length > 0) {
+      items.forEach((item) => {
         const name = item.name || "Unnamed Item";
         const qty = item.quantity || 1;
-        const price = parseFloat(item.price || 0).toFixed(2);
-        const total = (qty * parseFloat(price)).toFixed(2);
+        const price = parseFloat(item.price || 0);
+        const total = qty * price;
 
         doc.text(name, 22, y);
-        doc.text(String(qty), 92, y);
-        doc.text(`₹${price}`, 120, y, { align: "left" });
-        doc.text(`₹${total}`, 180, y, { align: "right" });
+        doc.text(String(qty), 102, y);
+        doc.text(`₹${price.toFixed(2)}`, 130, y);
+        doc.text(`₹${total.toFixed(2)}`, 180, y, { align: "right" });
         y += 6;
 
         if (y > 270) {
@@ -2779,19 +2784,37 @@ function getCartStatus(cart) {
 
     // 💰 Totals Section
     doc.setFont("helvetica", "bold");
-    doc.text("Summary", 20, y);
+    doc.setFontSize(11);
+    doc.text("Bill Summary", 20, y);
     y += 6;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
 
-    const summaryLines = cart.bill.summary.split("\n").filter(line => line.trim() !== "");
-    summaryLines.forEach(line => {
-      doc.text(line.trim(), 22, y);
+    const summary = cart.bill;
+    if (summary.subtotal) {
+      doc.text(`Subtotal: ₹${parseFloat(summary.subtotal).toFixed(2)}`, 22, y);
       y += 5;
-    });
+    }
+    if (summary.discount) {
+      doc.text(`Discount: -₹${parseFloat(summary.discount).toFixed(2)}`, 22, y);
+      y += 5;
+    }
+    if (summary.cgst) {
+      doc.text(`CGST: ₹${parseFloat(summary.cgst).toFixed(2)}`, 22, y);
+      y += 5;
+    }
+    if (summary.sgst) {
+      doc.text(`SGST: ₹${parseFloat(summary.sgst).toFixed(2)}`, 22, y);
+      y += 5;
+    }
+    if (summary.total) {
+      y += 3;
+      doc.setFont("helvetica", "bold");
+      doc.text(`Total Amount: ₹${parseFloat(summary.total).toFixed(2)}`, 22, y);
+      y += 6;
+    }
 
-    y += 8;
-    doc.setLineWidth(0.1);
+    y += 6;
     doc.line(20, y, 190, y);
     y += 8;
 
@@ -2807,6 +2830,7 @@ function getCartStatus(cart) {
     doc.save(`SmartCartPro_${cartId}_Invoice_${timestamp}.pdf`);
   }
 </script>
+
 
 <script>
   const auth = firebase.auth();
