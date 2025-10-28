@@ -2295,41 +2295,150 @@ barData.push(Number(cart.finalAmount ?? cart.total) || 0);
 });
 
   }
-  function getCartHistoryHTML(cartId) {
+function getCartHistoryHTML(cartId) {
   const history = Object.values(paidCarts)
     .filter(c => c.cartId === cartId)
     .sort((a, b) => {
       const timeA = new Date(a.paymentTime || a.paidAt || 0).getTime();
       const timeB = new Date(b.paymentTime || b.paidAt || 0).getTime();
-      return timeB - timeA; // Descending order: latest first
+      return timeB - timeA; // Latest first
     });
 
   if (!history.length) return "<p>No previous bills.</p>";
 
-  return history.map((c, index) => {
-    const rawTime = c.paymentTime || c.paidAt || null;
-    const paidTime = rawTime ? new Date(rawTime).toLocaleString() : "Unknown";
-    const itemsHTML = (c.items || [])
-      .map(i => `<li>${i.name} × ${i.qty} = ₹${i.qty * i.price}</li>`)
-      .join("");
+  return history
+    .map((c, index) => {
+      const rawTime = c.paymentTime || c.paidAt || null;
+      const paidTime = rawTime ? new Date(rawTime).toLocaleString() : "Unknown";
+      const itemsHTML = (c.items || [])
+        .map(i => `<li>${i.name} × ${i.qty} = ₹${i.qty * i.price}</li>`)
+        .join("");
 
-    return `
-      <div class="history-entry">
-        <p><strong>Paid On:</strong> ${paidTime}</p>
-        <p><strong>Original Total:</strong> ₹${c.total}</p>
-<p><strong>Discount:</strong> -₹${c.discount || 0}</p>
-<p><strong>Final Paid:</strong> ₹${c.finalAmount || c.total}</p>
+      return `
+        <div class="history-entry">
+          <p><strong>Paid On:</strong> ${paidTime}</p>
+          <p><strong>Original Total:</strong> ₹${c.total}</p>
+          <p><strong>Discount:</strong> -₹${c.discount || 0}</p>
+          <p><strong>Final Paid:</strong> ₹${c.finalAmount || c.total}</p>
+          <p><strong>Phone:</strong> ${c.phone || "N/A"}</p>
 
-        <p><strong>Phone:</strong> ${c.phone || "N/A"}</p>
-        <button class="toggle-items" onclick="toggleItems('items-${cartId}-${index}')">📦 View Items</button>
-<div id="items-${cartId}-${index}" class="items-box" style="display:none;">
-  <ul>${itemsHTML}</ul>
-</div>
+          <button class="toggle-items" onclick="toggleItems('items-${cartId}-${index}')">📦 View Items</button>
+          <button class="download-pdf" onclick="event.stopPropagation(); downloadHistoryPDF('${cartId}', ${index})">📥 Download PDF</button>
 
-      </div>
-    `;
-  }).join("<hr>");
+          <div id="items-${cartId}-${index}" class="items-box" style="display:none;">
+            <ul>${itemsHTML}</ul>
+          </div>
+        </div>
+      `;
+    })
+    .join("<hr>");
 }
+
+  async function downloadHistoryPDF(cartId, index) {
+    const history = Object.values(paidCarts).filter(c => c.cartId === cartId);
+    const bill = history[index];
+
+    if (!bill) {
+      alert("❌ Bill not found for this cart.");
+      return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    let y = 20;
+
+    // ---------- HEADER ----------
+    doc.setFontSize(14);
+    doc.text("Smart Cart Pro – Invoice", 20, y);
+    y += 10;
+
+    doc.setFontSize(10);
+    doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
+    y += 5;
+    doc.text("TAX INVOICE", 150, y - 5);
+    doc.text("GSTIN: 24XXXXXXX1Z9", 20, y);
+    y += 5;
+
+    doc.setLineWidth(0.1);
+    doc.line(20, y, 190, y);
+    y += 6;
+
+    // ---------- CART DETAILS ----------
+    const paymentTime = bill.paymentTime || bill.paidAt || "N/A";
+    const formattedTime =
+      paymentTime !== "N/A" ? new Date(paymentTime).toLocaleString() : "N/A";
+
+    doc.setFontSize(11);
+    doc.text(`Cart ID: ${cartId}`, 20, y);
+    y += 6;
+    doc.text(`Payment Time: ${formattedTime}`, 20, y);
+    y += 6;
+    doc.text(`Customer Phone: ${bill.phone || "N/A"}`, 20, y);
+    y += 8;
+
+    // ---------- TABLE HEADER ----------
+    doc.setFont(undefined, "bold");
+    doc.text("Item", 20, y);
+    doc.text("Qty", 90, y);
+    doc.text("Price", 120, y);
+    doc.text("Total", 160, y);
+    doc.setFont(undefined, "normal");
+    y += 6;
+    doc.line(20, y, 190, y);
+    y += 6;
+
+    // ---------- ITEMS ----------
+    (bill.items || []).forEach(item => {
+      const itemName = item.name || "Unnamed";
+      const qty = item.qty || 1;
+      const price = item.price || 0;
+      const total = price * qty;
+
+      const wrappedName = doc.splitTextToSize(itemName, 60);
+      doc.text(wrappedName, 20, y);
+      doc.text(String(qty), 90, y);
+      doc.text(`₹${price.toFixed(2)}`, 120, y);
+      doc.text(`₹${total.toFixed(2)}`, 160, y);
+
+      y += wrappedName.length * 5 + 3;
+      if (y > 270) {
+        doc.addPage();
+        y = 20;
+      }
+    });
+
+    y += 6;
+    doc.line(20, y, 190, y);
+    y += 8;
+
+    // ---------- TOTALS ----------
+    const discount = parseFloat(bill.discount || 0);
+    const finalAmount = bill.finalAmount || bill.total || 0;
+    doc.setFont(undefined, "bold");
+    doc.text(`Original Total: ₹${bill.total.toFixed(2)}`, 140, y, { align: "right" });
+    y += 6;
+    if (discount > 0) {
+      doc.text(`Discount: -₹${discount.toFixed(2)}`, 140, y, { align: "right" });
+      y += 6;
+    }
+    doc.text(`Final Paid: ₹${finalAmount.toFixed(2)}`, 140, y, { align: "right" });
+
+    y += 10;
+    doc.setFontSize(9);
+    doc.text("Generated via Smart Cart Pro Admin Panel", 20, y);
+    y += 4;
+    doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
+
+    // ---------- SAVE ----------
+    const safeTime = paymentTime.replace(/[/:, ]/g, "-");
+    doc.save(`Cart_${cartId}_Bill_${safeTime}.pdf`);
+  }
+
+
+
+
+
+
 
 function exportCSV() {
   const rows = [["Cart ID", "Total Before Discount", "Discount Applied", "Final Paid", "Date", "Time", "Phone"]];
