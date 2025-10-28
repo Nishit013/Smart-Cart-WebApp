@@ -2693,84 +2693,79 @@ function getCartStatus(cart) {
     }
 
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+    const doc = new jsPDF("p", "mm", "a4");
+
+    // Colors and font styling
+    const accentColor = [33, 150, 243]; // blue accent
     let y = 20;
 
-    // ===== HEADER =====
-    doc.setFontSize(14);
-    doc.text("Smart Cart Pro – TAX INVOICE", 20, y);
+    // Header
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.setTextColor(...accentColor);
+    doc.text("Smart Cart Pro", 20, y);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text("– TAX INVOICE", 70, y);
     y += 8;
 
+    // Store info
     doc.setFontSize(10);
     doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
-    doc.text("GSTIN: 24XXXXXXX1Z9", 130, y);
-    y += 6;
-    doc.text(`Cart ID: ${cart.cartId || cartId}`, 20, y);
-    doc.text(`Date: ${cart.paymentTime ? new Date(cart.paymentTime).toLocaleString() : "N/A"}`, 130, y);
-    y += 6;
+    y += 5;
+    doc.text("GSTIN: 24XXXXXXX1Z9", 20, y);
+    y += 5;
+    doc.text(`Cart ID: ${cart.cartId || "N/A"}`, 20, y);
+    y += 5;
+    const date = cart.paymentTime
+      ? new Date(cart.paymentTime).toLocaleString()
+      : "N/A";
+    doc.text(`Date: ${date}`, 20, y);
+    y += 5;
     doc.text(`Phone: ${cart.phone || "-"}`, 20, y);
-    y += 4;
-
-    doc.line(20, y, 190, y);
     y += 8;
 
-    // ===== TABLE HEADER =====
-    doc.setFontSize(11);
-    doc.text("#", 22, y);
-    doc.text("Item", 30, y);
-    doc.text("Qty", 100, y);
-    doc.text("CGST", 120, y);
-    doc.text("SGST", 140, y);
-    doc.text("Price", 165, y);
-    y += 4;
+    // Line divider
+    doc.setDrawColor(...accentColor);
+    doc.setLineWidth(0.4);
     doc.line(20, y, 190, y);
-    y += 6;
+    y += 10;
 
-    // ===== ITEMS =====
-    const items = Array.isArray(cart.items) ? cart.items : Object.values(cart.items || {});
-    doc.setFontSize(10);
-    items.forEach((item, index) => {
-      if (y > 270) { // new page if overflow
-        doc.addPage();
-        y = 20;
-      }
-      const cgst = (item.gst || 0) / 2;
-      const sgst = (item.gst || 0) / 2;
-      const subtotal = (item.price || 0) * (item.qty || 1);
-      doc.text(String(index + 1), 22, y);
-      doc.text(item.name || "-", 30, y);
-      doc.text(String(item.qty || 0), 102, y);
-      doc.text(`${cgst}%`, 122, y);
-      doc.text(`${sgst}%`, 142, y);
-      doc.text(`₹${subtotal.toFixed(2)}`, 165, y);
+    // Bill Summary
+    const lines = cart.bill.summary.split("\n").filter(l => l.trim() !== "");
+    doc.setFontSize(11);
+    doc.setFont("courier", "normal"); // clean monospaced look
+    lines.forEach(line => {
+      doc.text(line.trim(), 20, y);
       y += 6;
     });
 
+    // Footer divider
+    y += 4;
+    doc.setDrawColor(...accentColor);
     doc.line(20, y, 190, y);
     y += 8;
 
-    // ===== TOTALS =====
-    doc.setFontSize(11);
-    doc.text(`Total Before Discount: ₹${(cart.total || 0).toFixed(2)}`, 20, y);
-    y += 6;
-    doc.text(`Discount: ₹${(cart.discount || 0).toFixed(2)}`, 20, y);
-    y += 6;
-    doc.text(`Final Amount: ₹${(cart.finalAmount || cart.total || 0).toFixed(2)}`, 20, y);
-    y += 6;
-    doc.text(`Total CGST: ₹${(cart.totalCGST || 0).toFixed(2)} | Total SGST: ₹${(cart.totalSGST || 0).toFixed(2)}`, 20, y);
-    y += 10;
-
-    // ===== FOOTER =====
+    // Footer
+    doc.setFont("helvetica", "italic");
     doc.setFontSize(9);
-    doc.text("This is a computer-generated invoice and doesn't require a signature.", 20, y);
+    doc.text(
+      "This is a computer-generated invoice and doesn't require a signature.",
+      20,
+      y
+    );
     y += 5;
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100);
     doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
 
-    // ===== SAVE =====
+    // Save file
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
+    doc.save(`SmartCartPro_Invoice_${cartId}_${timestamp}.pdf`);
   }
 </script>
+
 <script>
   const auth = firebase.auth();
 
