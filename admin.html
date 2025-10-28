@@ -2695,69 +2695,76 @@ function getCartStatus(cart) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF("p", "mm", "a4");
 
-    // Colors and font styling
-    const accentColor = [33, 150, 243]; // blue accent
+    // Professional theme colors
+    const accentColor = [41, 128, 185]; // elegant blue
+    const textGray = [80, 80, 80];
     let y = 20;
 
-    // Header
+    // Title
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
+    doc.setFontSize(20);
     doc.setTextColor(...accentColor);
     doc.text("Smart Cart Pro", 20, y);
-    doc.setFont("helvetica", "normal");
     doc.setFontSize(12);
-    doc.setTextColor(0, 0, 0);
-    doc.text("– TAX INVOICE", 70, y);
-    y += 8;
+    doc.setFont("helvetica", "normal");
+    doc.text("TAX INVOICE", 150, y, { align: "right" });
+    y += 10;
 
-    // Store info
+    // Store Info
     doc.setFontSize(10);
+    doc.setTextColor(...textGray);
     doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
     y += 5;
     doc.text("GSTIN: 24XXXXXXX1Z9", 20, y);
-    y += 5;
-    doc.text(`Cart ID: ${cart.cartId || "N/A"}`, 20, y);
     y += 5;
     const date = cart.paymentTime
       ? new Date(cart.paymentTime).toLocaleString()
       : "N/A";
     doc.text(`Date: ${date}`, 20, y);
     y += 5;
+    doc.text(`Cart ID: ${cart.cartId || "-"}`, 20, y);
+    y += 5;
     doc.text(`Phone: ${cart.phone || "-"}`, 20, y);
     y += 8;
 
-    // Line divider
+    // Divider
     doc.setDrawColor(...accentColor);
-    doc.setLineWidth(0.4);
+    doc.setLineWidth(0.3);
     doc.line(20, y, 190, y);
     y += 10;
 
+    // Section Title
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(0);
+    doc.text("Bill Summary", 20, y);
+    y += 8;
+
     // Bill Summary
     const lines = cart.bill.summary.split("\n").filter(l => l.trim() !== "");
+    doc.setFont("courier", "normal");
     doc.setFontSize(11);
-    doc.setFont("courier", "normal"); // clean monospaced look
     lines.forEach(line => {
-      doc.text(line.trim(), 20, y);
+      doc.text(line.trim(), 25, y);
       y += 6;
     });
 
-    // Footer divider
+    // Footer Divider
     y += 4;
     doc.setDrawColor(...accentColor);
     doc.line(20, y, 190, y);
-    y += 8;
+    y += 10;
 
-    // Footer
+    // Footer Text
     doc.setFont("helvetica", "italic");
     doc.setFontSize(9);
+    doc.setTextColor(100);
     doc.text(
       "This is a computer-generated invoice and doesn't require a signature.",
       20,
       y
     );
     y += 5;
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(100);
     doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
 
     // Save file
