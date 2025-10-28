@@ -2684,11 +2684,12 @@ function getCartStatus(cart) {
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 async function downloadPDF(cartId) {
   const cart = allCarts[cartId];
   if (!cart || !cart.bill || !cart.bill.summary) {
-    alert("❌ Bill data not available for this cart.");
+    alert("❌ Bill summary not available for this cart.");
     return;
   }
 
@@ -2698,38 +2699,38 @@ async function downloadPDF(cartId) {
 
   // ---------- HEADER ----------
   doc.setFontSize(14);
-  doc.text("Smart Cart Pro", 20, y);
+  doc.text("Smart Cart Pro – Invoice", 20, y);
+  y += 10;
+
   doc.setFontSize(10);
-  doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y + 6);
-  doc.text("GSTIN: 24XXXXXXX1Z9", 20, y + 11);
-  doc.text("TAX INVOICE", 150, y);
-  y += 18;
-
-  // ---------- BILL INFO ----------
-  const phone = cart.phone || "N/A";
-
-  // ✅ FIXED PAYMENT TIME HANDLING
-  let paymentTime = cart.paymentTime || cart.bill?.paymentTime || "N/A";
-  let formattedPaymentTime = "N/A";
-  if (paymentTime !== "N/A") {
-    if (typeof paymentTime === "object" && paymentTime.seconds) {
-      formattedPaymentTime = new Date(paymentTime.seconds * 1000).toLocaleString();
-    } else {
-      formattedPaymentTime = new Date(paymentTime).toLocaleString();
-    }
-  }
-
-  doc.text(`Cart ID: ${cartId}`, 20, y);
-  doc.text(`Customer Phone: ${phone}`, 120, y);
-  y += 8;
-  doc.text(`Payment Time: ${formattedPaymentTime}`, 20, y);
-  y += 8;
+  doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
+  y += 5;
+  doc.text("TAX INVOICE", 150, y - 5);
+  doc.text("GSTIN: 24XXXXXXX1Z9", 20, y);
+  y += 5;
 
   doc.setLineWidth(0.1);
   doc.line(20, y, 190, y);
   y += 6;
 
-  // ---------- TABLE HEADER ----------
+  // ---------- BILL INFO ----------
+  const phone = cart.bill.phone || cart.phone || "N/A";
+  const paymentTime = cart.bill.paidAt || cart.bill.paymentTime || cart.paymentTime || "N/A";
+  const formattedPaymentTime = paymentTime !== "N/A"
+    ? new Date(paymentTime).toLocaleString("en-IN")
+    : "N/A";
+
+  doc.setFontSize(10);
+  doc.text(`Cart ID: ${cartId}`, 20, y);
+  doc.text(`Customer Phone: ${phone}`, 120, y);
+  y += 6;
+  doc.text(`Payment Time: ${formattedPaymentTime}`, 20, y);
+  y += 6;
+
+  doc.line(20, y, 190, y);
+  y += 6;
+
+  // ---------- ITEMS TABLE ----------
   doc.setFontSize(11);
   doc.text("Item", 20, y);
   doc.text("Qty", 100, y);
@@ -2737,24 +2738,25 @@ async function downloadPDF(cartId) {
   doc.text("CGST", 140, y);
   doc.text("SGST", 160, y);
   doc.text("Total", 190, y, { align: "right" });
-  y += 4;
+  y += 5;
   doc.line(20, y, 190, y);
   y += 6;
 
-  // ---------- ITEMS ----------
   let totalAmount = 0;
   let totalCGST = 0;
   let totalSGST = 0;
-  let discount = parseFloat(cart.discount || 0);
+  let discount = parseFloat(cart.bill.discount || 0);
+  const items = cart.bill.items || [];
 
-  cart.items.forEach(item => {
+  items.forEach(item => {
     const itemName = item.name || "Unnamed";
     const qty = item.qty || 1;
-    const price = item.price || 0;
-    const cgstRate = item.cgst ?? item.gst / 2 ?? 0;
-    const sgstRate = item.sgst ?? item.gst / 2 ?? 0;
-    const cgstAmount = (price * qty * cgstRate) / 100;
-    const sgstAmount = (price * qty * sgstRate) / 100;
+    const price = parseFloat(item.price || 0);
+    const gst = parseFloat(item.gst || 0);
+    const cgst = gst / 2;
+    const sgst = gst / 2;
+    const cgstAmount = (price * qty * cgst) / 100;
+    const sgstAmount = (price * qty * sgst) / 100;
     const total = price * qty + cgstAmount + sgstAmount;
 
     totalAmount += total;
@@ -2770,27 +2772,26 @@ async function downloadPDF(cartId) {
     doc.text(`₹${total.toFixed(2)}`, 190, y, { align: "right" });
 
     y += wrappedName.length * 5 + 3;
-
     if (y > 270) {
       doc.addPage();
       y = 20;
     }
   });
 
-  // ---------- TOTAL SECTION ----------
-  y += 6;
-  doc.line(20, y, 190, y);
-  y += 8;
-
+  // ---------- TOTALS ----------
   const totalGST = totalCGST + totalSGST;
-  const finalAmount = parseFloat(cart.finalAmount || totalAmount - discount);
+  const finalAmount = parseFloat(cart.bill.finalAmount || totalAmount - discount);
+
+  y += 5;
+  doc.line(20, y, 190, y);
+  y += 6;
 
   doc.setFont(undefined, "bold");
   doc.text("Subtotal:", 140, y);
   doc.text(`₹${(totalAmount - totalGST).toFixed(2)}`, 190, y, { align: "right" });
-  doc.setFont(undefined, "normal");
   y += 6;
 
+  doc.setFont(undefined, "normal");
   doc.text("CGST Total:", 140, y);
   doc.text(`₹${totalCGST.toFixed(2)}`, 190, y, { align: "right" });
   y += 6;
@@ -2828,12 +2829,13 @@ async function downloadPDF(cartId) {
   doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
 
   // ---------- SAVE ----------
-  const safeTime = formattedPaymentTime.replace(/[/:, ]/g, "-");
+  const safeTime = (formattedPaymentTime || new Date().toISOString())
+    .replace(/[/:, ]/g, "-")
+    .replace(/\s/g, "_");
+
   doc.save(`Cart_${cartId}_Invoice_${safeTime}.pdf`);
 }
 </script>
-
-
 
 <script>
   const auth = firebase.auth();
