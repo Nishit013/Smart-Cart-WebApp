@@ -2295,13 +2295,15 @@ barData.push(Number(cart.finalAmount ?? cart.total) || 0);
 });
 
   }
+
+
 function getCartHistoryHTML(cartId) {
   const history = Object.values(paidCarts)
     .filter(c => c.cartId === cartId)
     .sort((a, b) => {
       const timeA = new Date(a.paymentTime || a.paidAt || 0).getTime();
       const timeB = new Date(b.paymentTime || b.paidAt || 0).getTime();
-      return timeB - timeA; // Latest first
+      return timeB - timeA;
     });
 
   if (!history.length) return "<p>No previous bills.</p>";
@@ -2321,7 +2323,6 @@ function getCartHistoryHTML(cartId) {
           <p><strong>Discount:</strong> -₹${c.discount || 0}</p>
           <p><strong>Final Paid:</strong> ₹${c.finalAmount || c.total}</p>
           <p><strong>Phone:</strong> ${c.phone || "N/A"}</p>
-
           <button class="toggle-items" onclick="toggleItems('items-${cartId}-${index}')">📦 View Items</button>
           <button class="download-pdf" onclick="event.stopPropagation(); downloadHistoryPDF('${cartId}', ${index})">📥 Download PDF</button>
 
@@ -2694,7 +2695,6 @@ function getCartStatus(cart) {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 async function downloadPDF(cartOrId) {
-  // Allow both cart object or cartId string
   let cart = typeof cartOrId === "object" ? cartOrId : allCarts[cartOrId];
   const cartId = typeof cartOrId === "object" ? cartOrId.cartId : cartOrId;
 
@@ -2703,15 +2703,12 @@ async function downloadPDF(cartOrId) {
     return;
   }
 
-  // Extract correct payment time
+  // Correct fields
   const paidTime = cart.paymentTime || cart.paidAt;
-  const formattedTime = paidTime
-    ? new Date(paidTime).toLocaleString()
-    : "Unknown";
+  const formattedTime = paidTime ? new Date(paidTime).toLocaleString() : "Unknown";
 
-  // Tax and discount values
-  const cgst = cart.cgst || 0;
-  const sgst = cart.sgst || 0;
+  const cgst = cart.totalCGST || 0;
+  const sgst = cart.totalSGST || 0;
   const totalGST = cgst + sgst;
   const discount = cart.discount || 0;
   const finalPaid = cart.finalAmount || cart.total || 0;
@@ -2736,32 +2733,29 @@ async function downloadPDF(cartOrId) {
   doc.line(20, y, 190, y);
   y += 6;
 
-  // Add summary content
   const lines = cart.bill.summary.split("\n");
   doc.setFontSize(11);
   lines.forEach(line => {
+    if (y > 270) { doc.addPage(); y = 20; }
     doc.text(line, 20, y);
     y += 6;
   });
 
-  // Add taxes, discount, total, etc.
   y += 5;
   doc.text(`Discount: ₹${discount.toFixed(2)}`, 20, y); y += 6;
   doc.text(`CGST: ₹${cgst.toFixed(2)}`, 20, y); y += 6;
   doc.text(`SGST: ₹${sgst.toFixed(2)}`, 20, y); y += 6;
   doc.text(`Total GST: ₹${totalGST.toFixed(2)}`, 20, y); y += 6;
+
   doc.setFontSize(12);
   doc.text(`Final Paid: ₹${finalPaid.toFixed(2)}`, 20, y); y += 8;
 
-  // Payment info
   doc.setFontSize(10);
   doc.text(`Payment Time: ${formattedTime}`, 20, y);
   y += 5;
   doc.text("Generated via Admin Panel", 20, y);
 
-  // Save file using payment time instead of download time
-  const safeTime = (paidTime ? new Date(paidTime).toISOString() : "unknown")
-    .replace(/[:.]/g, "-");
+  const safeTime = (paidTime ? new Date(paidTime).toISOString() : "unknown").replace(/[:.]/g, "-");
   doc.save(`Cart_${cartId}_Invoice_${safeTime}.pdf`);
 }
 </script>
