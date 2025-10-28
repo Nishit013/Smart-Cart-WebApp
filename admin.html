@@ -2710,39 +2710,63 @@ function getCartStatus(cart) {
     doc.setLineWidth(0.1);
     doc.line(20, 34, 190, 34);
 
+    // ====== CHECK GST EXISTENCE ======
+    const hasGST = cart.items.some(it => it.cgst || it.sgst);
+
     // ====== TABLE HEADER ======
     doc.setFontSize(11);
     let y = 40;
     doc.text("Item", 20, y);
-    doc.text("CGST", 80, y);
-    doc.text("SGST", 110, y);
-    doc.text("Final Price", 140, y);
-    doc.text("Qty", 170, y);
-    doc.text("Total", 190, y, { align: "right" });
+    let colX = hasGST ? [80, 110, 140, 170, 190] : [120, 150, 170, 190];
+
+    if (hasGST) {
+      doc.text("CGST", colX[0], y);
+      doc.text("SGST", colX[1], y);
+      doc.text("Final Price", colX[2], y);
+      doc.text("Qty", colX[3], y);
+      doc.text("Total", colX[4], y, { align: "right" });
+    } else {
+      doc.text("Price", colX[0], y);
+      doc.text("Qty", colX[1], y);
+      doc.text("Total", colX[2], y, { align: "right" });
+    }
     y += 6;
 
-    let totalCGST = 0;
-    let totalSGST = 0;
+    let totalCGST = 0, totalSGST = 0;
 
     // ====== ITEMS LOOP ======
     cart.items.forEach(item => {
+      if (y > 270) {  // New page if needed
+        doc.addPage();
+        y = 20;
+      }
+
       const price = Number(item.price) || 0;
+      const qty = Number(item.qty) || 1;
       const sgst = Number(item.sgst || 0);
       const cgst = Number(item.cgst || 0);
+
       const basePrice = price / (1 + (sgst + cgst) / 100);
       const sgstAmt = basePrice * (sgst / 100);
       const cgstAmt = basePrice * (cgst / 100);
-      const subtotal = price * (item.qty || 1);
+      const subtotal = price * qty;
 
       doc.text(item.name, 20, y);
-      doc.text(`₹${cgstAmt.toFixed(2)}`, 80, y);
-      doc.text(`₹${sgstAmt.toFixed(2)}`, 110, y);
-      doc.text(`₹${price.toFixed(2)}`, 140, y);
-      doc.text(`${item.qty}`, 170, y);
-      doc.text(`₹${subtotal.toFixed(2)}`, 190, y, { align: "right" });
 
-      totalCGST += cgstAmt * (item.qty || 1);
-      totalSGST += sgstAmt * (item.qty || 1);
+      if (hasGST) {
+        doc.text(`₹${cgstAmt.toFixed(2)}`, colX[0], y);
+        doc.text(`₹${sgstAmt.toFixed(2)}`, colX[1], y);
+        doc.text(`₹${price.toFixed(2)}`, colX[2], y);
+        doc.text(`${qty}`, colX[3], y);
+        doc.text(`₹${subtotal.toFixed(2)}`, colX[4], y, { align: "right" });
+      } else {
+        doc.text(`₹${price.toFixed(2)}`, colX[0], y);
+        doc.text(`${qty}`, colX[1], y);
+        doc.text(`₹${subtotal.toFixed(2)}`, colX[2], y, { align: "right" });
+      }
+
+      totalCGST += cgstAmt * qty;
+      totalSGST += sgstAmt * qty;
       y += 6;
     });
 
@@ -2756,20 +2780,22 @@ function getCartStatus(cart) {
     const finalAmount = Number(cart.finalAmount || total);
 
     // ====== TAX TOTALS ======
-    doc.text("Total CGST:", 120, y);
-    doc.text(`₹${totalCGST.toFixed(2)}`, 170, y, { align: "right" });
-    y += 6;
+    if (hasGST) {
+      doc.text("Total CGST:", 120, y);
+      doc.text(`₹${totalCGST.toFixed(2)}`, 170, y, { align: "right" });
+      y += 6;
 
-    doc.text("Total SGST:", 120, y);
-    doc.text(`₹${totalSGST.toFixed(2)}`, 170, y, { align: "right" });
-    y += 6;
+      doc.text("Total SGST:", 120, y);
+      doc.text(`₹${totalSGST.toFixed(2)}`, 170, y, { align: "right" });
+      y += 6;
+    }
 
     // ====== SUBTOTAL ======
     doc.text("Subtotal:", 120, y);
     doc.text(`₹${total.toFixed(2)}`, 170, y, { align: "right" });
     y += 6;
 
-    // ====== DISCOUNT (if any) ======
+    // ====== DISCOUNT ======
     if (discount > 0) {
       doc.setTextColor(200, 0, 0);
       doc.text("Discount:", 120, y);
