@@ -2686,101 +2686,85 @@ function getCartStatus(cart) {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 async function downloadPDF(cartId) {
-  try {
-    alert("⏳ Generating PDF invoice for " + cartId + " ...");
+  alert("📦 Starting PDF generation for cart: " + cartId);
 
-    const cart = allCarts[cartId];
+  try {
+    const cart = allCarts?.[cartId];
     if (!cart) {
-      alert("❌ No data found for " + cartId);
+      alert("❌ Cart not found in allCarts.");
       return;
     }
 
+    alert("✅ Cart found. Checking items...");
     const items = cart.items || [];
     if (items.length === 0) {
       alert("⚠️ No items found for this cart.");
       return;
     }
 
-    const phone = cart.phone || "-";
-    const paymentTime = cart.paymentTime ? new Date(cart.paymentTime) : null;
-    const dateStr = paymentTime ? paymentTime.toLocaleString() : "N/A";
+    const { jsPDF } = window.jspdf || {};
+    if (!jsPDF) {
+      alert("❌ jsPDF library not loaded!");
+      return;
+    }
 
-    const { jsPDF } = window.jspdf;
+    alert("🧾 jsPDF loaded, preparing invoice...");
+
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     let y = 20;
 
-    // Header
     doc.setFontSize(14);
     doc.text("Smart Cart Pro – TAX INVOICE", 20, y);
     y += 8;
 
+    const phone = cart.phone || "-";
+    const paymentTime = cart.paymentTime ? new Date(cart.paymentTime) : null;
+    const dateStr = paymentTime ? paymentTime.toLocaleString() : "N/A";
+
     doc.setFontSize(10);
-    doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
-    y += 5;
-    doc.text("GSTIN: 24XXXXXXX1Z9", 20, y);
-    y += 5;
     doc.text(`Date: ${dateStr}`, 20, y);
     doc.text(`Phone: ${phone}`, 150, y);
-    y += 5;
+    y += 10;
 
-    doc.line(20, y, 190, y);
-    y += 8;
-
-    // Table header
+    // Draw simple table header
     doc.setFontSize(11);
     doc.text("Item", 22, y);
     doc.text("Price", 90, y);
     doc.text("Qty", 120, y);
-    doc.text("Subtotal", 140, y);
-    doc.text("CGST", 165, y);
-    doc.text("SGST", 185, y);
+    doc.text("Subtotal", 150, y);
     y += 6;
     doc.line(20, y, 190, y);
     y += 6;
 
-    // Items
+    // Table rows
     let total = 0;
-    items.forEach((item) => {
-      const subtotal = item.price * item.qty;
-      total += subtotal;
+    items.forEach((item, i) => {
+      total += (item.price * item.qty);
       doc.setFontSize(10);
-      doc.text(item.name || "-", 22, y);
+      doc.text(`${i + 1}. ${item.name}`, 22, y);
       doc.text("₹" + (item.price || 0).toFixed(2), 90, y);
-      doc.text(String(item.qty || 0), 122, y);
-      doc.text("₹" + subtotal.toFixed(2), 140, y);
-      doc.text("₹" + ((subtotal * (item.gst || 0) / 200) || 0).toFixed(2), 165, y);
-      doc.text("₹" + ((subtotal * (item.gst || 0) / 200) || 0).toFixed(2), 185, y);
+      doc.text(String(item.qty || 0), 120, y);
+      doc.text("₹" + (item.price * item.qty).toFixed(2), 150, y);
       y += 6;
     });
 
-    y += 4;
-    doc.line(20, y, 190, y);
-    y += 8;
+    alert("📊 Items added to PDF.");
 
     const discount = cart.discount || 0;
     const finalAmount = cart.finalAmount || total;
 
-    doc.setFontSize(11);
-    doc.text(`Total: ₹${total.toFixed(2)}`, 150, y);
-    y += 6;
-    doc.text(`Discount: ₹${discount.toFixed(2)}`, 150, y);
-    y += 6;
-    doc.text(`Final Amount: ₹${finalAmount.toFixed(2)}`, 150, y);
-    y += 10;
-
-    // Footer
-    doc.setFontSize(9);
-    doc.text("This is a computer-generated invoice and doesn't require a signature.", 20, y);
-    y += 5;
-    doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
+    doc.text(`Total: ₹${total.toFixed(2)}`, 150, y + 10);
+    doc.text(`Discount: ₹${discount.toFixed(2)}`, 150, y + 16);
+    doc.text(`Final Amount: ₹${finalAmount.toFixed(2)}`, 150, y + 22);
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
 
-    alert("✅ Invoice generated successfully!");
+    alert("✅ PDF generated successfully!");
+
   } catch (err) {
-    console.error(err);
-    alert("❌ Error generating invoice. Please try again.");
+    alert("❌ Error generating PDF: " + err.message);
+    console.error("PDF generation error:", err);
   }
 }
 </script>
