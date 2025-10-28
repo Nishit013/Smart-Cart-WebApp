@@ -2683,65 +2683,75 @@ function getCartStatus(cart) {
 </script>
 
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
   async function downloadPDF(cartId) {
     const cart = allCarts[cartId];
-    if (!cart || !cart.items) {
-      alert("❌ No items found for this cart.");
+    if (!cart || !cart.bill || !cart.bill.summary) {
+      alert("❌ Bill summary not available for this cart.");
       return;
     }
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
+    let y = 20;
 
-    // Title
+    // Header
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.text("🛒 Smart Cart - Bill Summary", pageWidth / 2, 20, { align: "center" });
+    doc.setFontSize(16);
+    doc.text("Smart Cart Pro – Invoice", 20, y);
+    y += 8;
 
-    doc.setFontSize(12);
-    doc.setTextColor(100);
-    doc.text(`Cart ID: ${cartId}`, 14, 35);
-    if (cart.timestamp) {
-      const date = new Date(cart.timestamp);
-      doc.text(`Date: ${date.toLocaleString()}`, pageWidth - 14, 35, { align: "right" });
-    }
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
+    doc.text("TAX INVOICE", pageWidth - 50, y);
+    y += 5;
+    doc.text("GSTIN: 24XXXXXXX1Z9", 20, y);
+    y += 5;
 
-    // Table header styling
+    doc.setLineWidth(0.3);
+    doc.line(20, y, pageWidth - 20, y);
+    y += 8;
+
+    // Table header
     const headers = ["Item Name", "Qty", "CGST", "SGST", "Price"];
-    const startY = 45;
-    const cellPadding = 8;
-    let y = startY;
-
-    doc.setFillColor(50, 50, 50);
-    doc.setTextColor(255);
-    doc.setFont("helvetica", "bold");
-    doc.rect(14, y, pageWidth - 28, 10, "F");
     const colWidths = [pageWidth * 0.40, pageWidth * 0.10, pageWidth * 0.15, pageWidth * 0.15, pageWidth * 0.15];
-    let x = 14;
+    const cellPadding = 4;
+    let x = 20;
+
+    doc.setFillColor(45, 45, 45);
+    doc.setTextColor(255);
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.rect(20, y, pageWidth - 40, 10, "F");
+    x = 20;
 
     headers.forEach((header, i) => {
-      doc.text(header, x + cellPadding / 2, y + 7);
+      doc.text(header, x + cellPadding, y + 7);
       x += colWidths[i];
     });
 
     // Table body
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(30);
     y += 12;
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(0);
 
-    cart.items.forEach((item, index) => {
-      x = 14;
-      const rowHeight = 10;
+    const items = cart.items || [];
+    let total = 0;
 
-      if (y > 270) { // Page break
+    items.forEach((item, index) => {
+      x = 20;
+      const rowHeight = 9;
+
+      if (y > 270) {
         doc.addPage();
         y = 20;
       }
 
-      doc.setDrawColor(220);
-      doc.rect(14, y - 8, pageWidth - 28, rowHeight);
+      doc.setDrawColor(200);
+      doc.rect(20, y - 6, pageWidth - 40, rowHeight);
 
       const rowData = [
         item.name || "N/A",
@@ -2752,19 +2762,28 @@ function getCartStatus(cart) {
       ];
 
       rowData.forEach((text, i) => {
-        doc.text(text, x + cellPadding / 2, y - 2);
+        doc.text(text, x + cellPadding, y);
         x += colWidths[i];
       });
 
+      total += parseFloat(item.price || 0);
       y += rowHeight;
     });
 
-    // Footer
+    // Total
+    y += 5;
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
-    doc.text("Thank you for shopping with Smart Cart!", pageWidth / 2, y + 15, { align: "center" });
+    doc.setFontSize(12);
+    doc.text(`Total: ₹${total.toFixed(2)}`, pageWidth - 60, y);
 
-    doc.save(`SmartCart_${cartId}.pdf`);
+    // Footer
+    y += 15;
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(9);
+    doc.text("Generated via Smart Cart Admin Panel", 20, y);
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
   }
 </script>
 
