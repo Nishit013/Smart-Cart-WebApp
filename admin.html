@@ -2696,15 +2696,14 @@ function getCartStatus(cart) {
     const doc = new jsPDF();
     let y = 20;
 
-    // Header Section
     doc.setFontSize(14);
     doc.text("Smart Cart Pro – Invoice", 20, y);
     y += 10;
 
     doc.setFontSize(10);
     doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
-    doc.text("TAX INVOICE", 160, y);
     y += 5;
+    doc.text("TAX INVOICE", 150, y - 5);
     doc.text("GSTIN: 24XXXXXXX1Z9", 20, y);
     y += 5;
 
@@ -2712,100 +2711,21 @@ function getCartStatus(cart) {
     doc.line(20, y, 190, y);
     y += 6;
 
-    // Cart ID and Customer Info
-    doc.setFontSize(11);
-    doc.text(`Cart ID: ${cartId}`, 20, y);
-    y += 6;
-    if (cart.phone) {
-      doc.text(`Customer Phone: ${cart.phone}`, 20, y);
-      y += 6;
-    }
-
-    // Show actual payment time
-    let paymentTime = "";
-    if (cart.paidAt) {
-      paymentTime = new Date(cart.paidAt).toLocaleString();
-    } else if (cart.paymentTime) {
-      paymentTime = new Date(cart.paymentTime).toLocaleString();
-    } else {
-      paymentTime = "N/A";
-    }
-
-    doc.text(`Payment Time: ${paymentTime}`, 20, y);
-    y += 8;
-
-    // Table Header
-    doc.setFontSize(11);
-    doc.text("Items", 20, y);
-    doc.text("Qty", 100, y);
-    doc.text("Price", 130, y);
-    doc.text("Total", 160, y);
-    y += 6;
-
-    doc.setLineWidth(0.1);
-    doc.line(20, y, 190, y);
-    y += 6;
-
-    // Bill summary lines (item list)
     const lines = cart.bill.summary.split("\n");
+    doc.setFontSize(11);
     lines.forEach(line => {
-      if (line.trim() !== "") {
-        const parts = line.split(" | ").map(p => p.trim());
-        if (parts.length === 4) {
-          doc.text(parts[0], 20, y);   // Item
-          doc.text(parts[1], 100, y);  // Qty
-          doc.text(parts[2], 130, y);  // Price
-          doc.text(parts[3], 160, y);  // Total
-        } else {
-          doc.text(line, 20, y);
-        }
-        y += 6;
-      }
+      doc.text(line, 20, y);
+      y += 6;
     });
 
-    y += 4;
-    doc.line(20, y, 190, y);
-    y += 8;
-
-    // GST and totals
-    const total = parseFloat(cart.bill.total || 0);
-    const discount = parseFloat(cart.bill.discount || 0);
-    const gst = parseFloat(cart.bill.gst || 0);
-
-    const cgst = gst / 2;
-    const sgst = gst / 2;
-    const subtotal = total - gst + discount;
-
-    doc.setFontSize(11);
-    doc.text(`Subtotal: ₹${subtotal.toFixed(2)}`, 130, y);
-    y += 6;
-    doc.text(`Discount: ₹${discount.toFixed(2)}`, 130, y);
-    y += 6;
-    doc.text(`CGST (9%): ₹${cgst.toFixed(2)}`, 130, y);
-    y += 6;
-    doc.text(`SGST (9%): ₹${sgst.toFixed(2)}`, 130, y);
-    y += 6;
-
-    doc.setLineWidth(0.1);
-    doc.line(130, y, 190, y);
-    y += 6;
-
-    doc.setFontSize(12);
-    doc.text(`Total Payable: ₹${total.toFixed(2)}`, 130, y);
-    y += 10;
-
-    // Footer
-    doc.setFontSize(9);
-    doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
     y += 5;
-    doc.text("Generated via Smart Cart Admin Panel", 20, y);
+    doc.setFontSize(9);
+    doc.text("Generated via Admin Panel", 20, y);
 
-    // Save PDF
-    const filename = `Cart_${cartId}_Invoice.pdf`;
-    doc.save(filename);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
   }
 </script>
-
 <script>
   const auth = firebase.auth();
 
