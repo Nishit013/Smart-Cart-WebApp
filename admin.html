@@ -2687,83 +2687,117 @@ function getCartStatus(cart) {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
 
 <script>
-  async function downloadPDF(cartId) {
-    const cart = allCarts[cartId];
-    if (!cart || !cart.items || cart.items.length === 0) {
-      alert("❌ No items found for this cart.");
-      return;
-    }
+async function downloadPDF(cartId) {
+  const cart = allCarts[cartId];
+  if (!cart || !cart.items || cart.items.length === 0) {
+    alert("❌ No items found for this cart.");
+    return;
+  }
 
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
 
-    const titleY = 20;
-    doc.setFontSize(16);
-    doc.text("Smart Cart Pro – TAX INVOICE", 14, titleY);
+  // ==== HEADER ====
+  const titleY = 20;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text("Smart Cart Pro – TAX INVOICE", 14, titleY);
 
-    doc.setFontSize(10);
-    doc.text("Campus Store - Hall 1, Block B, Tech Street", 14, titleY + 6);
-    doc.text("GSTIN: 24XXXXXXX1Z9", 14, titleY + 12);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text("Campus Store - Hall 1, Block B, Tech Street", 14, titleY + 6);
+  doc.text("GSTIN: 24XXXXXXX1Z9", 14, titleY + 12);
 
-    const paymentDate = cart.paymentTime
-      ? new Date(cart.paymentTime).toLocaleString()
-      : "N/A";
+  // Format date and phone
+  const paymentDate = cart.paymentTime
+    ? new Date(cart.paymentTime).toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "N/A";
+  const phone = cart.phone ? `+91 ${cart.phone}` : "-";
 
-    doc.text(`Date: ${paymentDate}`, 150, titleY + 6);
-    doc.text(`Phone: ${cart.phone || "-"}`, 150, titleY + 12);
+  // Two-column layout for invoice info
+  doc.text(`Date: ${paymentDate}`, 145, titleY + 6);
+  doc.text(`Phone: ${phone}`, 145, titleY + 12);
 
-    // Draw a divider line
-    doc.setLineWidth(0.5);
-    doc.line(14, titleY + 18, 196, titleY + 18);
+  doc.setLineWidth(0.3);
+  doc.line(14, titleY + 18, 196, titleY + 18);
 
-    // Prepare table data
-    const tableData = cart.items.map((item, index) => [
+  // ==== ITEMS TABLE ====
+  const tableData = cart.items.map((item, index) => {
+    const price = Number(item.price || 0);
+    const qty = Number(item.qty || 0);
+    const gst = Number(item.gst || 0);
+    const subtotal = price * qty;
+    const taxAmt = (subtotal * gst) / 100;
+
+    return [
       index + 1,
       item.name || "-",
-      `₹${item.price.toFixed(2)}`,
-      item.qty,
-      `₹${(item.price * item.qty).toFixed(2)}`,
-      `${item.gst || 0}%`,
-      `₹${((item.price * item.qty * item.gst) / 200).toFixed(2)}`
-    ]);
+      `₹${price.toFixed(2)}`,
+      qty,
+      `₹${subtotal.toFixed(2)}`,
+      `${gst}%`,
+      `₹${taxAmt.toFixed(2)}`
+    ];
+  });
 
-    // Add the items table
-    doc.autoTable({
-      startY: titleY + 25,
-      head: [["#", "Item", "Price", "Qty", "Subtotal", "GST%", "Tax Amt"]],
-      body: tableData,
-      theme: "grid",
-      styles: { fontSize: 10, cellPadding: 3 },
-      headStyles: { fillColor: [50, 50, 50], textColor: [255, 255, 255] },
-    });
+  doc.autoTable({
+    startY: titleY + 25,
+    head: [["#", "Item", "Price", "Qty", "Subtotal", "GST%", "Tax Amt"]],
+    body: tableData,
+    theme: "grid",
+    styles: {
+      fontSize: 10,
+      cellPadding: 3,
+      halign: "center",
+      valign: "middle",
+    },
+    headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
+    columnStyles: {
+      1: { halign: "left" }, // Item name left-aligned
+    },
+  });
 
-    // Calculate total values
-    const totalY = doc.lastAutoTable.finalY + 10;
-    const total = cart.total || 0;
-    const discount = cart.discount || 0;
-    const finalAmount = cart.finalAmount || total;
+  // ==== TOTAL SECTION ====
+  const totalY = doc.lastAutoTable.finalY + 10;
+  const total = Number(cart.total || 0);
+  const discount = Number(cart.discount || 0);
+  const finalAmount = Number(cart.finalAmount || total);
+  const cgst = Number(cart.totalCGST || 0);
+  const sgst = Number(cart.totalSGST || 0);
 
-    doc.setFontSize(11);
-    doc.text(`Total: ₹${total.toFixed(2)}`, 150, totalY);
-    if (discount > 0)
-      doc.text(`Discount: ₹${discount.toFixed(2)}`, 150, totalY + 6);
-    doc.text(`Final Amount: ₹${finalAmount.toFixed(2)}`, 150, totalY + 12);
+  doc.setFontSize(11);
+  doc.text(`Total: ₹${total.toFixed(2)}`, 150, totalY);
+  if (discount > 0) doc.text(`Discount: ₹${discount.toFixed(2)}`, 150, totalY + 6);
+  if (cgst > 0 || sgst > 0)
+    doc.text(`CGST: ₹${cgst.toFixed(2)} | SGST: ₹${sgst.toFixed(2)}`, 150, totalY + 12);
+  doc.setFont("helvetica", "bold");
+  doc.text(`Final Amount: ₹${finalAmount.toFixed(2)}`, 150, totalY + 18);
 
-    doc.setLineWidth(0.2);
-    doc.line(14, totalY + 20, 196, totalY + 20);
+  doc.setFont("helvetica", "normal");
+  doc.setLineWidth(0.2);
+  doc.line(14, totalY + 25, 196, totalY + 25);
 
-    doc.setFontSize(9);
-    doc.text(
-      "This is a computer-generated invoice and doesn't require a signature.",
-      14,
-      totalY + 28
-    );
-    doc.text("Thank you for shopping with Smart Cart Pro!", 14, totalY + 34);
+  // ==== FOOTER ====
+  doc.setFontSize(9);
+  doc.text(
+    "This is a computer-generated invoice and doesn't require a signature.",
+    14,
+    totalY + 33
+  );
+  doc.text("Thank you for shopping with Smart Cart Pro!", 14, totalY + 39);
 
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
-  }
+  // ==== SAVE ====
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
+}
 </script>
+
 
 <script>
   const auth = firebase.auth();
