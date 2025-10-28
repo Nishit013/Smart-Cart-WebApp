@@ -2687,10 +2687,20 @@ function getCartStatus(cart) {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
 
 <script>
-async function downloadPDF(cartId) {
-  const cart = allCarts[cartId];
+async function downloadPDF(cartKey) {
+  // cartKey might be like "CART2" or "CART2_1758901476186"
+  // We’ll find the matching key safely.
+  let cart = allCarts[cartKey];
+  
+  if (!cart) {
+    // Try to find any cart whose key starts with the given ID (for example, "CART2_...")
+    const foundKey = Object.keys(allCarts).find(k => k.startsWith(cartKey));
+    if (foundKey) cart = allCarts[foundKey];
+  }
+
   if (!cart || !cart.items || cart.items.length === 0) {
     alert("❌ No items found for this cart.");
+    console.log("Cart not found or empty:", cartKey, cart);
     return;
   }
 
@@ -2708,7 +2718,6 @@ async function downloadPDF(cartId) {
   doc.text("Campus Store - Hall 1, Block B, Tech Street", 14, titleY + 6);
   doc.text("GSTIN: 24XXXXXXX1Z9", 14, titleY + 12);
 
-  // Format date and phone
   const paymentDate = cart.paymentTime
     ? new Date(cart.paymentTime).toLocaleString("en-IN", {
         day: "2-digit",
@@ -2720,7 +2729,6 @@ async function downloadPDF(cartId) {
     : "N/A";
   const phone = cart.phone ? `+91 ${cart.phone}` : "-";
 
-  // Two-column layout for invoice info
   doc.text(`Date: ${paymentDate}`, 145, titleY + 6);
   doc.text(`Phone: ${phone}`, 145, titleY + 12);
 
@@ -2759,7 +2767,7 @@ async function downloadPDF(cartId) {
     },
     headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
     columnStyles: {
-      1: { halign: "left" }, // Item name left-aligned
+      1: { halign: "left" },
     },
   });
 
@@ -2783,7 +2791,6 @@ async function downloadPDF(cartId) {
   doc.setLineWidth(0.2);
   doc.line(14, totalY + 25, 196, totalY + 25);
 
-  // ==== FOOTER ====
   doc.setFontSize(9);
   doc.text(
     "This is a computer-generated invoice and doesn't require a signature.",
@@ -2792,11 +2799,11 @@ async function downloadPDF(cartId) {
   );
   doc.text("Thank you for shopping with Smart Cart Pro!", 14, totalY + 39);
 
-  // ==== SAVE ====
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
+  doc.save(`Cart_${cart.cartId}_Invoice_${timestamp}.pdf`);
 }
 </script>
+
 
 
 <script>
