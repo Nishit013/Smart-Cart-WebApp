@@ -2690,14 +2690,65 @@ function getCartStatus(cart) {
 </script>
 
 
-<!-- ✅ Include jsPDF & autoTable -->
+<!-- Include jsPDF and autotable once -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
 
 <script>
-async function generateInvoicePDF(cart, cartId) {
-  if (!cart || !cart.bill || !cart.items) {
-    alert("❌ Bill details missing for this cart.");
+// ✅ OLD FUNCTION (for last bill - uses cart.bill.summary)
+async function downloadPDF(cartId) {
+  const cart = allCarts[cartId];
+  if (!cart || !cart.bill || !cart.bill.summary) {
+    alert("❌ Bill summary not available for this cart.");
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  let y = 20;
+
+  doc.setFontSize(14);
+  doc.text("Smart Cart Pro – Invoice", 20, y);
+  y += 10;
+
+  doc.setFontSize(10);
+  doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
+  y += 5;
+  doc.text("TAX INVOICE", 150, y - 5);
+  doc.text("GSTIN: 24XXXXXXX1Z9", 20, y);
+  y += 5;
+
+  doc.setLineWidth(0.1);
+  doc.line(20, y, 190, y);
+  y += 6;
+
+  const lines = cart.bill.summary.split("\n");
+  doc.setFontSize(11);
+  lines.forEach(line => {
+    doc.text(line, 20, y);
+    y += 6;
+  });
+
+  y += 5;
+  doc.setFontSize(9);
+  doc.text("Generated via Admin Panel", 20, y);
+
+  const timestamp = new Date(cart.paymentTime || cart.paidAt || Date.now())
+    .toISOString()
+    .replace(/[:.]/g, "-");
+
+  doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
+}
+
+
+
+// ✅ NEW FUNCTION (for history bills from paidCarts)
+async function downloadHistoryPDF(cartId, index) {
+  const history = Object.values(paidCarts).filter(c => c.cartId === cartId);
+  const cart = history[index];
+
+  if (!cart) {
+    alert("❌ Bill not found in history.");
     return;
   }
 
@@ -2706,7 +2757,6 @@ async function generateInvoicePDF(cart, cartId) {
   const pageWidth = doc.internal.pageSize.getWidth();
   let y = 15;
 
-  // 🧾 Header
   doc.setFontSize(16);
   doc.text("Smart Cart Pro – Tax Invoice", pageWidth / 2, y, { align: "center" });
   y += 10;
@@ -2717,18 +2767,18 @@ async function generateInvoicePDF(cart, cartId) {
   doc.text("GSTIN: 24XXXXXXX1Z9 | Contact: +91 93131 63984", pageWidth / 2, y, { align: "center" });
   y += 8;
 
-  // 🔹 Bill Info
+  // Bill Info
   doc.setFontSize(11);
   doc.text(`Cart ID: ${cartId}`, 20, y);
   doc.text(`Phone: ${cart.phone || "N/A"}`, 120, y);
   y += 6;
-  doc.text(`Date: ${new Date(cart.paymentTime || Date.now()).toLocaleString()}`, 20, y);
+  doc.text(`Paid On: ${new Date(cart.paymentTime || cart.paidAt || Date.now()).toLocaleString()}`, 20, y);
   y += 8;
 
   doc.line(20, y, 190, y);
   y += 8;
 
-  // 🧺 Items Table
+  // Table
   const tableData = (cart.items || []).map((item, index) => [
     index + 1,
     item.name || "Unknown",
@@ -2749,7 +2799,6 @@ async function generateInvoicePDF(cart, cartId) {
 
   y = doc.lastAutoTable.finalY + 10;
 
-  // 💰 Summary
   const summaryLines = [
     [`Total`, `₹${(cart.total || 0).toFixed(2)}`],
     [`CGST`, `₹${(cart.totalCGST || 0).toFixed(2)}`],
@@ -2769,36 +2818,19 @@ async function generateInvoicePDF(cart, cartId) {
 
   y = doc.lastAutoTable.finalY + 10;
 
-  // 🧾 Footer
   doc.setFontSize(9);
   doc.text("✅ Thank you for shopping with Smart Cart Pro!", pageWidth / 2, y, { align: "center" });
   y += 5;
   doc.text("Generated via Admin Panel", pageWidth / 2, y, { align: "center" });
 
-  const timestamp = new Date(cart.paymentTime || Date.now())
+  const timestamp = new Date(cart.paymentTime || cart.paidAt || Date.now())
     .toISOString()
     .replace(/[:.]/g, "-");
 
-  doc.save(`Invoice_${cartId}_${timestamp}.pdf`);
-}
-
-// 📜 For History Bill
-function downloadHistoryPDF(cartId, index) {
-  const history = Object.values(paidCarts).filter(c => c.cartId === cartId);
-  const cart = history[index];
-  generateInvoicePDF(cart, cartId);
-}
-
-// 🧾 For Latest Bill (from allCarts)
-function downloadLastBillPDF(cartId) {
-  const cart = allCarts[cartId];
-  if (!cart || !cart.bill) {
-    alert("❌ No latest bill found for this cart.");
-    return;
-  }
-  generateInvoicePDF(cart, cartId);
+  doc.save(`History_Invoice_${cartId}_${timestamp}.pdf`);
 }
 </script>
+
 
 
 <script>
