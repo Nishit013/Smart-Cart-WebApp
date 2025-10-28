@@ -2334,108 +2334,7 @@ function getCartHistoryHTML(cartId) {
     .join("<hr>");
 }
 
-  async function downloadHistoryPDF(cartId, index) {
-    const history = Object.values(paidCarts).filter(c => c.cartId === cartId);
-    const bill = history[index];
-
-    if (!bill) {
-      alert("❌ Bill not found for this cart.");
-      return;
-    }
-
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    let y = 20;
-
-    // ---------- HEADER ----------
-    doc.setFontSize(14);
-    doc.text("Smart Cart Pro – Invoice", 20, y);
-    y += 10;
-
-    doc.setFontSize(10);
-    doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
-    y += 5;
-    doc.text("TAX INVOICE", 150, y - 5);
-    doc.text("GSTIN: 24XXXXXXX1Z9", 20, y);
-    y += 5;
-
-    doc.setLineWidth(0.1);
-    doc.line(20, y, 190, y);
-    y += 6;
-
-    // ---------- CART DETAILS ----------
-    const paymentTime = bill.paymentTime || bill.paidAt || "N/A";
-    const formattedTime =
-      paymentTime !== "N/A" ? new Date(paymentTime).toLocaleString() : "N/A";
-
-    doc.setFontSize(11);
-    doc.text(`Cart ID: ${cartId}`, 20, y);
-    y += 6;
-    doc.text(`Payment Time: ${formattedTime}`, 20, y);
-    y += 6;
-    doc.text(`Customer Phone: ${bill.phone || "N/A"}`, 20, y);
-    y += 8;
-
-    // ---------- TABLE HEADER ----------
-    doc.setFont(undefined, "bold");
-    doc.text("Item", 20, y);
-    doc.text("Qty", 90, y);
-    doc.text("Price", 120, y);
-    doc.text("Total", 160, y);
-    doc.setFont(undefined, "normal");
-    y += 6;
-    doc.line(20, y, 190, y);
-    y += 6;
-
-    // ---------- ITEMS ----------
-    (bill.items || []).forEach(item => {
-      const itemName = item.name || "Unnamed";
-      const qty = item.qty || 1;
-      const price = item.price || 0;
-      const total = price * qty;
-
-      const wrappedName = doc.splitTextToSize(itemName, 60);
-      doc.text(wrappedName, 20, y);
-      doc.text(String(qty), 90, y);
-      doc.text(`₹${price.toFixed(2)}`, 120, y);
-      doc.text(`₹${total.toFixed(2)}`, 160, y);
-
-      y += wrappedName.length * 5 + 3;
-      if (y > 270) {
-        doc.addPage();
-        y = 20;
-      }
-    });
-
-    y += 6;
-    doc.line(20, y, 190, y);
-    y += 8;
-
-    // ---------- TOTALS ----------
-    const discount = parseFloat(bill.discount || 0);
-    const finalAmount = bill.finalAmount || bill.total || 0;
-    doc.setFont(undefined, "bold");
-    doc.text(`Original Total: ₹${bill.total.toFixed(2)}`, 140, y, { align: "right" });
-    y += 6;
-    if (discount > 0) {
-      doc.text(`Discount: -₹${discount.toFixed(2)}`, 140, y, { align: "right" });
-      y += 6;
-    }
-    doc.text(`Final Paid: ₹${finalAmount.toFixed(2)}`, 140, y, { align: "right" });
-
-    y += 10;
-    doc.setFontSize(9);
-    doc.text("Generated via Smart Cart Pro Admin Panel", 20, y);
-    y += 4;
-    doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
-
-    // ---------- SAVE ----------
-    const safeTime = paymentTime.replace(/[/:, ]/g, "-");
-    doc.save(`Cart_${cartId}_Bill_${safeTime}.pdf`);
-  }
-
-
-
+  
 
 
 
@@ -2794,47 +2693,79 @@ function getCartStatus(cart) {
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-  async function downloadPDF(cartId) {
-    const cart = allCarts[cartId];
-    if (!cart || !cart.bill || !cart.bill.summary) {
-      alert("❌ Bill summary not available for this cart.");
-      return;
-    }
+async function downloadPDF(cartOrId) {
+  // Allow both cart object or cartId string
+  let cart = typeof cartOrId === "object" ? cartOrId : allCarts[cartOrId];
+  const cartId = typeof cartOrId === "object" ? cartOrId.cartId : cartOrId;
 
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    let y = 20;
-
-    doc.setFontSize(14);
-    doc.text("Smart Cart Pro – Invoice", 20, y);
-    y += 10;
-
-    doc.setFontSize(10);
-    doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
-    y += 5;
-    doc.text("TAX INVOICE", 150, y - 5);
-    doc.text("GSTIN: 24XXXXXXX1Z9", 20, y);
-    y += 5;
-
-    doc.setLineWidth(0.1);
-    doc.line(20, y, 190, y);
-    y += 6;
-
-    const lines = cart.bill.summary.split("\n");
-    doc.setFontSize(11);
-    lines.forEach(line => {
-      doc.text(line, 20, y);
-      y += 6;
-    });
-
-    y += 5;
-    doc.setFontSize(9);
-    doc.text("Generated via Admin Panel", 20, y);
-
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
+  if (!cart || !cart.bill || !cart.bill.summary) {
+    alert("❌ Bill summary not available for this cart.");
+    return;
   }
+
+  // Extract correct payment time
+  const paidTime = cart.paymentTime || cart.paidAt;
+  const formattedTime = paidTime
+    ? new Date(paidTime).toLocaleString()
+    : "Unknown";
+
+  // Tax and discount values
+  const cgst = cart.cgst || 0;
+  const sgst = cart.sgst || 0;
+  const totalGST = cgst + sgst;
+  const discount = cart.discount || 0;
+  const finalPaid = cart.finalAmount || cart.total || 0;
+
+  // Generate PDF
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  let y = 20;
+
+  doc.setFontSize(14);
+  doc.text("Smart Cart Pro – Invoice", 20, y);
+  y += 10;
+
+  doc.setFontSize(10);
+  doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
+  y += 5;
+  doc.text("TAX INVOICE", 150, y - 5);
+  doc.text("GSTIN: 24XXXXXXX1Z9", 20, y);
+  y += 5;
+
+  doc.setLineWidth(0.1);
+  doc.line(20, y, 190, y);
+  y += 6;
+
+  // Add summary content
+  const lines = cart.bill.summary.split("\n");
+  doc.setFontSize(11);
+  lines.forEach(line => {
+    doc.text(line, 20, y);
+    y += 6;
+  });
+
+  // Add taxes, discount, total, etc.
+  y += 5;
+  doc.text(`Discount: ₹${discount.toFixed(2)}`, 20, y); y += 6;
+  doc.text(`CGST: ₹${cgst.toFixed(2)}`, 20, y); y += 6;
+  doc.text(`SGST: ₹${sgst.toFixed(2)}`, 20, y); y += 6;
+  doc.text(`Total GST: ₹${totalGST.toFixed(2)}`, 20, y); y += 6;
+  doc.setFontSize(12);
+  doc.text(`Final Paid: ₹${finalPaid.toFixed(2)}`, 20, y); y += 8;
+
+  // Payment info
+  doc.setFontSize(10);
+  doc.text(`Payment Time: ${formattedTime}`, 20, y);
+  y += 5;
+  doc.text("Generated via Admin Panel", 20, y);
+
+  // Save file using payment time instead of download time
+  const safeTime = (paidTime ? new Date(paidTime).toISOString() : "unknown")
+    .replace(/[:.]/g, "-");
+  doc.save(`Cart_${cartId}_Invoice_${safeTime}.pdf`);
+}
 </script>
+
 <script>
   const auth = firebase.auth();
 
