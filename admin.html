@@ -2693,86 +2693,39 @@ function getCartStatus(cart) {
     }
 
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF("p", "mm", "a4");
-
-    // Professional theme colors
-    const accentColor = [41, 128, 185]; // elegant blue
-    const textGray = [80, 80, 80];
+    const doc = new jsPDF();
     let y = 20;
 
-    // Title
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(20);
-    doc.setTextColor(...accentColor);
-    doc.text("Smart Cart Pro", 20, y);
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
-    doc.text("TAX INVOICE", 150, y, { align: "right" });
+    doc.setFontSize(14);
+    doc.text("Smart Cart Pro – Invoice", 20, y);
     y += 10;
 
-    // Store Info
     doc.setFontSize(10);
-    doc.setTextColor(...textGray);
     doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
     y += 5;
+    doc.text("TAX INVOICE", 150, y - 5);
     doc.text("GSTIN: 24XXXXXXX1Z9", 20, y);
     y += 5;
-    const date = cart.paymentTime
-      ? new Date(cart.paymentTime).toLocaleString()
-      : "N/A";
-    doc.text(`Date: ${date}`, 20, y);
-    y += 5;
-    doc.text(`Cart ID: ${cart.cartId || "-"}`, 20, y);
-    y += 5;
-    doc.text(`Phone: ${cart.phone || "-"}`, 20, y);
-    y += 8;
 
-    // Divider
-    doc.setDrawColor(...accentColor);
-    doc.setLineWidth(0.3);
+    doc.setLineWidth(0.1);
     doc.line(20, y, 190, y);
-    y += 10;
+    y += 6;
 
-    // Section Title
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
-    doc.setTextColor(0);
-    doc.text("Bill Summary", 20, y);
-    y += 8;
-
-    // Bill Summary
-    const lines = cart.bill.summary.split("\n").filter(l => l.trim() !== "");
-    doc.setFont("courier", "normal");
+    const lines = cart.bill.summary.split("\n");
     doc.setFontSize(11);
     lines.forEach(line => {
-      doc.text(line.trim(), 25, y);
+      doc.text(line, 20, y);
       y += 6;
     });
 
-    // Footer Divider
-    y += 4;
-    doc.setDrawColor(...accentColor);
-    doc.line(20, y, 190, y);
-    y += 10;
-
-    // Footer Text
-    doc.setFont("helvetica", "italic");
-    doc.setFontSize(9);
-    doc.setTextColor(100);
-    doc.text(
-      "This is a computer-generated invoice and doesn't require a signature.",
-      20,
-      y
-    );
     y += 5;
-    doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
+    doc.setFontSize(9);
+    doc.text("Generated via Admin Panel", 20, y);
 
-    // Save file
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    doc.save(`SmartCartPro_Invoice_${cartId}_${timestamp}.pdf`);
+    doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
   }
 </script>
-
 <script>
   const auth = firebase.auth();
 
