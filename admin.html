@@ -2686,97 +2686,77 @@ function getCartStatus(cart) {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
 <script>
-  async function downloadPDF(cartId) {
-    const cart = allCarts[cartId];
-    if (!cart || !cart.bill || !cart.bill.summary) {
-      alert("❌ Bill summary not available for this cart.");
-      return;
-    }
-
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    let y = 20;
-
-    // ===== HEADER =====
-    doc.setFontSize(16);
-    doc.text("Smart Cart Pro – TAX INVOICE", 20, y);
-    y += 8;
-    doc.setFontSize(10);
-    doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
-    doc.text("GSTIN: 24XXXXXXX1Z9", 150, y);
-    y += 6;
-    doc.setLineWidth(0.3);
-    doc.line(20, y, 190, y);
-    y += 8;
-
-    // ===== CUSTOMER INFO =====
-    const date = cart.paymentTime
-      ? new Date(cart.paymentTime).toLocaleString()
-      : "N/A";
-    doc.setFontSize(11);
-    doc.text(`Cart ID: ${cartId}`, 20, y);
-    doc.text(`Date: ${date}`, 150, y);
-    y += 6;
-    doc.text(`Phone: ${cart.phone || "-"}`, 20, y);
-    y += 8;
-
-    // ===== ITEMS TABLE =====
-    const items = cart.items || [];
-    if (items.length === 0) {
-      alert("⚠️ No items found in this cart.");
-      return;
-    }
-
-    // Split GST into CGST and SGST
-    const tableData = items.map((item, index) => {
-      const gst = Number(item.gst || 0);
-      const cgst = gst / 2;
-      const sgst = gst / 2;
-      const qty = Number(item.qty || 0);
-      const subtotal = (item.price * qty).toFixed(2);
-      return [
-        index + 1,
-        item.name || "-",
-        qty,
-        `${cgst}%`,
-        `${sgst}%`,
-        `₹${subtotal}`,
-      ];
-    });
-
-    doc.autoTable({
-      head: [["#", "Item", "Qty", "CGST", "SGST", "Price"]],
-      body: tableData,
-      startY: y,
-      styles: { fontSize: 10, cellPadding: 3 },
-      headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255] },
-      theme: "grid",
-    });
-
-    // ===== TOTAL SECTION =====
-    const finalY = doc.lastAutoTable.finalY + 10;
-    const total = Number(cart.total || 0);
-    const discount = Number(cart.discount || 0);
-    const finalPaid = Number(cart.finalAmount || total);
-
-    doc.setFontSize(11);
-    doc.text(`Total Before Discount: ₹${total.toFixed(2)}`, 140, finalY);
-    doc.text(`Discount: ₹${discount.toFixed(2)}`, 140, finalY + 6);
-    doc.text(`Final Paid: ₹${finalPaid.toFixed(2)}`, 140, finalY + 12);
-
-    // ===== FOOTER =====
-    const footerY = finalY + 24;
-    doc.setFontSize(9);
-    doc.text(
-      "This is a computer-generated invoice and doesn't require a signature.",
-      20,
-      footerY
-    );
-    doc.text("Thank you for shopping with Smart Cart Pro!", 20, footerY + 6);
-
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
+async function downloadPDF(cartId) {
+  const cart = allCarts[cartId];
+  if (!cart || !cart.items || cart.items.length === 0) {
+    alert("❌ No items found for this cart.");
+    return;
   }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // HEADER
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text("Smart Cart Pro – TAX INVOICE", 14, 20);
+
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "normal");
+  doc.text("Campus Store - Hall 1, Block B, Tech Street", 14, 28);
+  doc.text("GSTIN: 24XXXXXXX1Z9", 14, 34);
+
+  const date = new Date(cart.paymentTime).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) || "N/A";
+  doc.text(`Cart ID: ${cart.cartId}`, 14, 42);
+  doc.text(`Date: ${date}`, 120, 42);
+  doc.text(`Phone: ${cart.phone || "-"}`, 14, 48);
+
+  // TABLE DATA
+  const tableColumn = ["#", "Item", "Qty", "CGST", "SGST", "Price (₹)"];
+  const tableRows = [];
+
+  cart.items.forEach((item, index) => {
+    const cgst = (item.gst / 2).toFixed(2);
+    const sgst = (item.gst / 2).toFixed(2);
+    tableRows.push([
+      index + 1,
+      item.name,
+      item.qty,
+      `${cgst}%`,
+      `${sgst}%`,
+      (item.price * item.qty).toFixed(2)
+    ]);
+  });
+
+  doc.autoTable({
+    startY: 58,
+    head: [tableColumn],
+    body: tableRows,
+    theme: "grid",
+    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: "bold" },
+    alternateRowStyles: { fillColor: [245, 245, 245] },
+    styles: { fontSize: 10, cellPadding: 3 },
+  });
+
+  let finalY = doc.lastAutoTable.finalY + 10;
+
+  // TOTAL SECTION
+  doc.setFontSize(11);
+  doc.text(`Total Before Discount: ₹${cart.total.toFixed(2)}`, 14, finalY);
+  finalY += 6;
+  doc.text(`Discount: ₹${cart.discount.toFixed(2)}`, 14, finalY);
+  finalY += 6;
+  doc.text(`Final Amount: ₹${cart.finalAmount.toFixed(2)}`, 14, finalY);
+
+  // FOOTER
+  finalY += 15;
+  doc.setFontSize(10);
+  doc.text("This is a computer-generated invoice and doesn't require a signature.", 14, finalY);
+  finalY += 6;
+  doc.text("Thank you for shopping with Smart Cart Pro!", 14, finalY);
+
+  doc.save(`Invoice_${cart.cartId}.pdf`);
+}
 </script>
 
 <script>
