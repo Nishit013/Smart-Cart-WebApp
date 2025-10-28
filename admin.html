@@ -2707,12 +2707,12 @@ function getCartStatus(cart) {
 
     // --- Cart and Customer Info ---
     const phone = cart.bill.phone || "N/A";
+    const paymentTime = cart.bill.timestamp ? new Date(cart.bill.timestamp).toLocaleString() : "N/A";
+
     doc.text(`Cart ID: ${cartId}`, 20, y);
     doc.text(`Customer Phone: ${phone}`, 120, y);
     y += 8;
-
-    const now = new Date();
-    doc.text(`Date: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`, 20, y);
+    doc.text(`Payment Time: ${paymentTime}`, 20, y);
     y += 8;
 
     doc.setLineWidth(0.1);
@@ -2734,9 +2734,10 @@ function getCartStatus(cart) {
     let totalAmount = 0;
     let discount = parseFloat(cart.bill.discount || 0);
     let finalAmount = parseFloat(cart.bill.finalAmount || 0);
+    let tax = parseFloat(cart.bill.tax || 0);
+    let subtotal = parseFloat(cart.bill.subtotal || 0);
 
     lines.forEach((line, i) => {
-      // Detect item lines like "1. NIVEA" or "2. Pepsi"
       const matchItem = line.match(/^\d+\.\s*(.*)/);
       if (matchItem) {
         const itemName = matchItem[1].trim();
@@ -2749,7 +2750,6 @@ function getCartStatus(cart) {
         const total = totalLine ? parseFloat(totalLine[1]) : (price * qty);
         totalAmount += total;
 
-        // Draw item row
         const wrappedItem = doc.splitTextToSize(itemName, 80);
         doc.text(wrappedItem, 20, y);
         doc.text(String(qty), 115, y);
@@ -2769,9 +2769,10 @@ function getCartStatus(cart) {
     y += 6;
     doc.line(20, y, 190, y);
     y += 8;
+
     doc.setFont(undefined, "bold");
     doc.text("Subtotal:", 140, y);
-    doc.text(`₹${totalAmount.toFixed(2)}`, 190, y, { align: "right" });
+    doc.text(`₹${(subtotal || totalAmount).toFixed(2)}`, 190, y, { align: "right" });
     doc.setFont(undefined, "normal");
     y += 6;
 
@@ -2783,25 +2784,34 @@ function getCartStatus(cart) {
       y += 6;
     }
 
+    if (tax > 0) {
+      doc.text("Tax (CGST+SGST):", 140, y);
+      doc.text(`₹${tax.toFixed(2)}`, 190, y, { align: "right" });
+      y += 6;
+    }
+
     doc.setFont(undefined, "bold");
     doc.text("Final Amount:", 140, y);
-    doc.text(`₹${finalAmount > 0 ? finalAmount.toFixed(2) : totalAmount.toFixed(2)}`, 190, y, { align: "right" });
+    doc.text(`₹${(finalAmount || (totalAmount - discount + tax)).toFixed(2)}`, 190, y, { align: "right" });
     doc.setFont(undefined, "normal");
     y += 10;
 
     // --- Footer ---
     doc.setFontSize(9);
-    doc.text("Generated via Admin Panel", 20, y);
+    doc.text("Payment verified and completed via Razorpay", 20, y);
+    y += 5;
+    doc.text("Generated via Smart Cart Pro Admin Panel", 20, y);
     y += 5;
     doc.text("This is a computer-generated invoice and doesn't require a signature.", 20, y);
     y += 5;
     doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
 
     // --- Save ---
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
+    const safeTime = paymentTime.replace(/[/:, ]/g, "-");
+    doc.save(`Cart_${cartId}_Invoice_${safeTime}.pdf`);
   }
 </script>
+
 
 <script>
   const auth = firebase.auth();
