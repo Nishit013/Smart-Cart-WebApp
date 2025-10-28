@@ -2685,108 +2685,105 @@ function getCartStatus(cart) {
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-  async function downloadPDF(cartId) {
-    const cart = allCarts[cartId];
-    if (!cart || !cart.bill || !cart.bill.summary) {
-      alert("❌ Bill summary not available for this cart.");
-      return;
-    }
-
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    let y = 20;
-
-    // ===== HEADER =====
-    doc.setFontSize(16);
-    doc.text("Smart Cart Pro – TAX INVOICE", 20, y);
-    y += 10;
-
-    doc.setFontSize(10);
-    doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
-    doc.text("GSTIN: 24XXXXXXX1Z9", 150, y);
-    y += 5;
-    doc.text("Generated via Admin Panel", 20, y);
-    y += 6;
-
-    doc.setLineWidth(0.3);
-    doc.line(20, y, 190, y);
-    y += 8;
-
-    // ===== PARSE SUMMARY =====
-    const lines = cart.bill.summary.split("\n").filter(l => l.trim() !== "");
-
-    // Extract total and discount lines
-    const totalLine = lines.find(l => l.toLowerCase().includes("total"));
-    const discountLine = lines.find(l => l.toLowerCase().includes("discount"));
-    const itemLines = lines.filter(l => !l.toLowerCase().includes("total") && !l.toLowerCase().includes("discount"));
-
-    // ===== TABLE HEADER =====
-    doc.setFontSize(11);
-    doc.text("Item", 20, y);
-    doc.text("Price", 100, y);
-    doc.text("Qty", 130, y);
-    doc.text("Total", 170, y, { align: "right" });
-    y += 6;
-    doc.line(20, y, 190, y);
-    y += 6;
-
-    // ===== TABLE ROWS =====
-    doc.setFontSize(10);
-    itemLines.forEach(line => {
-      const parts = line.split("x");
-      if (parts.length === 2) {
-        const namePart = parts[0].trim();
-        const qtyAndPrice = parts[1].split("=");
-        const qty = qtyAndPrice[0]?.trim() || "-";
-        const total = qtyAndPrice[1]?.replace(/[^\d.]/g, "").trim() || "0";
-        const priceMatch = namePart.match(/₹\d+(\.\d+)?/);
-        const price = priceMatch ? priceMatch[0] : "-";
-        const itemName = namePart.replace(price, "").trim();
-
-        doc.text(itemName, 20, y);
-        doc.text(price, 100, y);
-        doc.text(qty, 130, y);
-        doc.text(`₹${total}`, 170, y, { align: "right" });
-        y += 6;
-
-        if (y > 270) {
-          doc.addPage();
-          y = 20;
-        }
-      }
-    });
-
-    // ===== LINE BEFORE TOTAL =====
-    y += 4;
-    doc.line(20, y, 190, y);
-    y += 6;
-
-    // ===== TOTALS =====
-    if (discountLine) {
-      doc.setTextColor(200, 0, 0);
-      doc.text(discountLine, 120, y);
-      doc.setTextColor(0, 0, 0);
-      y += 6;
-    }
-
-    if (totalLine) {
-      doc.setFont(undefined, "bold");
-      doc.text(totalLine, 120, y);
-      doc.setFont(undefined, "normal");
-      y += 6;
-    }
-
-    // ===== FOOTER =====
-    y += 10;
-    doc.setFontSize(9);
-    doc.text("This is a computer-generated invoice and doesn't require a signature.", 20, y);
-    y += 5;
-    doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
-
-    // ===== SAVE =====
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
+async function downloadPDF(cartId) {
+  const cart = allCarts[cartId];
+  if (!cart || !cart.bill || !cart.bill.summary) {
+    alert("❌ Bill summary not available for this cart.");
+    return;
   }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  let y = 20;
+
+  // ===== HEADER =====
+  doc.setFontSize(14);
+  doc.text("Smart Cart Pro – TAX INVOICE", 20, y);
+  y += 8;
+  doc.setFontSize(10);
+  doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
+  doc.text("GSTIN: 24XXXXXXX1Z9", 150, y);
+  y += 6;
+  doc.text(`Date: ${new Date(cart.paymentTime).toLocaleString()}`, 20, y);
+  doc.text(`Phone: ${cart.phone || "-"}`, 150, y);
+  y += 6;
+
+  doc.setLineWidth(0.2);
+  doc.line(20, y, 190, y);
+  y += 8;
+
+  // ===== TABLE HEADER =====
+  doc.setFontSize(11);
+  doc.setFont(undefined, "bold");
+  doc.text("Item", 20, y);
+  doc.text("Price", 85, y);
+  doc.text("Qty", 115, y);
+  doc.text("Subtotal", 135, y);
+  doc.text("CGST", 155, y);
+  doc.text("SGST", 175, y);
+  y += 5;
+  doc.line(20, y, 190, y);
+  y += 6;
+  doc.setFont(undefined, "normal");
+
+  // ===== ITEM ROWS =====
+  const items = cart.items || [];
+  items.forEach((item, index) => {
+    if (y > 270) {
+      doc.addPage();
+      y = 20;
+    }
+    const cgst = ((item.price * item.gst) / 200).toFixed(2);
+    const sgst = ((item.price * item.gst) / 200).toFixed(2);
+    const subtotal = (item.price * item.qty).toFixed(2);
+
+    doc.text(`${index + 1}. ${item.name}`, 20, y);
+    doc.text(`₹${item.price}`, 85, y);
+    doc.text(`${item.qty}`, 118, y);
+    doc.text(`₹${subtotal}`, 138, y);
+    doc.text(`₹${cgst}`, 158, y);
+    doc.text(`₹${sgst}`, 178, y);
+    y += 6;
+  });
+
+  y += 4;
+  doc.line(20, y, 190, y);
+  y += 6;
+
+  // ===== TOTALS =====
+  const total = Number(cart.total || 0).toFixed(2);
+  const discount = Number(cart.discount || 0).toFixed(2);
+  const finalAmount = Number(cart.finalAmount || total).toFixed(2);
+
+  doc.setFont(undefined, "bold");
+  doc.text("Total:", 140, y);
+  doc.text(`₹${total}`, 180, y, { align: "right" });
+  y += 6;
+
+  if (discount > 0) {
+    doc.setFont(undefined, "normal");
+    doc.setTextColor(200, 0, 0);
+    doc.text("Discount:", 140, y);
+    doc.text(`-₹${discount}`, 180, y, { align: "right" });
+    y += 6;
+    doc.setTextColor(0, 0, 0);
+  }
+
+  doc.setFont(undefined, "bold");
+  doc.text("Final Amount:", 140, y);
+  doc.text(`₹${finalAmount}`, 180, y, { align: "right" });
+  y += 10;
+
+  // ===== FOOTER =====
+  doc.setFont(undefined, "normal");
+  doc.setFontSize(9);
+  doc.text("This is a computer-generated invoice and doesn't require a signature.", 20, y);
+  y += 5;
+  doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  doc.save(`SmartCart_${cart.cartId}_Invoice_${timestamp}.pdf`);
+}
 </script>
 
 <script>
