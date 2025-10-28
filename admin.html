@@ -2722,14 +2722,27 @@ function getCartStatus(cart) {
 
     // ===== ITEMS TABLE =====
     const items = cart.items || [];
-    const tableData = items.map((item, index) => [
-      index + 1,
-      item.name || "-",
-      item.qty || 0,
-      `${item.cgst || 0}%`,
-      `${item.sgst || 0}%`,
-      `₹${(item.price * item.qty).toFixed(2)}`
-    ]);
+    if (items.length === 0) {
+      alert("⚠️ No items found in this cart.");
+      return;
+    }
+
+    // Split GST into CGST and SGST
+    const tableData = items.map((item, index) => {
+      const gst = Number(item.gst || 0);
+      const cgst = gst / 2;
+      const sgst = gst / 2;
+      const qty = Number(item.qty || 0);
+      const subtotal = (item.price * qty).toFixed(2);
+      return [
+        index + 1,
+        item.name || "-",
+        qty,
+        `${cgst}%`,
+        `${sgst}%`,
+        `₹${subtotal}`,
+      ];
+    });
 
     doc.autoTable({
       head: [["#", "Item", "Qty", "CGST", "SGST", "Price"]],
@@ -2742,9 +2755,9 @@ function getCartStatus(cart) {
 
     // ===== TOTAL SECTION =====
     const finalY = doc.lastAutoTable.finalY + 10;
-    const total = cart.total || 0;
-    const discount = cart.discount || 0;
-    const finalPaid = cart.finalAmount || total;
+    const total = Number(cart.total || 0);
+    const discount = Number(cart.discount || 0);
+    const finalPaid = Number(cart.finalAmount || total);
 
     doc.setFontSize(11);
     doc.text(`Total Before Discount: ₹${total.toFixed(2)}`, 140, finalY);
