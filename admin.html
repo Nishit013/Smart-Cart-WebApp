@@ -2683,90 +2683,89 @@ function getCartStatus(cart) {
 </script>
 
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-async function downloadPDF(cartId) {
-  alert("📦 Starting PDF generation for cart: " + cartId);
-
-  try {
-    const cart = allCarts?.[cartId];
-    if (!cart) {
-      alert("❌ Cart not found in allCarts.");
+  async function downloadPDF(cartId) {
+    const cart = allCarts[cartId];
+    if (!cart || !cart.items) {
+      alert("❌ No items found for this cart.");
       return;
     }
 
-    alert("✅ Cart found. Checking items...");
-    const items = cart.items || [];
-    if (items.length === 0) {
-      alert("⚠️ No items found for this cart.");
-      return;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Title
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text("🛒 Smart Cart - Bill Summary", pageWidth / 2, 20, { align: "center" });
+
+    doc.setFontSize(12);
+    doc.setTextColor(100);
+    doc.text(`Cart ID: ${cartId}`, 14, 35);
+    if (cart.timestamp) {
+      const date = new Date(cart.timestamp);
+      doc.text(`Date: ${date.toLocaleString()}`, pageWidth - 14, 35, { align: "right" });
     }
 
-    const { jsPDF } = window.jspdf || {};
-    if (!jsPDF) {
-      alert("❌ jsPDF library not loaded!");
-      return;
-    }
+    // Table header styling
+    const headers = ["Item Name", "Qty", "CGST", "SGST", "Price"];
+    const startY = 45;
+    const cellPadding = 8;
+    let y = startY;
 
-    alert("🧾 jsPDF loaded, preparing invoice...");
+    doc.setFillColor(50, 50, 50);
+    doc.setTextColor(255);
+    doc.setFont("helvetica", "bold");
+    doc.rect(14, y, pageWidth - 28, 10, "F");
+    const colWidths = [pageWidth * 0.40, pageWidth * 0.10, pageWidth * 0.15, pageWidth * 0.15, pageWidth * 0.15];
+    let x = 14;
 
-    const doc = new jsPDF({ unit: "mm", format: "a4" });
-    let y = 20;
-
-    doc.setFontSize(14);
-    doc.text("Smart Cart Pro – TAX INVOICE", 20, y);
-    y += 8;
-
-    const phone = cart.phone || "-";
-    const paymentTime = cart.paymentTime ? new Date(cart.paymentTime) : null;
-    const dateStr = paymentTime ? paymentTime.toLocaleString() : "N/A";
-
-    doc.setFontSize(10);
-    doc.text(`Date: ${dateStr}`, 20, y);
-    doc.text(`Phone: ${phone}`, 150, y);
-    y += 10;
-
-    // Draw simple table header
-    doc.setFontSize(11);
-    doc.text("Item", 22, y);
-    doc.text("Price", 90, y);
-    doc.text("Qty", 120, y);
-    doc.text("Subtotal", 150, y);
-    y += 6;
-    doc.line(20, y, 190, y);
-    y += 6;
-
-    // Table rows
-    let total = 0;
-    items.forEach((item, i) => {
-      total += (item.price * item.qty);
-      doc.setFontSize(10);
-      doc.text(`${i + 1}. ${item.name}`, 22, y);
-      doc.text("₹" + (item.price || 0).toFixed(2), 90, y);
-      doc.text(String(item.qty || 0), 120, y);
-      doc.text("₹" + (item.price * item.qty).toFixed(2), 150, y);
-      y += 6;
+    headers.forEach((header, i) => {
+      doc.text(header, x + cellPadding / 2, y + 7);
+      x += colWidths[i];
     });
 
-    alert("📊 Items added to PDF.");
+    // Table body
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(30);
+    y += 12;
 
-    const discount = cart.discount || 0;
-    const finalAmount = cart.finalAmount || total;
+    cart.items.forEach((item, index) => {
+      x = 14;
+      const rowHeight = 10;
 
-    doc.text(`Total: ₹${total.toFixed(2)}`, 150, y + 10);
-    doc.text(`Discount: ₹${discount.toFixed(2)}`, 150, y + 16);
-    doc.text(`Final Amount: ₹${finalAmount.toFixed(2)}`, 150, y + 22);
+      if (y > 270) { // Page break
+        doc.addPage();
+        y = 20;
+      }
 
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
+      doc.setDrawColor(220);
+      doc.rect(14, y - 8, pageWidth - 28, rowHeight);
 
-    alert("✅ PDF generated successfully!");
+      const rowData = [
+        item.name || "N/A",
+        String(item.quantity || 1),
+        String(item.cgst || "0%"),
+        String(item.sgst || "0%"),
+        `₹${item.price || 0}`
+      ];
 
-  } catch (err) {
-    alert("❌ Error generating PDF: " + err.message);
-    console.error("PDF generation error:", err);
+      rowData.forEach((text, i) => {
+        doc.text(text, x + cellPadding / 2, y - 2);
+        x += colWidths[i];
+      });
+
+      y += rowHeight;
+    });
+
+    // Footer
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text("Thank you for shopping with Smart Cart!", pageWidth / 2, y + 15, { align: "center" });
+
+    doc.save(`SmartCart_${cartId}.pdf`);
   }
-}
 </script>
 
 <script>
