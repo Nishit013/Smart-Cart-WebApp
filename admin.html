@@ -2687,138 +2687,105 @@ function getCartStatus(cart) {
 <script>
   async function downloadPDF(cartId) {
     const cart = allCarts[cartId];
-    if (!cart || !cart.items || cart.items.length === 0) {
-      alert("❌ No items found for this cart.");
+    if (!cart || !cart.bill || !cart.bill.summary) {
+      alert("❌ Bill summary not available for this cart.");
       return;
     }
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
+    let y = 20;
 
-    // ====== HEADER ======
-    doc.setFontSize(14);
-    doc.text("Smart Cart Pro", 20, 20);
+    // ===== HEADER =====
+    doc.setFontSize(16);
+    doc.text("Smart Cart Pro – TAX INVOICE", 20, y);
+    y += 10;
+
     doc.setFontSize(10);
-    doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, 26);
-    doc.text("GSTIN: 24XXXXXXX1Z9", 20, 31);
-    doc.text("TAX INVOICE", 150, 20);
-
-    const date = new Date(cart.paymentTime || Date.now());
-    doc.text(`Date: ${date.toLocaleDateString()} ${date.toLocaleTimeString()}`, 150, 26);
-    doc.text(`Phone: ${cart.phone || "-"}`, 150, 31);
-
-    doc.setLineWidth(0.1);
-    doc.line(20, 34, 190, 34);
-
-    // ====== CHECK GST EXISTENCE ======
-    const hasGST = cart.items.some(it => it.cgst || it.sgst);
-
-    // ====== TABLE HEADER ======
-    doc.setFontSize(11);
-    let y = 40;
-    doc.text("Item", 20, y);
-    let colX = hasGST ? [80, 110, 140, 170, 190] : [120, 150, 170, 190];
-
-    if (hasGST) {
-      doc.text("CGST", colX[0], y);
-      doc.text("SGST", colX[1], y);
-      doc.text("Final Price", colX[2], y);
-      doc.text("Qty", colX[3], y);
-      doc.text("Total", colX[4], y, { align: "right" });
-    } else {
-      doc.text("Price", colX[0], y);
-      doc.text("Qty", colX[1], y);
-      doc.text("Total", colX[2], y, { align: "right" });
-    }
+    doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
+    doc.text("GSTIN: 24XXXXXXX1Z9", 150, y);
+    y += 5;
+    doc.text("Generated via Admin Panel", 20, y);
     y += 6;
 
-    let totalCGST = 0, totalSGST = 0;
+    doc.setLineWidth(0.3);
+    doc.line(20, y, 190, y);
+    y += 8;
 
-    // ====== ITEMS LOOP ======
-    cart.items.forEach(item => {
-      if (y > 270) {  // New page if needed
-        doc.addPage();
-        y = 20;
+    // ===== PARSE SUMMARY =====
+    const lines = cart.bill.summary.split("\n").filter(l => l.trim() !== "");
+
+    // Extract total and discount lines
+    const totalLine = lines.find(l => l.toLowerCase().includes("total"));
+    const discountLine = lines.find(l => l.toLowerCase().includes("discount"));
+    const itemLines = lines.filter(l => !l.toLowerCase().includes("total") && !l.toLowerCase().includes("discount"));
+
+    // ===== TABLE HEADER =====
+    doc.setFontSize(11);
+    doc.text("Item", 20, y);
+    doc.text("Price", 100, y);
+    doc.text("Qty", 130, y);
+    doc.text("Total", 170, y, { align: "right" });
+    y += 6;
+    doc.line(20, y, 190, y);
+    y += 6;
+
+    // ===== TABLE ROWS =====
+    doc.setFontSize(10);
+    itemLines.forEach(line => {
+      const parts = line.split("x");
+      if (parts.length === 2) {
+        const namePart = parts[0].trim();
+        const qtyAndPrice = parts[1].split("=");
+        const qty = qtyAndPrice[0]?.trim() || "-";
+        const total = qtyAndPrice[1]?.replace(/[^\d.]/g, "").trim() || "0";
+        const priceMatch = namePart.match(/₹\d+(\.\d+)?/);
+        const price = priceMatch ? priceMatch[0] : "-";
+        const itemName = namePart.replace(price, "").trim();
+
+        doc.text(itemName, 20, y);
+        doc.text(price, 100, y);
+        doc.text(qty, 130, y);
+        doc.text(`₹${total}`, 170, y, { align: "right" });
+        y += 6;
+
+        if (y > 270) {
+          doc.addPage();
+          y = 20;
+        }
       }
-
-      const price = Number(item.price) || 0;
-      const qty = Number(item.qty) || 1;
-      const sgst = Number(item.sgst || 0);
-      const cgst = Number(item.cgst || 0);
-
-      const basePrice = price / (1 + (sgst + cgst) / 100);
-      const sgstAmt = basePrice * (sgst / 100);
-      const cgstAmt = basePrice * (cgst / 100);
-      const subtotal = price * qty;
-
-      doc.text(item.name, 20, y);
-
-      if (hasGST) {
-        doc.text(`₹${cgstAmt.toFixed(2)}`, colX[0], y);
-        doc.text(`₹${sgstAmt.toFixed(2)}`, colX[1], y);
-        doc.text(`₹${price.toFixed(2)}`, colX[2], y);
-        doc.text(`${qty}`, colX[3], y);
-        doc.text(`₹${subtotal.toFixed(2)}`, colX[4], y, { align: "right" });
-      } else {
-        doc.text(`₹${price.toFixed(2)}`, colX[0], y);
-        doc.text(`${qty}`, colX[1], y);
-        doc.text(`₹${subtotal.toFixed(2)}`, colX[2], y, { align: "right" });
-      }
-
-      totalCGST += cgstAmt * qty;
-      totalSGST += sgstAmt * qty;
-      y += 6;
     });
 
-    // ====== LINE BEFORE TOTALS ======
+    // ===== LINE BEFORE TOTAL =====
     y += 4;
     doc.line(20, y, 190, y);
     y += 6;
 
-    const total = Number(cart.total || 0);
-    const discount = Number(cart.discount || 0);
-    const finalAmount = Number(cart.finalAmount || total);
-
-    // ====== TAX TOTALS ======
-    if (hasGST) {
-      doc.text("Total CGST:", 120, y);
-      doc.text(`₹${totalCGST.toFixed(2)}`, 170, y, { align: "right" });
-      y += 6;
-
-      doc.text("Total SGST:", 120, y);
-      doc.text(`₹${totalSGST.toFixed(2)}`, 170, y, { align: "right" });
-      y += 6;
-    }
-
-    // ====== SUBTOTAL ======
-    doc.text("Subtotal:", 120, y);
-    doc.text(`₹${total.toFixed(2)}`, 170, y, { align: "right" });
-    y += 6;
-
-    // ====== DISCOUNT ======
-    if (discount > 0) {
+    // ===== TOTALS =====
+    if (discountLine) {
       doc.setTextColor(200, 0, 0);
-      doc.text("Discount:", 120, y);
-      doc.text(`-₹${discount.toFixed(2)}`, 170, y, { align: "right" });
+      doc.text(discountLine, 120, y);
       doc.setTextColor(0, 0, 0);
       y += 6;
     }
 
-    // ====== FINAL AMOUNT ======
-    doc.setFont(undefined, "bold");
-    doc.text("Final Invoice Amount:", 120, y);
-    doc.text(`₹${finalAmount.toFixed(2)}`, 170, y, { align: "right" });
-    doc.setFont(undefined, "normal");
-    y += 10;
+    if (totalLine) {
+      doc.setFont(undefined, "bold");
+      doc.text(totalLine, 120, y);
+      doc.setFont(undefined, "normal");
+      y += 6;
+    }
 
-    // ====== FOOTER ======
+    // ===== FOOTER =====
+    y += 10;
     doc.setFontSize(9);
     doc.text("This is a computer-generated invoice and doesn't require a signature.", 20, y);
     y += 5;
     doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
 
+    // ===== SAVE =====
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    doc.save(`SmartCart_${cart.cartId}_Invoice_${timestamp}.pdf`);
+    doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
   }
 </script>
 
