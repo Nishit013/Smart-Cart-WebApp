@@ -2690,13 +2690,13 @@ function getCartStatus(cart) {
 </script>
 
 
-<!-- jsPDF & autoTable -->
+<!-- ✅ Include jsPDF & autoTable -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
 
 <script>
 async function generateInvoicePDF(cart, cartId) {
-  if (!cart || !cart.bill || !cart.bill.summary || !cart.items) {
+  if (!cart || !cart.bill || !cart.items) {
     alert("❌ Bill details missing for this cart.");
     return;
   }
@@ -2706,7 +2706,7 @@ async function generateInvoicePDF(cart, cartId) {
   const pageWidth = doc.internal.pageSize.getWidth();
   let y = 15;
 
-  // 🧾 Header Section
+  // 🧾 Header
   doc.setFontSize(16);
   doc.text("Smart Cart Pro – Tax Invoice", pageWidth / 2, y, { align: "center" });
   y += 10;
@@ -2722,19 +2722,19 @@ async function generateInvoicePDF(cart, cartId) {
   doc.text(`Cart ID: ${cartId}`, 20, y);
   doc.text(`Phone: ${cart.phone || "N/A"}`, 120, y);
   y += 6;
-  doc.text(`Date: ${new Date(cart.paymentTime).toLocaleString()}`, 20, y);
+  doc.text(`Date: ${new Date(cart.paymentTime || Date.now()).toLocaleString()}`, 20, y);
   y += 8;
 
   doc.line(20, y, 190, y);
   y += 8;
 
-  // 🧺 Item Table
-  const tableData = cart.items.map((item, index) => [
+  // 🧺 Items Table
+  const tableData = (cart.items || []).map((item, index) => [
     index + 1,
     item.name || "Unknown",
     item.qty || 1,
-    `₹${item.price.toFixed(2)}`,
-    `₹${(item.qty * item.price).toFixed(2)}`
+    `₹${(item.price || 0).toFixed(2)}`,
+    `₹${((item.qty || 1) * (item.price || 0)).toFixed(2)}`
   ]);
 
   doc.autoTable({
@@ -2749,11 +2749,7 @@ async function generateInvoicePDF(cart, cartId) {
 
   y = doc.lastAutoTable.finalY + 10;
 
-  // 💰 Summary Section
-  doc.setFontSize(11);
-  doc.text("Billing Summary", 20, y);
-  y += 6;
-
+  // 💰 Summary
   const summaryLines = [
     [`Total`, `₹${(cart.total || 0).toFixed(2)}`],
     [`CGST`, `₹${(cart.totalCGST || 0).toFixed(2)}`],
@@ -2786,16 +2782,20 @@ async function generateInvoicePDF(cart, cartId) {
   doc.save(`Invoice_${cartId}_${timestamp}.pdf`);
 }
 
-// 🔄 For latest cart
-function downloadPDF(cartId) {
-  const cart = allCarts[cartId];
-  generateInvoicePDF(cart, cartId);
-}
-
-// 📜 For history bill
+// 📜 For History Bill
 function downloadHistoryPDF(cartId, index) {
   const history = Object.values(paidCarts).filter(c => c.cartId === cartId);
   const cart = history[index];
+  generateInvoicePDF(cart, cartId);
+}
+
+// 🧾 For Latest Bill (from allCarts)
+function downloadLastBillPDF(cartId) {
+  const cart = allCarts[cartId];
+  if (!cart || !cart.bill) {
+    alert("❌ No latest bill found for this cart.");
+    return;
+  }
   generateInvoicePDF(cart, cartId);
 }
 </script>
