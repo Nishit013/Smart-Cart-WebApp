@@ -2295,50 +2295,41 @@ barData.push(Number(cart.finalAmount ?? cart.total) || 0);
 });
 
   }
-
-
-function getCartHistoryHTML(cartId) {
+  function getCartHistoryHTML(cartId) {
   const history = Object.values(paidCarts)
     .filter(c => c.cartId === cartId)
     .sort((a, b) => {
       const timeA = new Date(a.paymentTime || a.paidAt || 0).getTime();
       const timeB = new Date(b.paymentTime || b.paidAt || 0).getTime();
-      return timeB - timeA;
+      return timeB - timeA; // Descending order: latest first
     });
 
   if (!history.length) return "<p>No previous bills.</p>";
 
-  return history
-    .map((c, index) => {
-      const rawTime = c.paymentTime || c.paidAt || null;
-      const paidTime = rawTime ? new Date(rawTime).toLocaleString() : "Unknown";
-      const itemsHTML = (c.items || [])
-        .map(i => `<li>${i.name} × ${i.qty} = ₹${i.qty * i.price}</li>`)
-        .join("");
+  return history.map((c, index) => {
+    const rawTime = c.paymentTime || c.paidAt || null;
+    const paidTime = rawTime ? new Date(rawTime).toLocaleString() : "Unknown";
+    const itemsHTML = (c.items || [])
+      .map(i => `<li>${i.name} × ${i.qty} = ₹${i.qty * i.price}</li>`)
+      .join("");
 
-      return `
-        <div class="history-entry">
-          <p><strong>Paid On:</strong> ${paidTime}</p>
-          <p><strong>Original Total:</strong> ₹${c.total}</p>
-          <p><strong>Discount:</strong> -₹${c.discount || 0}</p>
-          <p><strong>Final Paid:</strong> ₹${c.finalAmount || c.total}</p>
-          <p><strong>Phone:</strong> ${c.phone || "N/A"}</p>
-          <button class="toggle-items" onclick="toggleItems('items-${cartId}-${index}')">📦 View Items</button>
-          <button class="download-pdf" onclick="event.stopPropagation(); downloadHistoryPDF('${cartId}', ${index})">📥 Download PDF</button>
+    return `
+      <div class="history-entry">
+        <p><strong>Paid On:</strong> ${paidTime}</p>
+        <p><strong>Original Total:</strong> ₹${c.total}</p>
+<p><strong>Discount:</strong> -₹${c.discount || 0}</p>
+<p><strong>Final Paid:</strong> ₹${c.finalAmount || c.total}</p>
 
-          <div id="items-${cartId}-${index}" class="items-box" style="display:none;">
-            <ul>${itemsHTML}</ul>
-          </div>
-        </div>
-      `;
-    })
-    .join("<hr>");
+        <p><strong>Phone:</strong> ${c.phone || "N/A"}</p>
+        <button class="toggle-items" onclick="toggleItems('items-${cartId}-${index}')">📦 View Items</button>
+<div id="items-${cartId}-${index}" class="items-box" style="display:none;">
+  <ul>${itemsHTML}</ul>
+</div>
+
+      </div>
+    `;
+  }).join("<hr>");
 }
-
-  
-
-
-
 
 function exportCSV() {
   const rows = [["Cart ID", "Total Before Discount", "Discount Applied", "Final Paid", "Date", "Time", "Phone"]];
@@ -2694,72 +2685,47 @@ function getCartStatus(cart) {
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-async function downloadPDF(cartOrId) {
-  let cart = typeof cartOrId === "object" ? cartOrId : allCarts[cartOrId];
-  const cartId = typeof cartOrId === "object" ? cartOrId.cartId : cartOrId;
+  async function downloadPDF(cartId) {
+    const cart = allCarts[cartId];
+    if (!cart || !cart.bill || !cart.bill.summary) {
+      alert("❌ Bill summary not available for this cart.");
+      return;
+    }
 
-  if (!cart || !cart.bill || !cart.bill.summary) {
-    alert("❌ Bill summary not available for this cart.");
-    return;
-  }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    let y = 20;
 
-  // Correct fields
-  const paidTime = cart.paymentTime || cart.paidAt;
-  const formattedTime = paidTime ? new Date(paidTime).toLocaleString() : "Unknown";
+    doc.setFontSize(14);
+    doc.text("Smart Cart Pro – Invoice", 20, y);
+    y += 10;
 
-  const cgst = cart.totalCGST || 0;
-  const sgst = cart.totalSGST || 0;
-  const totalGST = cgst + sgst;
-  const discount = cart.discount || 0;
-  const finalPaid = cart.finalAmount || cart.total || 0;
+    doc.setFontSize(10);
+    doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
+    y += 5;
+    doc.text("TAX INVOICE", 150, y - 5);
+    doc.text("GSTIN: 24XXXXXXX1Z9", 20, y);
+    y += 5;
 
-  // Generate PDF
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  let y = 20;
-
-  doc.setFontSize(14);
-  doc.text("Smart Cart Pro – Invoice", 20, y);
-  y += 10;
-
-  doc.setFontSize(10);
-  doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
-  y += 5;
-  doc.text("TAX INVOICE", 150, y - 5);
-  doc.text("GSTIN: 24XXXXXXX1Z9", 20, y);
-  y += 5;
-
-  doc.setLineWidth(0.1);
-  doc.line(20, y, 190, y);
-  y += 6;
-
-  const lines = cart.bill.summary.split("\n");
-  doc.setFontSize(11);
-  lines.forEach(line => {
-    if (y > 270) { doc.addPage(); y = 20; }
-    doc.text(line, 20, y);
+    doc.setLineWidth(0.1);
+    doc.line(20, y, 190, y);
     y += 6;
-  });
 
-  y += 5;
-  doc.text(`Discount: ₹${discount.toFixed(2)}`, 20, y); y += 6;
-  doc.text(`CGST: ₹${cgst.toFixed(2)}`, 20, y); y += 6;
-  doc.text(`SGST: ₹${sgst.toFixed(2)}`, 20, y); y += 6;
-  doc.text(`Total GST: ₹${totalGST.toFixed(2)}`, 20, y); y += 6;
+    const lines = cart.bill.summary.split("\n");
+    doc.setFontSize(11);
+    lines.forEach(line => {
+      doc.text(line, 20, y);
+      y += 6;
+    });
 
-  doc.setFontSize(12);
-  doc.text(`Final Paid: ₹${finalPaid.toFixed(2)}`, 20, y); y += 8;
+    y += 5;
+    doc.setFontSize(9);
+    doc.text("Generated via Admin Panel", 20, y);
 
-  doc.setFontSize(10);
-  doc.text(`Payment Time: ${formattedTime}`, 20, y);
-  y += 5;
-  doc.text("Generated via Admin Panel", 20, y);
-
-  const safeTime = (paidTime ? new Date(paidTime).toISOString() : "unknown").replace(/[:.]/g, "-");
-  doc.save(`Cart_${cartId}_Invoice_${safeTime}.pdf`);
-}
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
+  }
 </script>
-
 <script>
   const auth = firebase.auth();
 
