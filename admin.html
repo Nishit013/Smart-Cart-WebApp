@@ -2683,27 +2683,20 @@ function getCartStatus(cart) {
 </script>
 
 
-<!-- Include jsPDF + autoTable -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-
 <script>
   async function downloadPDF(cartId) {
-    // Find cart data correctly even if key has timestamp prefix
-    let cart = allCarts[cartId];
-    if (!cart) {
-      cart = Object.values(allCarts).find(c => c.cartId === cartId);
-    }
-
-    if (!cart || !cart.bill) {
-      alert("❌ Bill not available for this cart.");
+    const cart = allCarts[cartId];
+    if (!cart || !cart.bill || !cart.bill.summary) {
+      alert("❌ Bill summary not available for this cart.");
       return;
     }
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-
     let y = 20;
+
+    // ===== Header Section =====
     doc.setFontSize(14);
     doc.text("Smart Cart Pro – Invoice", 20, y);
     y += 10;
@@ -2715,67 +2708,77 @@ function getCartStatus(cart) {
     doc.text("GSTIN: 24XXXXXXX1Z9", 20, y);
     y += 5;
 
+    doc.setLineWidth(0.5);
     doc.line(20, y, 190, y);
     y += 8;
 
-    // Header info
-    const dateStr = cart.bill.timestamp
-      ? new Date(cart.bill.timestamp).toLocaleString()
-      : new Date().toLocaleString();
-    doc.text(`Cart ID: ${cart.cartId || cartId}`, 20, y);
-    doc.text(`Date: ${dateStr}`, 140, y);
+    // ===== Cart Info =====
+    doc.setFontSize(11);
+    doc.text(`Cart ID: ${cartId}`, 20, y);
     y += 6;
-    if (cart.bill.phone)
-      doc.text(`Customer Phone: ${cart.bill.phone}`, 20, y);
+    if (cart.bill.phone) doc.text(`Customer: ${cart.bill.phone}`, 20, y);
     y += 8;
 
-    // Draw items table
-    const items = cart.items || (cart.bill.items || []);
-    if (items && items.length > 0) {
-      const itemData = items.map((item, i) => [
-        i + 1,
-        item.name || "N/A",
-        item.qty || 0,
-        `₹${item.price || 0}`,
-        `₹${(item.qty || 0) * (item.price || 0)}`
-      ]);
-
-      doc.autoTable({
-        startY: y,
-        head: [["#", "Item Name", "Qty", "Price", "Total"]],
-        body: itemData,
-        styles: { fontSize: 10 },
-        headStyles: { fillColor: [0, 0, 0], textColor: 255 },
-        margin: { left: 20, right: 20 },
-      });
-
-      y = doc.lastAutoTable.finalY + 10;
-    } else {
-      doc.setFontSize(11);
-      doc.text("No items found in this bill.", 20, y);
-      y += 10;
-    }
-
-    // Totals
-    const { subtotal = 0, discount = 0, totalCGST = 0, totalSGST = 0, coupon = "None", grandTotal = 0 } = cart.bill;
-
+    // ===== Table Header =====
+    doc.setFillColor(240, 240, 240);
+    doc.rect(20, y - 5, 170, 8, "F");
     doc.setFontSize(11);
-    doc.text(`Subtotal: ₹${subtotal}`, 20, y);
+    doc.text("Item", 25, y);
+    doc.text("Qty", 100, y);
+    doc.text("Price", 130, y);
+    doc.text("Total", 160, y);
     y += 6;
-    doc.text(`Discount: ₹${discount}`, 20, y);
-    y += 6;
-    doc.text(`Total CGST: ₹${totalCGST}`, 20, y);
-    y += 6;
-    doc.text(`Total SGST: ₹${totalSGST}`, 20, y);
-    y += 6;
-    doc.text(`Coupon Used: ${coupon}`, 20, y);
-    y += 6;
-    doc.text(`Grand Total: ₹${grandTotal}`, 20, y);
-    y += 10;
+    doc.line(20, y, 190, y);
+    y += 4;
 
+    // ===== Table Rows from Summary =====
+    const lines = cart.bill.summary.split("\n").filter(line => line.trim() !== "");
     doc.setFontSize(10);
+
+    lines.forEach(line => {
+      // Detect item lines like "ItemName - Qty x Price = Total"
+      if (line.includes("x") && line.includes("=")) {
+        const parts = line.split("=");
+        const left = parts[0].trim();
+        const total = parts[1].trim();
+
+        const [nameQty, pricePart] = left.split("x");
+        const [name, qty] = nameQty.split("-");
+        const itemName = (name || "").trim();
+        const itemQty = (qty || "").trim();
+        const itemPrice = (pricePart || "").trim();
+
+        doc.text(itemName, 25, y);
+        doc.text(itemQty, 100, y);
+        doc.text(itemPrice, 130, y);
+        doc.text(total, 160, y);
+        y += 6;
+      }
+    });
+
+    // ===== Totals =====
+    y += 4;
+    doc.line(20, y, 190, y);
+    y += 8;
+    doc.setFontSize(10);
+
+    lines.forEach(line => {
+      if (
+        line.toLowerCase().includes("subtotal") ||
+        line.toLowerCase().includes("discount") ||
+        line.toLowerCase().includes("cgst") ||
+        line.toLowerCase().includes("sgst") ||
+        line.toLowerCase().includes("total")
+      ) {
+        doc.text(line.trim(), 120, y);
+        y += 6;
+      }
+    });
+
+    y += 4;
+    doc.setFontSize(9);
     doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
-    y += 6;
+    y += 5;
     doc.text("Generated via Admin Panel", 20, y);
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -2783,6 +2786,7 @@ function getCartStatus(cart) {
   }
 </script>
 
+</script>
 <script>
   const auth = firebase.auth();
 
