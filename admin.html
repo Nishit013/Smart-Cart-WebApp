@@ -2686,17 +2686,21 @@ function getCartStatus(cart) {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
   async function downloadPDF(cartId) {
-    const cart = allCarts[cartId];
-    if (!cart || !cart.bill || !cart.bill.summary) {
-      alert("❌ Bill summary not available for this cart.");
+    // Support both formats like "CART1" and "1760xxxx_CART1"
+    let cart = allCarts[cartId];
+    if (!cart) {
+      cart = Object.values(allCarts).find(c => c.cartId === cartId);
+    }
+
+    if (!cart || !cart.bill) {
+      alert("❌ Bill not available for this cart.");
       return;
     }
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    let y = 20;
 
-    // ===== Header Section =====
+    let y = 20;
     doc.setFontSize(14);
     doc.text("Smart Cart Pro – Invoice", 20, y);
     y += 10;
@@ -2708,79 +2712,81 @@ function getCartStatus(cart) {
     doc.text("GSTIN: 24XXXXXXX1Z9", 20, y);
     y += 5;
 
-    doc.setLineWidth(0.5);
     doc.line(20, y, 190, y);
     y += 8;
 
-    // ===== Cart Info =====
+    // Customer Info
+    const dateStr = cart.paymentTime
+      ? new Date(cart.paymentTime).toLocaleString()
+      : new Date().toLocaleString();
+
     doc.setFontSize(11);
-    doc.text(`Cart ID: ${cartId}`, 20, y);
+    doc.text(`Cart ID: ${cart.cartId || cartId}`, 20, y);
     y += 6;
-    if (cart.bill.phone) doc.text(`Customer: ${cart.bill.phone}`, 20, y);
+    doc.text(`Customer Phone: ${cart.bill.phone || "N/A"}`, 20, y);
+    y += 6;
+    doc.text(`Payment Time: ${dateStr}`, 20, y);
     y += 8;
 
-    // ===== Table Header =====
-    doc.setFillColor(240, 240, 240);
+    // ====== Table Header ======
+    doc.setFontSize(11);
+    doc.setFillColor(230, 230, 230);
     doc.rect(20, y - 5, 170, 8, "F");
-    doc.setFontSize(11);
-    doc.text("Item", 25, y);
-    doc.text("Qty", 100, y);
-    doc.text("Price", 130, y);
-    doc.text("Total", 160, y);
-    y += 6;
-    doc.line(20, y, 190, y);
+    doc.text("Item Name", 25, y);
+    doc.text("Qty", 120, y);
+    doc.text("Price", 140, y);
+    doc.text("Total", 165, y);
     y += 4;
+    doc.line(20, y, 190, y);
+    y += 6;
 
-    // ===== Table Rows from Summary =====
-    const lines = cart.bill.summary.split("\n").filter(line => line.trim() !== "");
-    doc.setFontSize(10);
-
-    lines.forEach(line => {
-      // Detect item lines like "ItemName - Qty x Price = Total"
-      if (line.includes("x") && line.includes("=")) {
-        const parts = line.split("=");
-        const left = parts[0].trim();
-        const total = parts[1].trim();
-
-        const [nameQty, pricePart] = left.split("x");
-        const [name, qty] = nameQty.split("-");
-        const itemName = (name || "").trim();
-        const itemQty = (qty || "").trim();
-        const itemPrice = (pricePart || "").trim();
+    // ====== Table Rows ======
+    const items = cart.items || [];
+    if (items.length > 0) {
+      doc.setFontSize(10);
+      items.forEach((item) => {
+        const itemName = (item.name || "").substring(0, 25); // truncate long names
+        const qty = item.qty || 0;
+        const price = item.price || 0;
+        const total = (qty * price).toFixed(2);
 
         doc.text(itemName, 25, y);
-        doc.text(itemQty, 100, y);
-        doc.text(itemPrice, 130, y);
-        doc.text(total, 160, y);
-        y += 6;
-      }
-    });
+        doc.text(String(qty), 122, y);
+        doc.text(`₹${price}`, 140, y);
+        doc.text(`₹${total}`, 165, y);
 
-    // ===== Totals =====
-    y += 4;
-    doc.line(20, y, 190, y);
+        y += 6;
+        doc.line(20, y, 190, y);
+      });
+    } else {
+      doc.setFontSize(10);
+      doc.text("No items found in this bill.", 25, y);
+      y += 10;
+    }
+
     y += 8;
     doc.setFontSize(10);
 
-    lines.forEach(line => {
-      if (
-        line.toLowerCase().includes("subtotal") ||
-        line.toLowerCase().includes("discount") ||
-        line.toLowerCase().includes("cgst") ||
-        line.toLowerCase().includes("sgst") ||
-        line.toLowerCase().includes("total")
-      ) {
-        doc.text(line.trim(), 120, y);
-        y += 6;
-      }
-    });
+    // ====== Bill Summary ======
+    doc.text(`Subtotal: ₹${cart.bill.originalTotal || 0}`, 140, y);
+    y += 5;
+    doc.text(`Discount: ₹${cart.bill.discount || 0}`, 140, y);
+    y += 5;
+    doc.text(`CGST: ₹${cart.bill.totalCGST || 0}`, 140, y);
+    y += 5;
+    doc.text(`SGST: ₹${cart.bill.totalSGST || 0}`, 140, y);
+    y += 5;
+    doc.setFontSize(11);
+    doc.text(`Grand Total: ₹${cart.bill.finalPaid || 0}`, 140, y);
+    y += 10;
 
-    y += 4;
+    // ====== Footer ======
     doc.setFontSize(9);
     doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
     y += 5;
     doc.text("Generated via Admin Panel", 20, y);
 
+    // Save the file
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
   }
