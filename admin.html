@@ -2725,8 +2725,18 @@ async function downloadPDF(cartId) {
   doc.line(20, y, 190, y);
   y += 6;
 
+  // ===== GET ITEMS SAFELY =====
+  let itemsArray = [];
+
+  if (Array.isArray(cart.bill.items)) {
+    itemsArray = cart.bill.items; // already an array
+  } else if (cart.bill.items && typeof cart.bill.items === "object") {
+    itemsArray = Object.values(cart.bill.items); // object → array
+  } else if (cart.items && typeof cart.items === "object") {
+    itemsArray = Object.values(cart.items);
+  }
+
   // ===== ITEMS TABLE =====
-  const itemsArray = Object.values(cart.items || {});
   if (!itemsArray.length) {
     doc.text("No items found in this bill.", 20, y);
   } else {
@@ -2771,7 +2781,7 @@ async function downloadPDF(cartId) {
   const sgst = Number(cart.bill.totalSGST || 0);
   const gst = cgst + sgst;
   const finalPaid = Number(cart.bill.finalPaid || cart.finalAmount || 0);
-  const coupon = cart.bill.discountCoupon || "None";
+  const coupon = cart.bill.discountCoupon || cart.discountCoupon || "None";
 
   doc.setFontSize(11);
   doc.text("Subtotal:", 140, finalY);
