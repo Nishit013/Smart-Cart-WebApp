@@ -2691,8 +2691,8 @@ function getCartStatus(cart) {
       cart = Object.values(allCarts).find(c => c.cartId === cartId);
     }
 
-    if (!cart || !cart.bill || !cart.bill.summary) {
-      alert("❌ Bill summary not available for this cart.");
+    if (!cart || !cart.bill) {
+      alert("❌ Bill not available for this cart.");
       return;
     }
 
@@ -2714,8 +2714,9 @@ function getCartStatus(cart) {
     y += 8;
 
     // ===== CUSTOMER DETAILS =====
-    const paymentDate = cart.paymentTime
-      ? new Date(cart.paymentTime).toLocaleString()
+    const paymentTime = cart.paidAt || cart.paymentTime;
+    const paymentDate = paymentTime
+      ? new Date(paymentTime).toLocaleString()
       : "N/A";
 
     doc.setFontSize(11);
@@ -2733,49 +2734,54 @@ function getCartStatus(cart) {
     doc.text("Item Name", 25, y);
     doc.text("Qty", 110, y);
     doc.text("Price", 130, y);
-    doc.text("CGST", 150, y);
-    doc.text("SGST", 165, y);
+    doc.text("Total", 165, y);
     y += 4;
     doc.line(20, y, 190, y);
     y += 6;
 
-    // ===== PARSE ITEMS FROM SUMMARY =====
-    const summary = cart.bill.summary;
-    const lines = summary.split("\n").map(l => l.trim()).filter(l => l);
-    const items = [];
-    let currentItem = {};
+    // ===== EXTRACT ITEMS =====
+    let items = [];
 
-    lines.forEach(line => {
-      if (/^\d+\./.test(line)) {
-        if (currentItem.name) items.push(currentItem);
-        currentItem = { name: line.replace(/^\d+\.\s*/, "") };
-      } else if (line.startsWith("Price")) {
-        const priceMatch = line.match(/₹([\d.]+)/);
-        if (priceMatch) currentItem.price = parseFloat(priceMatch[1]);
-      } else if (line.startsWith("Qty")) {
-        const qtyMatch = line.match(/Qty:\s*(\d+)/);
-        if (qtyMatch) currentItem.qty = parseInt(qtyMatch[1]);
-      } else if (line.includes("CGST")) {
-        const cgstMatch = line.match(/CGST\s*\((\d+)%\)/);
-        const sgstMatch = line.match(/SGST\s*\((\d+)%\)/);
-        currentItem.cgst = cgstMatch ? parseInt(cgstMatch[1]) : 0;
-        currentItem.sgst = sgstMatch ? parseInt(sgstMatch[1]) : 0;
-      }
-    });
-    if (currentItem.name) items.push(currentItem);
+    if (typeof cart.bill.summary === "object") {
+      // summary stored as object of items
+      items = Object.values(cart.bill.summary).map(it => ({
+        name: it.name || "Unnamed",
+        qty: it.qty || 0,
+        price: it.price || 0,
+      }));
+    } else if (typeof cart.bill.summary === "string") {
+      // summary stored as plain text
+      const lines = cart.bill.summary.split("\n").map(l => l.trim()).filter(l => l);
+      let current = {};
+      lines.forEach(line => {
+        if (/^\d+\./.test(line)) {
+          if (current.name) items.push(current);
+          current = { name: line.replace(/^\d+\.\s*/, "") };
+        } else if (line.startsWith("Qty")) {
+          const q = line.match(/Qty:\s*(\d+)/);
+          if (q) current.qty = parseInt(q[1]);
+        } else if (line.startsWith("Price")) {
+          const p = line.match(/₹([\d.]+)/);
+          if (p) current.price = parseFloat(p[1]);
+        }
+      });
+      if (current.name) items.push(current);
+    }
 
     // ===== TABLE ROWS =====
     if (items.length > 0) {
       doc.setFontSize(10);
       items.forEach(item => {
         const total = ((item.price || 0) * (item.qty || 0)).toFixed(2);
-        doc.text(item.name, 25, y);
+        doc.text(item.name.substring(0, 25), 25, y);
         doc.text(String(item.qty || 0), 112, y);
         doc.text(`₹${(item.price || 0).toFixed(2)}`, 130, y);
-        doc.text(`${item.cgst || 0}%`, 152, y);
-        doc.text(`${item.sgst || 0}%`, 168, y);
+        doc.text(`₹${total}`, 165, y);
         y += 6;
-        doc.line(20, y, 190, y);
+        if (y > 270) {
+          doc.addPage();
+          y = 20;
+        }
       });
     } else {
       doc.setFontSize(10);
@@ -2786,17 +2792,23 @@ function getCartStatus(cart) {
     // ===== BILL SUMMARY =====
     y += 8;
     doc.setFontSize(10);
-    doc.text(`Subtotal: ₹${(cart.bill.originalTotal || 0).toFixed(2)}`, 140, y);
+    const subtotal = cart.bill.originalTotal || 0;
+    const discount = cart.bill.discount || 0;
+    const cgst = cart.bill.totalCGST || 0;
+    const sgst = cart.bill.totalSGST || 0;
+    const grand = cart.bill.finalPaid || 0;
+
+    doc.text(`Subtotal: ₹${subtotal.toFixed(2)}`, 140, y);
     y += 5;
-    doc.text(`Discount: ₹${(cart.bill.discount || 0).toFixed(2)}`, 140, y);
+    doc.text(`Discount: ₹${discount.toFixed(2)}`, 140, y);
     y += 5;
-    doc.text(`CGST: ₹${(cart.bill.totalCGST || 0).toFixed(2)}`, 140, y);
+    doc.text(`CGST: ₹${cgst.toFixed(2)}`, 140, y);
     y += 5;
-    doc.text(`SGST: ₹${(cart.bill.totalSGST || 0).toFixed(2)}`, 140, y);
+    doc.text(`SGST: ₹${sgst.toFixed(2)}`, 140, y);
     y += 5;
     doc.setFontSize(11);
     doc.setFont(undefined, "bold");
-    doc.text(`Grand Total: ₹${(cart.bill.finalPaid || 0).toFixed(2)}`, 140, y);
+    doc.text(`Grand Total: ₹${grand.toFixed(2)}`, 140, y);
     doc.setFont(undefined, "normal");
     y += 10;
 
@@ -2807,13 +2819,14 @@ function getCartStatus(cart) {
     doc.text("Generated via Admin Panel", 20, y);
 
     // ===== SAVE FILE =====
-    const timestamp = cart.paymentTime
-      ? new Date(cart.paymentTime).toISOString().replace(/[:.]/g, "-")
+    const timestamp = paymentTime
+      ? new Date(paymentTime).toISOString().replace(/[:.]/g, "-")
       : new Date().toISOString().replace(/[:.]/g, "-");
 
     doc.save(`Invoice_${cart.cartId || cartId}_${timestamp}.pdf`);
   }
 </script>
+
 
 </script>
 <script>
