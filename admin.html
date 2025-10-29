@@ -2683,12 +2683,15 @@ function getCartStatus(cart) {
 </script>
 
 
+<!-- jsPDF + autoTable -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+
 <script>
   async function downloadPDF(cartId) {
     const cart = allCarts[cartId];
-    if (!cart || !cart.bill || !cart.bill.summary) {
-      alert("❌ Bill summary not available for this cart.");
+    if (!cart || !cart.bill || !cart.bill.items || !Array.isArray(cart.bill.items)) {
+      alert("❌ Bill details not available for this cart.");
       return;
     }
 
@@ -2696,36 +2699,89 @@ function getCartStatus(cart) {
     const doc = new jsPDF();
     let y = 20;
 
-    doc.setFontSize(14);
+    // 🧾 Header
+    doc.setFontSize(16);
     doc.text("Smart Cart Pro – Invoice", 20, y);
-    y += 10;
+    y += 8;
 
     doc.setFontSize(10);
     doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
     y += 5;
-    doc.text("TAX INVOICE", 150, y - 5);
     doc.text("GSTIN: 24XXXXXXX1Z9", 20, y);
-    y += 5;
+    doc.text("TAX INVOICE", 150, y - 5);
+    y += 8;
 
-    doc.setLineWidth(0.1);
+    // 🧍 Customer Info
+    const phone = cart.bill.phone || "N/A";
+    const date = cart.bill.time || new Date().toLocaleString();
+    doc.setFontSize(11);
+    doc.text(`Cart ID: ${cartId}`, 20, y);
+    doc.text(`Date: ${date}`, 150, y);
+    y += 6;
+    doc.text(`Customer Phone: ${phone}`, 20, y);
+    y += 6;
+
     doc.line(20, y, 190, y);
     y += 6;
 
-    const lines = cart.bill.summary.split("\n");
-    doc.setFontSize(11);
-    lines.forEach(line => {
-      doc.text(line, 20, y);
-      y += 6;
+    // 📦 Items Table
+    const tableColumn = ["#", "Item Name", "Qty", "Price (₹)", "Total (₹)"];
+    const tableRows = [];
+
+    cart.bill.items.forEach((item, index) => {
+      const row = [
+        index + 1,
+        item.name || "Unknown",
+        item.qty || 1,
+        item.price?.toFixed(2) || "0.00",
+        ((item.qty || 1) * (item.price || 0)).toFixed(2),
+      ];
+      tableRows.push(row);
     });
 
-    y += 5;
+    doc.autoTable({
+      startY: y,
+      head: [tableColumn],
+      body: tableRows,
+      theme: 'striped',
+      headStyles: { fillColor: [33, 150, 243], textColor: 255, halign: 'center' },
+      bodyStyles: { halign: 'center' },
+      styles: { fontSize: 10 },
+      margin: { left: 20, right: 20 },
+    });
+
+    const finalY = doc.lastAutoTable.finalY + 8;
+
+    // 💰 Total Summary
+    const subtotal = cart.bill.subtotal || 0;
+    const gst = cart.bill.gst || 0;
+    const total = cart.bill.total || (subtotal + gst);
+    const discount = cart.bill.discount || 0;
+
+    doc.setFontSize(11);
+    doc.text("Subtotal:", 140, finalY);
+    doc.text(`${subtotal.toFixed(2)} ₹`, 180, finalY, { align: "right" });
+
+    doc.text("Discount:", 140, finalY + 6);
+    doc.text(`- ${discount.toFixed(2)} ₹`, 180, finalY + 6, { align: "right" });
+
+    doc.text("GST (18%):", 140, finalY + 12);
+    doc.text(`${gst.toFixed(2)} ₹`, 180, finalY + 12, { align: "right" });
+
+    doc.setFontSize(13);
+    doc.text("Grand Total:", 140, finalY + 20);
+    doc.text(`${total.toFixed(2)} ₹`, 180, finalY + 20, { align: "right" });
+
+    // Footer
     doc.setFontSize(9);
-    doc.text("Generated via Admin Panel", 20, y);
+    doc.text("Thank you for shopping with Smart Cart Pro!", 20, finalY + 35);
+    doc.text("Generated via Admin Panel", 20, finalY + 40);
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
   }
 </script>
+
 <script>
   const auth = firebase.auth();
 
