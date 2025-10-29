@@ -2714,10 +2714,8 @@ function getCartStatus(cart) {
     y += 8;
 
     // ===== CUSTOMER DETAILS =====
-    const paymentTime = cart.paidAt || cart.paymentTime;
-    const paymentDate = paymentTime
-      ? new Date(paymentTime).toLocaleString()
-      : "N/A";
+    const paymentTime = cart.paidAt || cart.paymentTime || Date.now();
+    const paymentDate = new Date(paymentTime).toLocaleString();
 
     doc.setFontSize(11);
     doc.text(`Cart ID: ${cart.cartId || cartId}`, 20, y);
@@ -2725,6 +2723,8 @@ function getCartStatus(cart) {
     doc.text(`Customer Phone: ${cart.bill.phone || cart.phone || "N/A"}`, 20, y);
     y += 6;
     doc.text(`Payment Time: ${paymentDate}`, 20, y);
+    y += 6;
+    doc.text(`Payment Type: ${cart.paymentType || "N/A"}`, 20, y);
     y += 8;
 
     // ===== TABLE HEADER =====
@@ -2732,25 +2732,29 @@ function getCartStatus(cart) {
     doc.setFillColor(230, 230, 230);
     doc.rect(20, y - 5, 170, 8, "F");
     doc.text("Item Name", 25, y);
-    doc.text("Qty", 110, y);
-    doc.text("Price", 130, y);
-    doc.text("Total", 165, y);
+    doc.text("Qty", 100, y);
+    doc.text("Price", 125, y);
+    doc.text("CGST", 145, y);
+    doc.text("SGST", 160, y);
+    doc.text("Total", 175, y);
     y += 4;
     doc.line(20, y, 190, y);
     y += 6;
 
-    // ===== EXTRACT ITEMS =====
+    // ===== FETCH ITEMS =====
     let items = [];
 
-    if (typeof cart.bill.summary === "object") {
-      // summary stored as object of items
-      items = Object.values(cart.bill.summary).map(it => ({
+    // Prefer "items" array from DB
+    if (Array.isArray(cart.items) && cart.items.length > 0) {
+      items = cart.items.map(it => ({
         name: it.name || "Unnamed",
         qty: it.qty || 0,
         price: it.price || 0,
+        cgst: ((it.price * it.qty) * (it.gst ? it.gst / 2 / 100 : 0)).toFixed(2),
+        sgst: ((it.price * it.qty) * (it.gst ? it.gst / 2 / 100 : 0)).toFixed(2),
       }));
     } else if (typeof cart.bill.summary === "string") {
-      // summary stored as plain text
+      // fallback to summary text parsing
       const lines = cart.bill.summary.split("\n").map(l => l.trim()).filter(l => l);
       let current = {};
       lines.forEach(line => {
@@ -2763,6 +2767,11 @@ function getCartStatus(cart) {
         } else if (line.startsWith("Price")) {
           const p = line.match(/₹([\d.]+)/);
           if (p) current.price = parseFloat(p[1]);
+        } else if (line.includes("CGST")) {
+          const c = line.match(/CGST.*₹([\d.]+)/);
+          const s = line.match(/SGST.*₹([\d.]+)/);
+          current.cgst = c ? parseFloat(c[1]) : 0;
+          current.sgst = s ? parseFloat(s[1]) : 0;
         }
       });
       if (current.name) items.push(current);
@@ -2772,11 +2781,18 @@ function getCartStatus(cart) {
     if (items.length > 0) {
       doc.setFontSize(10);
       items.forEach(item => {
-        const total = ((item.price || 0) * (item.qty || 0)).toFixed(2);
+        const total = (
+          (item.price || 0) * (item.qty || 0) +
+          parseFloat(item.cgst || 0) +
+          parseFloat(item.sgst || 0)
+        ).toFixed(2);
+
         doc.text(item.name.substring(0, 25), 25, y);
-        doc.text(String(item.qty || 0), 112, y);
-        doc.text(`₹${(item.price || 0).toFixed(2)}`, 130, y);
-        doc.text(`₹${total}`, 165, y);
+        doc.text(String(item.qty || 0), 102, y);
+        doc.text(`₹${(item.price || 0).toFixed(2)}`, 125, y);
+        doc.text(`₹${(item.cgst || 0)}`, 145, y);
+        doc.text(`₹${(item.sgst || 0)}`, 160, y);
+        doc.text(`₹${total}`, 175, y);
         y += 6;
         if (y > 270) {
           doc.addPage();
@@ -2794,9 +2810,9 @@ function getCartStatus(cart) {
     doc.setFontSize(10);
     const subtotal = cart.bill.originalTotal || 0;
     const discount = cart.bill.discount || 0;
-    const cgst = cart.bill.totalCGST || 0;
-    const sgst = cart.bill.totalSGST || 0;
-    const grand = cart.bill.finalPaid || 0;
+    const cgst = cart.bill.totalCGST ?? cart.totalCGST ?? 0;
+    const sgst = cart.bill.totalSGST ?? cart.totalSGST ?? 0;
+    const grand = cart.bill.finalPaid || cart.finalAmount || 0;
 
     doc.text(`Subtotal: ₹${subtotal.toFixed(2)}`, 140, y);
     y += 5;
@@ -2819,10 +2835,7 @@ function getCartStatus(cart) {
     doc.text("Generated via Admin Panel", 20, y);
 
     // ===== SAVE FILE =====
-    const timestamp = paymentTime
-      ? new Date(paymentTime).toISOString().replace(/[:.]/g, "-")
-      : new Date().toISOString().replace(/[:.]/g, "-");
-
+    const timestamp = new Date(paymentTime).toISOString().replace(/[:.]/g, "-");
     doc.save(`Invoice_${cart.cartId || cartId}_${timestamp}.pdf`);
   }
 </script>
