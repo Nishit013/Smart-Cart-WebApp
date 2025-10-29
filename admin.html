@@ -2683,134 +2683,104 @@ function getCartStatus(cart) {
 </script>
 
 
-<!-- jsPDF + autoTable -->
+<!-- Include jsPDF + autoTable -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
 <script>
-async function downloadPDF(cartId) {
-  const cart = allCarts[cartId];
-  if (!cart || !cart.bill) {
-    alert("❌ Bill not available for this cart.");
-    return;
-  }
+  async function downloadPDF(cartId) {
+    // Find cart data correctly even if key has timestamp prefix
+    let cart = allCarts[cartId];
+    if (!cart) {
+      cart = Object.values(allCarts).find(c => c.cartId === cartId);
+    }
 
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  let y = 20;
+    if (!cart || !cart.bill) {
+      alert("❌ Bill not available for this cart.");
+      return;
+    }
 
-  // ===== HEADER =====
-  doc.setFontSize(16);
-  doc.text("Smart Cart Pro – Invoice", 20, y);
-  y += 8;
-  doc.setFontSize(10);
-  doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
-  y += 5;
-  doc.text("GSTIN: 24XXXXXXX1Z9", 20, y);
-  doc.text("TAX INVOICE", 150, y - 5);
-  y += 8;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
 
-  // ===== CUSTOMER DETAILS =====
-  const phone = cart.bill.phone || "N/A";
-  const date = cart.paidAt
-    ? new Date(cart.paidAt).toLocaleString()
-    : new Date().toLocaleString();
-  doc.setFontSize(11);
-  doc.text(`Cart ID: ${cartId}`, 20, y);
-  doc.text(`Date: ${date}`, 150, y);
-  y += 6;
-  doc.text(`Customer Phone: ${phone}`, 20, y);
-  y += 6;
+    let y = 20;
+    doc.setFontSize(14);
+    doc.text("Smart Cart Pro – Invoice", 20, y);
+    y += 10;
 
-  doc.line(20, y, 190, y);
-  y += 6;
+    doc.setFontSize(10);
+    doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
+    y += 5;
+    doc.text("TAX INVOICE", 150, y - 5);
+    doc.text("GSTIN: 24XXXXXXX1Z9", 20, y);
+    y += 5;
 
-  // ===== GET ITEMS SAFELY =====
-  let itemsArray = [];
+    doc.line(20, y, 190, y);
+    y += 8;
 
-  if (Array.isArray(cart.bill.items)) {
-    itemsArray = cart.bill.items; // already an array
-  } else if (cart.bill.items && typeof cart.bill.items === "object") {
-    itemsArray = Object.values(cart.bill.items); // object → array
-  } else if (cart.items && typeof cart.items === "object") {
-    itemsArray = Object.values(cart.items);
-  }
+    // Header info
+    const dateStr = cart.bill.timestamp
+      ? new Date(cart.bill.timestamp).toLocaleString()
+      : new Date().toLocaleString();
+    doc.text(`Cart ID: ${cart.cartId || cartId}`, 20, y);
+    doc.text(`Date: ${dateStr}`, 140, y);
+    y += 6;
+    if (cart.bill.phone)
+      doc.text(`Customer Phone: ${cart.bill.phone}`, 20, y);
+    y += 8;
 
-  // ===== ITEMS TABLE =====
-  if (!itemsArray.length) {
-    doc.text("No items found in this bill.", 20, y);
-  } else {
-    const tableColumn = ["#", "Item Name", "Qty", "Price (₹)", "CGST%", "SGST%", "Total (₹)"];
-    const tableRows = [];
-
-    itemsArray.forEach((item, index) => {
-      const price = Number(item.price || 0);
-      const qty = Number(item.qty || 1);
-      const cgst = Number(item.cgst || 0);
-      const sgst = Number(item.sgst || 0);
-      const total = (price * qty).toFixed(2);
-
-      tableRows.push([
-        index + 1,
-        item.name || "Unnamed",
-        qty,
-        price.toFixed(2),
-        cgst,
-        sgst,
-        total
+    // Draw items table
+    const items = cart.items || (cart.bill.items || []);
+    if (items && items.length > 0) {
+      const itemData = items.map((item, i) => [
+        i + 1,
+        item.name || "N/A",
+        item.qty || 0,
+        `₹${item.price || 0}`,
+        `₹${(item.qty || 0) * (item.price || 0)}`
       ]);
-    });
 
-    doc.autoTable({
-      startY: y,
-      head: [tableColumn],
-      body: tableRows,
-      theme: "striped",
-      headStyles: { fillColor: [33, 150, 243], textColor: 255 },
-      styles: { fontSize: 10, halign: "center" },
-      margin: { left: 20, right: 20 },
-    });
+      doc.autoTable({
+        startY: y,
+        head: [["#", "Item Name", "Qty", "Price", "Total"]],
+        body: itemData,
+        styles: { fontSize: 10 },
+        headStyles: { fillColor: [0, 0, 0], textColor: 255 },
+        margin: { left: 20, right: 20 },
+      });
+
+      y = doc.lastAutoTable.finalY + 10;
+    } else {
+      doc.setFontSize(11);
+      doc.text("No items found in this bill.", 20, y);
+      y += 10;
+    }
+
+    // Totals
+    const { subtotal = 0, discount = 0, totalCGST = 0, totalSGST = 0, coupon = "None", grandTotal = 0 } = cart.bill;
+
+    doc.setFontSize(11);
+    doc.text(`Subtotal: ₹${subtotal}`, 20, y);
+    y += 6;
+    doc.text(`Discount: ₹${discount}`, 20, y);
+    y += 6;
+    doc.text(`Total CGST: ₹${totalCGST}`, 20, y);
+    y += 6;
+    doc.text(`Total SGST: ₹${totalSGST}`, 20, y);
+    y += 6;
+    doc.text(`Coupon Used: ${coupon}`, 20, y);
+    y += 6;
+    doc.text(`Grand Total: ₹${grandTotal}`, 20, y);
+    y += 10;
+
+    doc.setFontSize(10);
+    doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
+    y += 6;
+    doc.text("Generated via Admin Panel", 20, y);
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
   }
-
-  const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : y + 10;
-
-  // ===== TOTAL SUMMARY =====
-  const subtotal = Number(cart.bill.originalTotal || cart.total || 0);
-  const discount = Number(cart.bill.discount || 0);
-  const cgst = Number(cart.bill.totalCGST || 0);
-  const sgst = Number(cart.bill.totalSGST || 0);
-  const gst = cgst + sgst;
-  const finalPaid = Number(cart.bill.finalPaid || cart.finalAmount || 0);
-  const coupon = cart.bill.discountCoupon || cart.discountCoupon || "None";
-
-  doc.setFontSize(11);
-  doc.text("Subtotal:", 140, finalY);
-  doc.text(`${subtotal.toFixed(2)} ₹`, 180, finalY, { align: "right" });
-
-  doc.text("Discount:", 140, finalY + 6);
-  doc.text(`- ${discount.toFixed(2)} ₹`, 180, finalY + 6, { align: "right" });
-
-  doc.text("Total CGST:", 140, finalY + 12);
-  doc.text(`${cgst.toFixed(2)} ₹`, 180, finalY + 12, { align: "right" });
-
-  doc.text("Total SGST:", 140, finalY + 18);
-  doc.text(`${sgst.toFixed(2)} ₹`, 180, finalY + 18, { align: "right" });
-
-  doc.text("Coupon Used:", 140, finalY + 24);
-  doc.text(`${coupon}`, 180, finalY + 24, { align: "right" });
-
-  doc.setFontSize(13);
-  doc.text("Grand Total:", 140, finalY + 32);
-  doc.text(`${finalPaid.toFixed(2)} ₹`, 180, finalY + 32, { align: "right" });
-
-  // ===== FOOTER =====
-  doc.setFontSize(9);
-  doc.text("Thank you for shopping with Smart Cart Pro!", 20, finalY + 45);
-  doc.text("Generated via Admin Panel", 20, finalY + 50);
-
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  doc.save(`Cart_${cartId}_Invoice_${timestamp}.pdf`);
-}
 </script>
 
 <script>
