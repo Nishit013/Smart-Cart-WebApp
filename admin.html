@@ -2714,21 +2714,20 @@ function getCartStatus(cart) {
     y += 8;
 
     // ===== PAYMENT DETAILS =====
-    const paymentTime =
-      cart.paidAt && !isNaN(cart.paidAt)
-        ? cart.paidAt
-        : cart.paymentTime && !isNaN(cart.paymentTime)
-        ? cart.paymentTime
-        : null;
+    let paymentTimestamp = null;
+    if (cart.paidAt && !isNaN(cart.paidAt)) {
+      paymentTimestamp = cart.paidAt;
+    } else if (cart.paymentTime && !isNaN(Date.parse(cart.paymentTime))) {
+      paymentTimestamp = Date.parse(cart.paymentTime);
+    }
 
-    const paymentDate = paymentTime
-      ? new Date(paymentTime).toLocaleString()
+    const paymentDate = paymentTimestamp
+      ? new Date(paymentTimestamp).toLocaleString()
       : "N/A";
 
     const paymentType =
-      cart.paymentType && cart.paymentType.trim() !== ""
-        ? cart.paymentType
-        : "Not Specified";
+      cart.paymentType ||
+      (cart.bill.paymentType ? cart.bill.paymentType : "N/A");
 
     // ===== CUSTOMER DETAILS =====
     doc.setFontSize(11);
@@ -2757,16 +2756,20 @@ function getCartStatus(cart) {
 
     // ===== FETCH ITEMS =====
     let items = [];
-
     if (Array.isArray(cart.items) && cart.items.length > 0) {
-      items = cart.items.map(it => ({
-        name: it.name || "Unnamed",
-        qty: it.qty || 0,
-        price: it.price || 0,
-        cgst: ((it.price * it.qty) * (it.gst ? it.gst / 2 / 100 : 0)).toFixed(2),
-        sgst: ((it.price * it.qty) * (it.gst ? it.gst / 2 / 100 : 0)).toFixed(2),
-      }));
+      items = cart.items.map(it => {
+        const cgstValue = ((it.price * it.qty) * (it.cgst ? it.cgst / 100 : it.gst ? it.gst / 2 / 100 : 0)).toFixed(2);
+        const sgstValue = ((it.price * it.qty) * (it.sgst ? it.sgst / 100 : it.gst ? it.gst / 2 / 100 : 0)).toFixed(2);
+        return {
+          name: it.name || "Unnamed",
+          qty: it.qty || 0,
+          price: it.price || 0,
+          cgst: cgstValue,
+          sgst: sgstValue
+        };
+      });
     } else if (typeof cart.bill.summary === "string") {
+      // Fallback: extract from summary text
       const lines = cart.bill.summary.split("\n").map(l => l.trim()).filter(l => l);
       let current = {};
       lines.forEach(line => {
@@ -2794,16 +2797,16 @@ function getCartStatus(cart) {
       doc.setFontSize(10);
       items.forEach(item => {
         const total = (
-          (item.price || 0) * (item.qty || 0) +
+          (item.price * item.qty) +
           parseFloat(item.cgst || 0) +
           parseFloat(item.sgst || 0)
         ).toFixed(2);
 
         doc.text(item.name.substring(0, 25), 25, y);
         doc.text(String(item.qty || 0), 102, y);
-        doc.text(`₹${(item.price || 0).toFixed(2)}`, 125, y);
-        doc.text(`₹${(item.cgst || 0)}`, 145, y);
-        doc.text(`₹${(item.sgst || 0)}`, 160, y);
+        doc.text(`₹${item.price.toFixed(2)}`, 125, y);
+        doc.text(`₹${item.cgst}`, 145, y);
+        doc.text(`₹${item.sgst}`, 160, y);
         doc.text(`₹${total}`, 175, y);
         y += 6;
         if (y > 270) {
@@ -2820,7 +2823,7 @@ function getCartStatus(cart) {
     // ===== BILL SUMMARY =====
     y += 8;
     doc.setFontSize(10);
-    const subtotal = cart.bill.originalTotal || 0;
+    const subtotal = cart.bill.originalTotal || cart.total || 0;
     const discount = cart.bill.discount || 0;
     const cgst = cart.bill.totalCGST ?? cart.totalCGST ?? 0;
     const sgst = cart.bill.totalSGST ?? cart.totalSGST ?? 0;
@@ -2847,8 +2850,8 @@ function getCartStatus(cart) {
     doc.text("Generated via Admin Panel", 20, y);
 
     // ===== SAVE FILE =====
-    const timestamp = paymentDate.replace(/[^\w\s]/g, "-").replace(/\s+/g, "_");
-    doc.save(`Invoice_${cart.cartId || cartId}_${timestamp}.pdf`);
+    const fileTime = paymentDate.replace(/[^\w\s]/g, "-").replace(/\s+/g, "_");
+    doc.save(`Invoice_${cart.cartId || cartId}_${fileTime}.pdf`);
   }
 </script>
 
