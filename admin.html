@@ -2723,7 +2723,7 @@ function getCartStatus(cart) {
     doc.line(20, y, 190, y);
     y += 8;
 
-    // ✅ Robust extraction for Payment Time & Type
+    // ===== ✅ PAYMENT TIME & TYPE (Robust) =====
     let paymentDate = "N/A";
     let rawPaymentTime = cart.paymentTime || cart.paidAt || cart.bill?.paymentTime || cart.bill?.paidAt;
 
@@ -2735,7 +2735,7 @@ function getCartStatus(cart) {
       }
     }
 
-    let paymentType = "Online Payment";
+    let paymentType = "Online Payment"; // Default for online
     if (cart.paymentType && cart.paymentType.trim() !== "") {
       paymentType = cart.paymentType;
     } else if (cart.bill?.paymentType && cart.bill.paymentType.trim() !== "") {
@@ -2786,8 +2786,8 @@ function getCartStatus(cart) {
     if (Array.isArray(cart.items) && cart.items.length > 0) {
       tableItems = cart.items.map(it => {
         const found = parsedSummaryItems.find(s => s.name && it.name && s.name.toLowerCase().includes(it.name.toLowerCase()));
-        const cgst = found ? found.cgst : ((it.cgst ? (it.cgst/100) * it.price * it.qty : 0));
-        const sgst = found ? found.sgst : ((it.sgst ? (it.sgst/100) * it.price * it.qty : 0));
+        const cgst = found ? found.cgst : 0;
+        const sgst = found ? found.sgst : 0;
         const subtotal = found?.subtotal || (it.price * it.qty);
         return {
           name: it.name || "Unnamed",
@@ -2871,6 +2871,7 @@ function getCartStatus(cart) {
     doc.save(`Invoice_${cart.cartId || cartId}_${fileTime}.pdf`);
   }
 </script>
+
 
 
 
