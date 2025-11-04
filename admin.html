@@ -2725,34 +2725,31 @@ function getCartStatus(cart) {
     y += 8;
 
     // --- Robust Payment Time Handling ---
-    let paymentTimestampVal = null;
+// ✅ Robust extraction for Payment Time & Type
+let paymentDate = "N/A";
 
-    function tryParseTime(val) {
-      if (!val) return null;
-      if (typeof val === "string") {
-        const parsed = Date.parse(val);
-        if (!isNaN(parsed)) return parsed;
-      } else if (typeof val === "number" || !isNaN(Number(val))) {
-        return Number(val);
-      }
-      return null;
-    }
+// Prefer paymentTime → then paidAt → then bill fields
+let rawPaymentTime = cart.paymentTime || cart.paidAt || cart.bill?.paymentTime || cart.bill?.paidAt;
 
-    paymentTimestampVal =
-      tryParseTime(cart.paymentTime) ||
-      tryParseTime(cart.paidAt) ||
-      tryParseTime(cart.bill?.paymentTime) ||
-      tryParseTime(cart.bill?.paidAt);
+// Check if exists
+if (rawPaymentTime) {
+  // If ISO string
+  if (typeof rawPaymentTime === "string" && !isNaN(Date.parse(rawPaymentTime))) {
+    paymentDate = new Date(rawPaymentTime).toLocaleString();
+  }
+  // If timestamp (number)
+  else if (!isNaN(Number(rawPaymentTime))) {
+    paymentDate = new Date(Number(rawPaymentTime)).toLocaleString();
+  }
+}
 
-    const paymentDate =
-      paymentTimestampVal && !isNaN(paymentTimestampVal)
-        ? new Date(paymentTimestampVal).toLocaleString()
-        : "N/A";
-
-    // --- Robust Payment Type Handling ---
-    let paymentType = "Online (Auto Paid)";
-    if (cart.paymentType) paymentType = cart.paymentType;
-    else if (cart.bill?.paymentType) paymentType = cart.bill.paymentType;
+// ✅ Determine payment type
+let paymentType = "Online Payment"; // default
+if (cart.paymentType && cart.paymentType.trim() !== "") {
+  paymentType = cart.paymentType;
+} else if (cart.bill?.paymentType && cart.bill.paymentType.trim() !== "") {
+  paymentType = cart.bill.paymentType;
+}
 
     // Customer details
     doc.setFontSize(11);
