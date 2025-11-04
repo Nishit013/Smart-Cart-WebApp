@@ -2723,19 +2723,27 @@ function getCartStatus(cart) {
     doc.line(20, y, 190, y);
     y += 8;
 
-    // ===== ✅ PAYMENT TIME & TYPE (Robust) =====
+    // ===== ✅ PAYMENT TIME & TYPE (Robust for both ISO + timestamp) =====
     let paymentDate = "N/A";
-    let rawPaymentTime = cart.paymentTime || cart.paidAt || cart.bill?.paymentTime || cart.bill?.paidAt;
+    const rawPaymentTime =
+      cart.paymentTime ||
+      cart.paidAt ||
+      cart.bill?.paymentTime ||
+      cart.bill?.paidAt;
 
     if (rawPaymentTime) {
+      // Handle ISO string
       if (typeof rawPaymentTime === "string" && !isNaN(Date.parse(rawPaymentTime))) {
         paymentDate = new Date(rawPaymentTime).toLocaleString();
-      } else if (!isNaN(Number(rawPaymentTime))) {
+      }
+      // Handle timestamp (number)
+      else if (!isNaN(Number(rawPaymentTime))) {
         paymentDate = new Date(Number(rawPaymentTime)).toLocaleString();
       }
     }
 
-    let paymentType = "Online Payment"; // Default for online
+    // ✅ Determine payment type
+    let paymentType = "Online Payment"; // Default
     if (cart.paymentType && cart.paymentType.trim() !== "") {
       paymentType = cart.paymentType;
     } else if (cart.bill?.paymentType && cart.bill.paymentType.trim() !== "") {
@@ -2864,8 +2872,9 @@ function getCartStatus(cart) {
 
     // ===== SAVE FILE =====
     const fileTime = rawPaymentTime
-      ? new Date(typeof rawPaymentTime === "string" ? Date.parse(rawPaymentTime) : Number(rawPaymentTime))
-          .toISOString().replace(/[:.]/g, "-")
+      ? new Date(
+          typeof rawPaymentTime === "string" ? Date.parse(rawPaymentTime) : Number(rawPaymentTime)
+        ).toISOString().replace(/[:.]/g, "-")
       : new Date().toISOString().replace(/[:.]/g, "-");
 
     doc.save(`Invoice_${cart.cartId || cartId}_${fileTime}.pdf`);
