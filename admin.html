@@ -2686,14 +2686,10 @@ function getCartStatus(cart) {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
   async function downloadPDF(cartId) {
-    // find the best cart object
     let cart = allCarts[cartId];
     if (!cart) {
       const candidates = Object.values(allCarts).filter(c => c.cartId === cartId);
-      if (candidates.length === 0) {
-        alert("❌ Cart not found.");
-        return;
-      }
+      if (candidates.length === 0) return alert("❌ Cart not found.");
       candidates.sort((a, b) => {
         const ta = Number(a.paidAt || a.paymentTime || a.bill?.paidAt || a.bill?.paymentTime || 0);
         const tb = Number(b.paidAt || b.paymentTime || b.bill?.paidAt || b.bill?.paymentTime || 0);
@@ -2702,10 +2698,7 @@ function getCartStatus(cart) {
       cart = candidates[0];
     }
 
-    if (!cart || !cart.bill) {
-      alert("❌ Bill not available for this cart.");
-      return;
-    }
+    if (!cart || !cart.bill) return alert("❌ Bill not available for this cart.");
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
@@ -2725,31 +2718,37 @@ function getCartStatus(cart) {
     y += 8;
 
     // --- Robust Payment Time Handling ---
-// ✅ Robust extraction for Payment Time & Type
-let paymentDate = "N/A";
+    function tryParseTime(val) {
+      if (!val) return null;
+      if (typeof val === "string") {
+        // Handle ISO strings OR numeric strings
+        if (!isNaN(val) && val.length > 10) return Number(val);
+        const parsed = Date.parse(val);
+        if (!isNaN(parsed)) return parsed;
+      } else if (typeof val === "number") {
+        return val;
+      }
+      return null;
+    }
 
-// Prefer paymentTime → then paidAt → then bill fields
-let rawPaymentTime = cart.paymentTime || cart.paidAt || cart.bill?.paymentTime || cart.bill?.paidAt;
+    const paymentTimestampVal =
+      tryParseTime(cart.paymentTime) ||
+      tryParseTime(cart.paidAt) ||
+      tryParseTime(cart.bill?.paymentTime) ||
+      tryParseTime(cart.bill?.paidAt);
 
-// Check if exists
-if (rawPaymentTime) {
-  // If ISO string
-  if (typeof rawPaymentTime === "string" && !isNaN(Date.parse(rawPaymentTime))) {
-    paymentDate = new Date(rawPaymentTime).toLocaleString();
-  }
-  // If timestamp (number)
-  else if (!isNaN(Number(rawPaymentTime))) {
-    paymentDate = new Date(Number(rawPaymentTime)).toLocaleString();
-  }
-}
+    const paymentDate =
+      paymentTimestampVal && !isNaN(paymentTimestampVal)
+        ? new Date(paymentTimestampVal).toLocaleString()
+        : "N/A";
 
-// ✅ Determine payment type
-let paymentType = "Online Payment"; // default
-if (cart.paymentType && cart.paymentType.trim() !== "") {
-  paymentType = cart.paymentType;
-} else if (cart.bill?.paymentType && cart.bill.paymentType.trim() !== "") {
-  paymentType = cart.bill.paymentType;
-}
+    // --- Robust Payment Type Handling ---
+    let paymentType = "Online Payment"; // default fallback
+    if (cart.paymentType && cart.paymentType.trim() !== "") {
+      paymentType = cart.paymentType;
+    } else if (cart.bill?.paymentType && cart.bill.paymentType.trim() !== "") {
+      paymentType = cart.bill.paymentType;
+    }
 
     // Customer details
     doc.setFontSize(11);
@@ -2758,7 +2757,7 @@ if (cart.paymentType && cart.paymentType.trim() !== "") {
     doc.text(`Payment Time: ${paymentDate}`, 20, y); y += 6;
     doc.text(`Payment Type: ${paymentType}`, 20, y); y += 8;
 
-    // Parse summary into structured item blocks
+    // --- Parse Summary for Table ---
     const summaryText = (typeof cart.bill.summary === "string") ? cart.bill.summary : "";
     const summaryLines = summaryText.split("\n").map(l => l.replace(/\r/g, "").trim());
     const parsedSummaryItems = [];
@@ -2771,52 +2770,39 @@ if (cart.paymentType && cart.paymentType.trim() !== "") {
         i++;
         while (i < summaryLines.length && summaryLines[i] !== "") {
           const L = summaryLines[i];
-          const priceMatch = L.match(/Price.*₹\s*([\d.]+)/i) || L.match(/Price.*:\s*₹?\s*([\d.]+)/i);
+          const priceMatch = L.match(/Price.*₹\s*([\d.]+)/i);
           if (priceMatch) item.price = parseFloat(priceMatch[1]);
           const qtyMatch = L.match(/Qty:\s*([\d.]+)/i);
           if (qtyMatch) item.qty = Number(qtyMatch[1]);
           const subtotalMatch = L.match(/Subtotal:\s*₹?\s*([\d.]+)/i);
           if (subtotalMatch) item.subtotal = parseFloat(subtotalMatch[1]);
-          const taxLineMatch = L.match(/CGST.*₹\s*([\d.]+).*SGST.*₹\s*([\d.]+)/i);
-          if (taxLineMatch) {
-            item.cgst = parseFloat(taxLineMatch[1]);
-            item.sgst = parseFloat(taxLineMatch[2]);
+          const taxMatch = L.match(/CGST.*₹\s*([\d.]+).*SGST.*₹\s*([\d.]+)/i);
+          if (taxMatch) {
+            item.cgst = parseFloat(taxMatch[1]);
+            item.sgst = parseFloat(taxMatch[2]);
           }
           i++;
         }
-        if (!item.subtotal && item.price && item.qty)
-          item.subtotal = parseFloat((item.price * item.qty).toFixed(2));
         parsedSummaryItems.push(item);
       } else i++;
     }
 
-    // Prepare table items
+    // Prepare Table
     let tableItems = [];
     if (Array.isArray(cart.items) && cart.items.length > 0) {
       tableItems = cart.items.map(it => {
-        const found = parsedSummaryItems.find(s => s.name && it.name && s.name.toLowerCase().includes(it.name.toLowerCase())) ||
-                      parsedSummaryItems.find(s => s.name && it.name && it.name.toLowerCase().includes(s.name.toLowerCase()));
-        const cgst = found ? found.cgst : (it.cgst ? ((it.cgst/100) * it.price * it.qty) : 0);
-        const sgst = found ? found.sgst : (it.sgst ? ((it.sgst/100) * it.price * it.qty) : 0);
-        const subtotal = found?.subtotal || (it.price * it.qty);
+        const found = parsedSummaryItems.find(s => s.name?.toLowerCase().includes(it.name?.toLowerCase()));
         return {
           name: it.name || "Unnamed",
           qty: Number(it.qty) || 0,
           price: Number(it.price) || 0,
-          cgst: Number(cgst) || 0,
-          sgst: Number(sgst) || 0,
-          subtotal: Number(subtotal) || 0
+          cgst: found ? found.cgst : 0,
+          sgst: found ? found.sgst : 0,
+          subtotal: found ? found.subtotal : (it.price * it.qty)
         };
       });
-    } else if (parsedSummaryItems.length > 0) {
-      tableItems = parsedSummaryItems.map(s => ({
-        name: s.name,
-        qty: s.qty || 0,
-        price: s.price || (s.subtotal && s.qty ? s.subtotal / s.qty : 0),
-        cgst: s.cgst || 0,
-        sgst: s.sgst || 0,
-        subtotal: s.subtotal || (s.price * s.qty) || 0
-      }));
+    } else {
+      tableItems = parsedSummaryItems;
     }
 
     // Table header
@@ -2835,37 +2821,27 @@ if (cart.paymentType && cart.paymentType.trim() !== "") {
 
     // Table rows
     let totalCGST = 0, totalSGST = 0, subtotalSum = 0;
-    if (tableItems.length > 0) {
+    for (const itm of tableItems) {
+      totalCGST += itm.cgst;
+      totalSGST += itm.sgst;
+      subtotalSum += itm.subtotal;
       doc.setFontSize(10);
-      for (const itm of tableItems) {
-        totalCGST += itm.cgst;
-        totalSGST += itm.sgst;
-        subtotalSum += itm.subtotal;
-        doc.text(itm.name.substring(0, 28), 25, y);
-        doc.text(String(itm.qty), 95, y);
-        doc.text(`₹${itm.price.toFixed(2)}`, 115, y);
-        doc.text(`₹${itm.cgst.toFixed(2)}`, 140, y);
-        doc.text(`₹${itm.sgst.toFixed(2)}`, 160, y);
-        doc.text(`₹${itm.subtotal.toFixed(2)}`, 175, y);
-        y += 6;
-        if (y > 270) {
-          doc.addPage();
-          y = 20;
-        }
-      }
-    } else {
-      doc.setFontSize(10);
-      doc.text("No items found in this bill.", 25, y);
-      y += 8;
+      doc.text(itm.name.substring(0, 28), 25, y);
+      doc.text(String(itm.qty), 95, y);
+      doc.text(`₹${itm.price.toFixed(2)}`, 115, y);
+      doc.text(`₹${itm.cgst.toFixed(2)}`, 140, y);
+      doc.text(`₹${itm.sgst.toFixed(2)}`, 160, y);
+      doc.text(`₹${itm.subtotal.toFixed(2)}`, 175, y);
+      y += 6;
     }
 
-    // Bill totals
+    // Totals
     const bill = cart.bill || {};
-    const totalBefore = Number(bill.originalTotal ?? cart.total ?? subtotalSum) || subtotalSum;
-    const discount = Number(bill.discount || cart.discount || 0) || 0;
-    const billCGST = Number(bill.totalCGST ?? cart.totalCGST ?? totalCGST) || totalCGST;
-    const billSGST = Number(bill.totalSGST ?? cart.totalSGST ?? totalSGST) || totalSGST;
-    const finalPaid = Number(bill.finalPaid ?? cart.finalAmount ?? (totalBefore - discount + billCGST + billSGST)) || 0;
+    const totalBefore = Number(bill.originalTotal ?? cart.total ?? subtotalSum);
+    const discount = Number(bill.discount ?? cart.discount ?? 0);
+    const billCGST = Number(bill.totalCGST ?? cart.totalCGST ?? totalCGST);
+    const billSGST = Number(bill.totalSGST ?? cart.totalSGST ?? totalSGST);
+    const finalPaid = Number(bill.finalPaid ?? cart.finalAmount ?? (totalBefore - discount));
 
     y += 8;
     doc.setFontSize(10);
@@ -2884,7 +2860,6 @@ if (cart.paymentType && cart.paymentType.trim() !== "") {
     y += 6;
     doc.text("Generated via Admin Panel", 20, y);
 
-    // Save file
     const fileTime = paymentTimestampVal
       ? new Date(paymentTimestampVal).toISOString().replace(/[:.]/g, "-")
       : new Date().toISOString().replace(/[:.]/g, "-");
