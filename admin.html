@@ -2710,19 +2710,24 @@ function getCartStatus(cart) {
     doc.line(20, y, 190, y);
     y += 8;
 
-    // ===== PAYMENT DETAILS =====
+    // ===== DETERMINE PAYMENT TIME =====
     let paymentTimestamp =
-      cart.paidAt || cart.paymentTime || cart.bill.paidAt || cart.bill.paymentTime || null;
+      Number(cart.paidAt) ||
+      Number(cart.paymentTime) ||
+      Number(cart.bill.paidAt) ||
+      Number(cart.bill.paymentTime) ||
+      null;
 
     const paymentDate =
       paymentTimestamp && !isNaN(paymentTimestamp)
         ? new Date(paymentTimestamp).toLocaleString()
         : "N/A";
 
-    let paymentType =
+    // ===== DETERMINE PAYMENT TYPE =====
+    const paymentType =
       cart.paymentType ||
       cart.bill.paymentType ||
-      (cart.finalAmount > 0 ? "Online" : "N/A");
+      "N/A";
 
     // ===== CUSTOMER DETAILS =====
     doc.setFontSize(11);
@@ -2740,36 +2745,51 @@ function getCartStatus(cart) {
     doc.setFillColor(230, 230, 230);
     doc.rect(20, y - 5, 170, 8, "F");
     doc.text("Item Name", 25, y);
-    doc.text("Qty", 100, y);
-    doc.text("Price", 125, y);
-    doc.text("CGST", 145, y);
+    doc.text("Qty", 95, y);
+    doc.text("Price", 115, y);
+    doc.text("CGST", 140, y);
     doc.text("SGST", 160, y);
-    doc.text("Total", 175, y);
+    doc.text("Subtotal", 175, y);
     y += 4;
     doc.line(20, y, 190, y);
     y += 6;
 
     // ===== FETCH ITEMS =====
     let items = [];
+
     if (Array.isArray(cart.items) && cart.items.length > 0) {
-      items = cart.items.map(it => {
-        const gstRate = it.gst || 0;
-        const price = parseFloat(it.price) || 0;
-        const qty = parseInt(it.qty) || 0;
-        const baseTotal = price * qty;
-
-        const cgstValue = gstRate > 0 ? (baseTotal * (gstRate / 2) / 100) : 0;
-        const sgstValue = gstRate > 0 ? (baseTotal * (gstRate / 2) / 100) : 0;
-
-        return {
+      // Use GST from summary if available; else fallback to 0
+      if (typeof cart.bill.summary === "string") {
+        const summaryLines = cart.bill.summary.split("\n").map(l => l.trim());
+        cart.items.forEach(it => {
+          const line = summaryLines.find(l => l.includes(it.name));
+          let cgst = 0, sgst = 0;
+          const gstMatch = summaryLines.find(l => l.includes("CGST") && l.includes("SGST"));
+          if (gstMatch) {
+            const c = gstMatch.match(/CGST.*₹([\d.]+)/);
+            const s = gstMatch.match(/SGST.*₹([\d.]+)/);
+            cgst = c ? parseFloat(c[1]) : 0;
+            sgst = s ? parseFloat(s[1]) : 0;
+          }
+          items.push({
+            name: it.name || "Unnamed",
+            qty: it.qty || 0,
+            price: it.price || 0,
+            cgst,
+            sgst
+          });
+        });
+      } else {
+        items = cart.items.map(it => ({
           name: it.name || "Unnamed",
-          qty,
-          price,
-          cgst: cgstValue,
-          sgst: sgstValue
-        };
-      });
+          qty: it.qty || 0,
+          price: it.price || 0,
+          cgst: 0,
+          sgst: 0
+        }));
+      }
     } else if (typeof cart.bill.summary === "string") {
+      // Extract from summary if no items array
       const lines = cart.bill.summary.split("\n").map(l => l.trim()).filter(l => l);
       let current = {};
       lines.forEach(line => {
@@ -2793,28 +2813,22 @@ function getCartStatus(cart) {
     }
 
     // ===== TABLE ROWS =====
-    let totalCGST = 0;
-    let totalSGST = 0;
-    let subtotal = 0;
-
     if (items.length > 0) {
       doc.setFontSize(10);
       items.forEach(item => {
-        const itemTotal = item.price * item.qty;
-        const total = itemTotal + item.cgst + item.sgst;
-
-        subtotal += itemTotal;
-        totalCGST += item.cgst;
-        totalSGST += item.sgst;
+        const subtotal = (
+          item.price * item.qty +
+          parseFloat(item.cgst || 0) +
+          parseFloat(item.sgst || 0)
+        ).toFixed(2);
 
         doc.text(item.name.substring(0, 25), 25, y);
-        doc.text(String(item.qty || 0), 102, y);
-        doc.text(`₹${item.price.toFixed(2)}`, 125, y);
-        doc.text(`₹${item.cgst.toFixed(2)}`, 145, y);
-        doc.text(`₹${item.sgst.toFixed(2)}`, 160, y);
-        doc.text(`₹${total.toFixed(2)}`, 175, y);
+        doc.text(String(item.qty || 0), 97, y);
+        doc.text(`₹${item.price.toFixed(2)}`, 115, y);
+        doc.text(`₹${item.cgst}`, 140, y);
+        doc.text(`₹${item.sgst}`, 160, y);
+        doc.text(`₹${subtotal}`, 175, y);
         y += 6;
-
         if (y > 270) {
           doc.addPage();
           y = 20;
@@ -2828,25 +2842,21 @@ function getCartStatus(cart) {
 
     // ===== BILL SUMMARY =====
     y += 8;
-    doc.setFontSize(10);
+    const subtotal = cart.bill.originalTotal || cart.total || 0;
     const discount = cart.bill.discount || 0;
-    const grand = cart.bill.finalPaid || cart.finalAmount || (subtotal + totalCGST + totalSGST - discount);
+    const cgst = cart.bill.totalCGST ?? cart.totalCGST ?? 0;
+    const sgst = cart.bill.totalSGST ?? cart.totalSGST ?? 0;
+    const grand = cart.bill.finalPaid || cart.finalAmount || 0;
 
     doc.text(`Subtotal: ₹${subtotal.toFixed(2)}`, 140, y);
     y += 5;
     doc.text(`Discount: ₹${discount.toFixed(2)}`, 140, y);
     y += 5;
-
-    // Only show GST rows if any GST applied
-    if (totalCGST > 0 || totalSGST > 0) {
-      doc.text(`CGST: ₹${totalCGST.toFixed(2)}`, 140, y);
-      y += 5;
-      doc.text(`SGST: ₹${totalSGST.toFixed(2)}`, 140, y);
-      y += 5;
-    }
-
+    doc.text(`CGST: ₹${cgst.toFixed(2)}`, 140, y);
+    y += 5;
+    doc.text(`SGST: ₹${sgst.toFixed(2)}`, 140, y);
+    y += 5;
     doc.setFont(undefined, "bold");
-    doc.setFontSize(11);
     doc.text(`Grand Total: ₹${grand.toFixed(2)}`, 140, y);
     doc.setFont(undefined, "normal");
     y += 10;
