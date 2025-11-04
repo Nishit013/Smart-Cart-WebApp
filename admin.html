@@ -2710,24 +2710,19 @@ function getCartStatus(cart) {
     doc.line(20, y, 190, y);
     y += 8;
 
-    // ===== DETERMINE PAYMENT TIME =====
-    let paymentTimestamp = null;
-    if (cart.paidAt) paymentTimestamp = Number(cart.paidAt);
-    else if (cart.paymentTime) paymentTimestamp = Number(cart.paymentTime);
-    else if (cart.bill.paidAt) paymentTimestamp = Number(cart.bill.paidAt);
-    else if (cart.bill.paymentTime) paymentTimestamp = Number(cart.bill.paymentTime);
+    // ===== PAYMENT DETAILS =====
+    let paymentTimestamp =
+      cart.paidAt || cart.paymentTime || cart.bill.paidAt || cart.bill.paymentTime || null;
 
     const paymentDate =
       paymentTimestamp && !isNaN(paymentTimestamp)
         ? new Date(paymentTimestamp).toLocaleString()
         : "N/A";
 
-    // ===== DETERMINE PAYMENT TYPE =====
-    let paymentType = "N/A";
-    if (cart.paymentType && typeof cart.paymentType === "string")
-      paymentType = cart.paymentType;
-    else if (cart.bill.paymentType && typeof cart.bill.paymentType === "string")
-      paymentType = cart.bill.paymentType;
+    let paymentType =
+      cart.paymentType ||
+      cart.bill.paymentType ||
+      (cart.finalAmount > 0 ? "Online" : "N/A");
 
     // ===== CUSTOMER DETAILS =====
     doc.setFontSize(11);
@@ -2758,12 +2753,18 @@ function getCartStatus(cart) {
     let items = [];
     if (Array.isArray(cart.items) && cart.items.length > 0) {
       items = cart.items.map(it => {
-        const cgstValue = ((it.price * it.qty) * (it.cgst ? it.cgst / 100 : it.gst ? it.gst / 2 / 100 : 0)).toFixed(2);
-        const sgstValue = ((it.price * it.qty) * (it.sgst ? it.sgst / 100 : it.gst ? it.gst / 2 / 100 : 0)).toFixed(2);
+        const gstRate = it.gst || 0;
+        const price = parseFloat(it.price) || 0;
+        const qty = parseInt(it.qty) || 0;
+        const baseTotal = price * qty;
+
+        const cgstValue = gstRate > 0 ? (baseTotal * (gstRate / 2) / 100) : 0;
+        const sgstValue = gstRate > 0 ? (baseTotal * (gstRate / 2) / 100) : 0;
+
         return {
           name: it.name || "Unnamed",
-          qty: it.qty || 0,
-          price: it.price || 0,
+          qty,
+          price,
           cgst: cgstValue,
           sgst: sgstValue
         };
@@ -2792,22 +2793,28 @@ function getCartStatus(cart) {
     }
 
     // ===== TABLE ROWS =====
+    let totalCGST = 0;
+    let totalSGST = 0;
+    let subtotal = 0;
+
     if (items.length > 0) {
       doc.setFontSize(10);
       items.forEach(item => {
-        const total = (
-          (item.price * item.qty) +
-          parseFloat(item.cgst || 0) +
-          parseFloat(item.sgst || 0)
-        ).toFixed(2);
+        const itemTotal = item.price * item.qty;
+        const total = itemTotal + item.cgst + item.sgst;
+
+        subtotal += itemTotal;
+        totalCGST += item.cgst;
+        totalSGST += item.sgst;
 
         doc.text(item.name.substring(0, 25), 25, y);
         doc.text(String(item.qty || 0), 102, y);
         doc.text(`₹${item.price.toFixed(2)}`, 125, y);
-        doc.text(`₹${item.cgst}`, 145, y);
-        doc.text(`₹${item.sgst}`, 160, y);
-        doc.text(`₹${total}`, 175, y);
+        doc.text(`₹${item.cgst.toFixed(2)}`, 145, y);
+        doc.text(`₹${item.sgst.toFixed(2)}`, 160, y);
+        doc.text(`₹${total.toFixed(2)}`, 175, y);
         y += 6;
+
         if (y > 270) {
           doc.addPage();
           y = 20;
@@ -2822,20 +2829,22 @@ function getCartStatus(cart) {
     // ===== BILL SUMMARY =====
     y += 8;
     doc.setFontSize(10);
-    const subtotal = cart.bill.originalTotal || cart.total || 0;
     const discount = cart.bill.discount || 0;
-    const cgst = cart.bill.totalCGST ?? cart.totalCGST ?? 0;
-    const sgst = cart.bill.totalSGST ?? cart.totalSGST ?? 0;
-    const grand = cart.bill.finalPaid || cart.finalAmount || 0;
+    const grand = cart.bill.finalPaid || cart.finalAmount || (subtotal + totalCGST + totalSGST - discount);
 
     doc.text(`Subtotal: ₹${subtotal.toFixed(2)}`, 140, y);
     y += 5;
     doc.text(`Discount: ₹${discount.toFixed(2)}`, 140, y);
     y += 5;
-    doc.text(`CGST: ₹${cgst.toFixed(2)}`, 140, y);
-    y += 5;
-    doc.text(`SGST: ₹${sgst.toFixed(2)}`, 140, y);
-    y += 5;
+
+    // Only show GST rows if any GST applied
+    if (totalCGST > 0 || totalSGST > 0) {
+      doc.text(`CGST: ₹${totalCGST.toFixed(2)}`, 140, y);
+      y += 5;
+      doc.text(`SGST: ₹${totalSGST.toFixed(2)}`, 140, y);
+      y += 5;
+    }
+
     doc.setFont(undefined, "bold");
     doc.setFontSize(11);
     doc.text(`Grand Total: ₹${grand.toFixed(2)}`, 140, y);
@@ -2853,6 +2862,7 @@ function getCartStatus(cart) {
     doc.save(`Invoice_${cart.cartId || cartId}_${fileTime}.pdf`);
   }
 </script>
+
 
 
 
