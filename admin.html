@@ -1289,14 +1289,15 @@ body.light-mode select option {
 
 
 
-/* 🧾 Large data modals override */
+/* 🧾 Large data modals — refined size */
 #lowStockModal .modal-content,
 #purchaseOrderModal .modal-content,
 #stockHistoryModal .modal-content {
-  max-width: 1100px;          /* Wider view for tables */
-  width: 90%;
-  padding: 25px 30px;
+  max-width: 950px;        /* ✅ slightly smaller than before */
+  width: 88%;
+  padding: 22px 28px;
   margin: 60px auto;
+  border-radius: 12px;
 }
 
 /* Scrollable area for long tables */
@@ -1309,16 +1310,45 @@ body.light-mode select option {
   border-radius: 10px;
 }
 
-/* Optional: Responsive adjustment for smaller screens */
+/* ✅ Better table spacing for readability */
+#lowStockModal table tr,
+#purchaseOrderModal table tr,
+#stockHistoryModal table tr {
+  line-height: 1.7em;        /* Adds vertical spacing between rows */
+}
+
+#lowStockModal table td,
+#purchaseOrderModal table td,
+#stockHistoryModal table td {
+  padding: 10px 14px;        /* Adds more space inside cells */
+  border-bottom: 1px solid var(--border);
+}
+
+/* Optional: hover effect for clarity */
+#lowStockModal table tbody tr:hover,
+#purchaseOrderModal table tbody tr:hover,
+#stockHistoryModal table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.05);
+  transition: 0.2s;
+}
+
+/* Responsive view for smaller screens */
 @media (max-width: 768px) {
   #lowStockModal .modal-content,
   #purchaseOrderModal .modal-content,
   #stockHistoryModal .modal-content {
     width: 95%;
     max-width: none;
-    padding: 20px;
+    padding: 18px;
+  }
+
+  #lowStockModal table td,
+  #purchaseOrderModal table td,
+  #stockHistoryModal table td {
+    padding: 8px 10px;
   }
 }
+
 
 
 </style>
