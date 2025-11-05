@@ -1287,6 +1287,39 @@ body.light-mode select option {
 }
 
 
+
+
+/* 🧾 Large data modals override */
+#lowStockModal .modal-content,
+#purchaseOrderModal .modal-content,
+#stockHistoryModal .modal-content {
+  max-width: 1100px;          /* Wider view for tables */
+  width: 90%;
+  padding: 25px 30px;
+  margin: 60px auto;
+}
+
+/* Scrollable area for long tables */
+#lowStockModal .scroll-box,
+#purchaseOrderModal .scroll-box,
+#stockHistoryModal .scroll-box {
+  max-height: 70vh;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+/* Optional: Responsive adjustment for smaller screens */
+@media (max-width: 768px) {
+  #lowStockModal .modal-content,
+  #purchaseOrderModal .modal-content,
+  #stockHistoryModal .modal-content {
+    width: 95%;
+    max-width: none;
+    padding: 20px;
+  }
+}
+
 </style>
 
 </head>
