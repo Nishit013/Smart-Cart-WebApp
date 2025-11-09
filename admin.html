@@ -2790,40 +2790,28 @@ function getCartStatus(cart) {
     // ===== ✅ PAYMENT TIME & TYPE (Robust) =====
     // ===== ✅ PAYMENT TIME & TYPE (Accurate detection) =====
 // ===== ✅ PAYMENT TIME & TYPE (Accurate detection) =====
-let paymentDate = "N/A";
-let rawPaymentTime = cart.paymentTime || cart.paidAt || cart.bill?.paymentTime || cart.bill?.paidAt;
 
-// ✅ Fixed payment time detection
-if (rawPaymentTime !== undefined && rawPaymentTime !== null) {
-  let parsedTime = null;
+let paymentTime = "NA";
 
-  // Case 1: ISO string (e.g. "2025-11-09T17:16:06.459Z")
-  if (typeof rawPaymentTime === "string") {
-    if (!isNaN(Date.parse(rawPaymentTime))) {
-      parsedTime = new Date(rawPaymentTime);
-    } else if (/^\d+$/.test(rawPaymentTime)) {
-      // string that contains only digits → timestamp
-      parsedTime = new Date(Number(rawPaymentTime));
-    }
-  }
-
-  // Case 2: numeric timestamp (e.g. 1762708783194)
-  if (typeof rawPaymentTime === "number") {
-    parsedTime = new Date(rawPaymentTime);
-  }
-
-  if (parsedTime && !isNaN(parsedTime.getTime())) {
-    paymentDate = parsedTime.toLocaleString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true,
-    });
+// Check for direct paymentTime field
+if (cart.paymentTime) {
+  if (typeof cart.paymentTime === "string") {
+    // ISO string (online payment)
+    paymentTime = new Date(cart.paymentTime).toLocaleString();
+  } else if (typeof cart.paymentTime === "number") {
+    // timestamp (marked paid)
+    paymentTime = new Date(cart.paymentTime).toLocaleString();
   }
 }
+// Fallback: try from key if missing
+else {
+  const key = cartKey || "";
+  const match = key.match(/(\d{13})/); // extract 13-digit timestamp
+  if (match) {
+    paymentTime = new Date(parseInt(match[1])).toLocaleString();
+  }
+}
+
 
 
 // Detect payment type
