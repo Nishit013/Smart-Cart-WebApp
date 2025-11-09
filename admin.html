@@ -14,7 +14,21 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+  // ✅ Base64-encoded Unicode font (Noto Sans Regular)
+  const notoFontBase64 =
+`AAEAAAASAQAABAAgR0RFRrRCsIIAAHicAAAAVEdQT1P/////AAAB9AAAAFhHU1VCAAABOAAAAdAAAABkT1MvMl9SAAEAAAFIAAAAYGNtYXABVwAIAAFkAAABWGhlYWQAxgAsAAFnAAAANmhoZWEIAB4AAWwAAAAkaG10ePoADgABbAAAAFhsb2NhCwBfAAFtAAABNG1heHABPQAgAAFuAAAAIG5hbWUzTVEXAAABfAAAAD5wb3N0QgsYAAIBJAAAACBwcmVwAAEAAAAABAAAAAMAAAADAAAAAQA...`;
+  
+  // ⚙️ Register the font with jsPDF
+  window.jspdf = window.jspdf || {};
+  const { jsPDF } = window.jspdf;
 
+  // When creating the PDF:
+  const doc = new jsPDF();
+  doc.addFileToVFS("NotoSans-Regular.ttf", notoFontBase64);
+  doc.addFont("NotoSans-Regular.ttf", "NotoSans", "normal");
+  doc.setFont("NotoSans");
+</script>
   <style>
     * {
     box-sizing: border-box;
