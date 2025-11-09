@@ -2778,10 +2778,8 @@ function getCartStatus(cart) {
     let selectedKey = undefined;
 
     if (cart) {
-      // direct exact-key hit (rarely the case because keys include timestamp)
       selectedKey = cartId;
     } else {
-      // search entries with same cartId value (collect key & value)
       const entries = Object.entries(allCarts || {});
       const candidates = entries
         .filter(([k, v]) => v && v.cartId === cartId)
@@ -2792,10 +2790,9 @@ function getCartStatus(cart) {
         return;
       }
 
-      // compute best epoch for each candidate (fields then key)
       candidates.forEach(c => {
         const v = c.value;
-        const fromFields = toEpochMs(v.paidAt) ?? toEpochMs(v.paymentTime) ?? toEpochMs(v.bill?.paidAt) ?? toEpochMs(v.bill?.paymentTime);
+        const fromFields = toEpochMs(v.paidAt) ?? toEpochMs(v.paymentTime);
         c.epoch = fromFields ?? extractEpochFromKey(c.key) ?? 0;
       });
 
@@ -2809,51 +2806,26 @@ function getCartStatus(cart) {
       return;
     }
 
-    // Determine rawPaymentTime (prefer explicit fields)
-    let rawPaymentTime = cart.paymentTime ?? cart.paidAt ?? cart.bill?.paymentTime ?? cart.bill?.paidAt ?? null;
+    // ✅ FIXED PAYMENT TIME
+    let rawTime = cart.paymentTime || cart.paidAt || cart.bill?.paymentTime || null;
+    let epoch = null;
+    if (rawTime) epoch = toEpochMs(rawTime);
+    if (!epoch && selectedKey) epoch = extractEpochFromKey(selectedKey);
+    const paymentTime = epoch ? new Date(epoch).toLocaleString() : "N/A";
 
-    // If no explicit time, try epoch from selectedKey
-    let epochFromKey = null;
-    if (!rawPaymentTime && selectedKey) {
-      epochFromKey = extractEpochFromKey(selectedKey);
-      if (epochFromKey) rawPaymentTime = epochFromKey;
-    } else if (!rawPaymentTime) {
-      // as extra fallback: search for the key where object reference matches and extract epoch
-      for (const k of Object.keys(allCarts || {})) {
-        if (allCarts[k] === cart) {
-          epochFromKey = extractEpochFromKey(k);
-          if (epochFromKey) rawPaymentTime = epochFromKey;
-          selectedKey = selectedKey || k;
-          break;
-        }
-      }
+    // ✅ FIXED PAYMENT TYPE
+    let paymentType = "Online Payment";
+    if (/^\d+_CART/i.test(selectedKey)) {
+      paymentType = "Cash (Marked Paid)";
+    } else if (/^CART.*_\d+$/i.test(selectedKey)) {
+      paymentType = "Online Payment";
+    } else if (cart.paymentType) {
+      paymentType = cart.paymentType;
     }
 
-    const epoch = toEpochMs(rawPaymentTime);
-    const paymentDate = epoch ? new Date(epoch).toLocaleString() : "N/A";
-
-    // Payment type: prefer explicit cart.paymentType if present; otherwise infer from key format
-    let paymentType = (cart.paymentType ?? cart.bill?.paymentType ?? "").toString().trim();
-    if (!paymentType) {
-      if (selectedKey && /^\d+_/.test(selectedKey)) {
-        // key starts with digits_  => timestamp_cartID  -> Cash (Marked Paid)
-        paymentType = "Cash (Marked Paid)";
-      } else if (selectedKey && /_\d+$/.test(selectedKey)) {
-        // key ends with _digits => cartID_timestamp -> Online Payment
-        paymentType = "Online Payment";
-      } else {
-        // fallback: if there's a numeric paidAt field, treat as Cash; otherwise Online
-        if (toEpochMs(cart.paidAt) || toEpochMs(cart.bill?.paidAt)) paymentType = "Cash (Marked Paid)";
-        else paymentType = "Online Payment";
-      }
-    } else {
-      if (/cash/i.test(paymentType)) paymentType = "Cash (Marked Paid)";
-    }
-
-    // Phone
     const phone = (cart.phone ?? cart.bill?.phone ?? "N/A").toString();
 
-    // Build PDF (same layout as before)
+    // PDF generation
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     let y = 18;
@@ -2879,7 +2851,7 @@ function getCartStatus(cart) {
     doc.setFont(undefined, "normal"); doc.text(`${phone}`, 60, y); y += 6;
 
     doc.setFont(undefined, "bold"); doc.text("Payment Time:", 20, y);
-    doc.setFont(undefined, "normal"); doc.text(`${paymentDate}`, 55, y); y += 6;
+    doc.setFont(undefined, "normal"); doc.text(`${paymentTime}`, 55, y); y += 6;
 
     doc.setFont(undefined, "bold"); doc.text("Payment Type:", 20, y);
     doc.setFont(undefined, "normal"); doc.text(`${paymentType}`, 55, y); y += 8;
@@ -2915,7 +2887,6 @@ function getCartStatus(cart) {
       } else i++;
     }
 
-    // Create table items
     let tableItems = [];
     if (Array.isArray(cart.items) && cart.items.length > 0) {
       tableItems = cart.items.map(it => {
@@ -2936,7 +2907,7 @@ function getCartStatus(cart) {
       tableItems = parsedSummaryItems;
     }
 
-    // Draw table header
+    // Draw table
     doc.setFontSize(11);
     doc.setFillColor(230, 230, 230);
     doc.rect(20, y - 5, 170, 8, "F");
@@ -2950,7 +2921,6 @@ function getCartStatus(cart) {
     doc.line(20, y, 190, y);
     y += 6;
 
-    // Rows
     let totalCGST = 0, totalSGST = 0, subtotalSum = 0;
     if (tableItems.length > 0) {
       doc.setFontSize(10);
@@ -2972,7 +2942,6 @@ function getCartStatus(cart) {
       y += 8;
     }
 
-    // Totals
     const bill = cart.bill || {};
     const totalBefore = Number(bill.originalTotal ?? cart.total ?? subtotalSum) || subtotalSum;
     const discount = Number(bill.discount ?? cart.discount ?? 0) || 0;
