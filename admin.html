@@ -2790,66 +2790,73 @@ function getCartStatus(cart) {
     // ===== ✅ PAYMENT TIME & TYPE (Robust) =====
     // ===== ✅ PAYMENT TIME & TYPE (Accurate detection) =====
 // ===== ✅ PAYMENT TIME & TYPE (Enhanced & Accurate) =====
+// ===== ✅ PAYMENT TIME & TYPE (Final & Accurate) =====
 let paymentDate = "N/A";
 let paymentType = "Online Payment"; // default
 
-// Step 1: Identify the paid cart key
+// Identify the paid cart key
 let paidCartKey = Object.keys(paidCarts || {}).find(
   key => key.includes(cart.cartId)
 );
 
-// Step 2: Try to detect payment type directly
+// Detect payment type
 if (cart.paymentType && cart.paymentType.trim() !== "") {
   paymentType = cart.paymentType;
 } else if (cart.bill?.paymentType && cart.bill.paymentType.trim() !== "") {
   paymentType = cart.bill.paymentType;
 } else if (paidCartKey) {
-  // If key starts with CARTID_ → Online
-  // If key starts with timestamp_ → Cash
   const [firstPart] = paidCartKey.split("_");
   if (firstPart.toUpperCase().includes("CART")) {
     paymentType = "Online Payment";
   } else {
-    paymentType = "Cash Payment";
+    paymentType = "Cash (Marked Paid)";
   }
 }
 
-// Step 3: Extract payment time
+// Extract payment timestamp or ISO
 let rawPaymentTime =
   cart.paymentTime ||
   cart.paidAt ||
   cart.bill?.paymentTime ||
   cart.bill?.paidAt;
 
-// Step 4: Format payment time properly
-if (rawPaymentTime) {
-  // Online = ISO string
-  if (typeof rawPaymentTime === "string" && !isNaN(Date.parse(rawPaymentTime))) {
-    paymentDate = new Date(rawPaymentTime).toLocaleString("en-IN", {
-      dateStyle: "medium",
-      timeStyle: "short"
-    });
+// Function: Convert any time format to readable local date
+function formatLocalTime(value) {
+  if (!value) return "N/A";
+  let dateObj;
+
+  if (typeof value === "string" && !isNaN(Date.parse(value))) {
+    // ISO string → Online payment
+    dateObj = new Date(value);
+  } else if (!isNaN(Number(value))) {
+    let num = Number(value);
+    // Sometimes timestamp may be in seconds, convert if needed
+    if (num < 1e12) num *= 1000;
+    dateObj = new Date(num);
+  } else {
+    return "N/A";
   }
-  // Cash = timestamp number
-  else if (!isNaN(Number(rawPaymentTime))) {
-    paymentDate = new Date(Number(rawPaymentTime)).toLocaleString("en-IN", {
-      dateStyle: "medium",
-      timeStyle: "short"
-    });
+
+  return dateObj.toLocaleString("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    hour12: true
+  });
+}
+
+// Format main time
+if (rawPaymentTime) {
+  paymentDate = formatLocalTime(rawPaymentTime);
+}
+
+// Fallback — extract from key (handles both CART1_... and ..._CART1)
+if (paymentDate === "N/A" && paidCartKey) {
+  const timestampMatch = paidCartKey.match(/\d{13}|\d{10}/);
+  if (timestampMatch) {
+    paymentDate = formatLocalTime(timestampMatch[0]);
   }
 }
 
-// Step 5: Fallback → extract timestamp from the key name itself
-if (paymentDate === "N/A" && paidCartKey) {
-  let timestampMatch = paidCartKey.match(/\d{13}/);
-  if (timestampMatch) {
-    const ts = parseInt(timestampMatch[0]);
-    paymentDate = new Date(ts).toLocaleString("en-IN", {
-      dateStyle: "medium",
-      timeStyle: "short"
-    });
-  }
-}
 
 
     // ===== CUSTOMER DETAILS =====
