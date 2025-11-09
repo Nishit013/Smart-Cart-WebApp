@@ -2787,10 +2787,14 @@ function getCartStatus(cart) {
     doc.line(20, y, 190, y);
     y += 8;
 
-    // ===== ✅ PAYMENT TIME & TYPE (Robust) =====
-    let paymentDate = "N/A";
-    let rawPaymentTime = cart.paymentTime || cart.paidAt || cart.bill?.paymentTime || cart.bill?.paidAt;
+    // ===== 🕒 PAYMENT TIME =====
+    let rawPaymentTime =
+      cart.paymentTime ||
+      cart.paidAt ||
+      cart.bill?.paymentTime ||
+      cart.bill?.paidAt;
 
+    let paymentDate = "N/A";
     if (rawPaymentTime) {
       if (typeof rawPaymentTime === "string" && !isNaN(Date.parse(rawPaymentTime))) {
         paymentDate = new Date(rawPaymentTime).toLocaleString();
@@ -2799,26 +2803,32 @@ function getCartStatus(cart) {
       }
     }
 
-    let paymentType = "Online Payment"; // Default for online
-    if (cart.paymentType && cart.paymentType.trim() !== "") {
-      paymentType = cart.paymentType;
-    } else if (cart.bill?.paymentType && cart.bill.paymentType.trim() !== "") {
-      paymentType = cart.bill.paymentType;
+    // ===== 💳 PAYMENT TYPE =====
+    let paymentType =
+      cart.paymentType ||
+      cart.bill?.paymentType ||
+      "Online Payment";
+    if (paymentType.toLowerCase().includes("cash")) {
+      paymentType = "Cash (Marked Paid)";
     }
 
-    // ===== CUSTOMER DETAILS =====
+    // ===== 📱 CUSTOMER DETAILS =====
+    const phone =
+      cart.phone ||
+      cart.bill?.phone ||
+      "N/A";
+
     doc.setFontSize(11);
     doc.text(`Cart ID: ${cart.cartId || cartId}`, 20, y); y += 6;
-    doc.text(`Customer Phone: ${cart.bill.phone || cart.phone || "N/A"}`, 20, y); y += 6;
+    doc.text(`Customer Phone: ${phone}`, 20, y); y += 6;
     doc.text(`Payment Time: ${paymentDate}`, 20, y); y += 6;
     doc.text(`Payment Type: ${paymentType}`, 20, y); y += 8;
 
-    // ===== PARSE SUMMARY ITEMS =====
+    // ===== 🧾 PARSE SUMMARY TEXT =====
     const summaryText = typeof cart.bill.summary === "string" ? cart.bill.summary : "";
     const summaryLines = summaryText.split("\n").map(l => l.trim());
     const parsedSummaryItems = [];
     let i = 0;
-
     while (i < summaryLines.length) {
       const line = summaryLines[i];
       const itemMatch = line.match(/^\d+\.\s*(.+)$/);
@@ -2902,13 +2912,20 @@ function getCartStatus(cart) {
       y += 8;
     }
 
-    // ===== TOTALS =====
+    // ===== 💰 TOTALS =====
     const bill = cart.bill || {};
-    const totalBefore = Number(bill.originalTotal ?? cart.total ?? subtotalSum) || subtotalSum;
-    const discount = Number(bill.discount || cart.discount || 0) || 0;
-    const billCGST = Number(bill.totalCGST ?? cart.totalCGST ?? totalCGST) || totalCGST;
-    const billSGST = Number(bill.totalSGST ?? cart.totalSGST ?? totalSGST) || totalSGST;
-    const finalPaid = Number(bill.finalPaid ?? cart.finalAmount ?? (totalBefore - discount + billCGST + billSGST)) || 0;
+
+    const totalBefore =
+      Number(bill.originalTotal ?? cart.total ?? subtotalSum) || subtotalSum;
+    const discount =
+      Number(bill.discount ?? cart.discount ?? 0) || 0;
+    const billCGST =
+      Number(bill.totalCGST ?? cart.totalCGST ?? totalCGST) || totalCGST;
+    const billSGST =
+      Number(bill.totalSGST ?? cart.totalSGST ?? totalSGST) || totalSGST;
+
+    const finalPaid =
+      Number(bill.finalPaid ?? cart.finalAmount ?? (totalBefore - discount + billCGST + billSGST)) || 0;
 
     y += 8;
     doc.text(`Subtotal: ₹${totalBefore.toFixed(2)}`, 140, y); y += 6;
@@ -2935,6 +2952,7 @@ function getCartStatus(cart) {
     doc.save(`Invoice_${cart.cartId || cartId}_${fileTime}.pdf`);
   }
 </script>
+
 
 
 
