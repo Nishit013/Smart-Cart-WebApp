@@ -2749,112 +2749,209 @@ function getCartStatus(cart) {
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-  async function downloadPDF(cartKey) {
-  const cart = allCarts[cartKey];
-  if (!cart || !cart.bill || !cart.bill.summary) {
-    alert("❌ Bill summary not available for this cart.");
-    return;
-  }
-
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  let y = 20;
-
-  // Detect Payment Type based on key format
-  let paymentType = "Online Payment";
-  if (/^\d+_CART/i.test(cartKey)) {
-    paymentType = "Cash (Marked Paid)";
-  }
-
-  // Handle Payment Time
-  let paymentTimeValue = cart.paymentTime || cart.paidAt || null;
-  let paymentTime = "N/A";
-
-  if (paymentTimeValue) {
-    // If it’s a timestamp number (like 1762708712607)
-    if (typeof paymentTimeValue === "number") {
-      paymentTime = new Date(paymentTimeValue).toLocaleString();
+  async function downloadPDF(cartId) {
+    let cart = allCarts[cartId];
+    if (!cart) {
+      const candidates = Object.values(allCarts).filter(c => c.cartId === cartId);
+      if (candidates.length === 0) {
+        alert("❌ Cart not found.");
+        return;
+      }
+      candidates.sort((a, b) => {
+        const ta = Number(a.paidAt || a.paymentTime || a.bill?.paidAt || a.bill?.paymentTime || 0);
+        const tb = Number(b.paidAt || b.paymentTime || b.bill?.paidAt || b.bill?.paymentTime || 0);
+        return tb - ta;
+      });
+      cart = candidates[0];
     }
-    // If it’s an ISO string (like "2025-11-09T17:13:40.270Z")
-    else if (typeof paymentTimeValue === "string" && !isNaN(Date.parse(paymentTimeValue))) {
-      paymentTime = new Date(paymentTimeValue).toLocaleString();
+
+    if (!cart || !cart.bill) {
+      alert("❌ Bill not available for this cart.");
+      return;
     }
-  }
 
-  // Header
-  doc.setFontSize(14);
-  doc.text("Smart Cart Pro – Invoice", 15, y);
-  y += 8;
-  doc.setFontSize(10);
-  doc.text("Campus Store - Hall 1, Block B, Tech Street", 15, y);
-  doc.text("TAX INVOICE", 160, y);
-  y += 5;
-  doc.text("GSTIN: 24XXXXXXX1Z9", 15, y);
-  y += 8;
-  doc.line(10, y, 200, y);
-  y += 8;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    let y = 18;
 
-  // Cart Info
-  doc.text(`Cart ID: ${cart.cartId}`, 15, y); y += 6;
-  doc.text(`Customer Phone: ${cart.phone || "N/A"}`, 15, y); y += 6;
-  doc.text(`Payment Time: ${paymentTime}`, 15, y); y += 6;
-  doc.text(`Payment Type: ${paymentType}`, 15, y);
-  y += 10;
-
-  // Table Header
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.text("Item Name", 15, y);
-  doc.text("Qty", 80, y);
-  doc.text("Price", 100, y);
-  doc.text("CGST", 125, y);
-  doc.text("SGST", 145, y);
-  doc.text("Subtotal", 170, y);
-  y += 4;
-  doc.line(10, y, 200, y);
-  y += 6;
-
-  // Table Content
-  doc.setFont("helvetica", "normal");
-  cart.items.forEach(item => {
-    doc.text(item.name, 15, y);
-    doc.text(String(item.qty), 85, y);
-    doc.text(`₹${item.price.toFixed(2)}`, 100, y);
-    doc.text(`₹${(item.price * item.cgst / 100).toFixed(2)}`, 125, y);
-    doc.text(`₹${(item.price * item.sgst / 100).toFixed(2)}`, 145, y);
-    doc.text(`₹${(item.qty * item.price).toFixed(2)}`, 170, y);
+    // ===== HEADER =====
+    doc.setFontSize(14);
+    doc.text("Smart Cart Pro – Invoice", 20, y);
+    y += 8;
+    doc.setFontSize(10);
+    doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
+    doc.text("TAX INVOICE", 150, y);
     y += 6;
-  });
+    doc.text("GSTIN: 24XXXXXXX1Z9", 20, y);
+    y += 6;
+    doc.line(20, y, 190, y);
+    y += 8;
 
-  y += 4;
-  doc.line(10, y, 200, y);
-  y += 6;
+    // ===== ✅ PAYMENT TIME & TYPE (Robust) =====
+    // ===== ✅ PAYMENT TIME & TYPE (Accurate detection) =====
+let paymentDate = "N/A";
+let rawPaymentTime = cart.paymentTime || cart.paidAt || cart.bill?.paymentTime || cart.bill?.paidAt;
 
-  // Totals
-  const subtotal = cart.total?.toFixed(2) || "0.00";
-  const discount = cart.discount?.toFixed(2) || "0.00";
-  const cgst = cart.totalCGST?.toFixed(2) || "0.00";
-  const sgst = cart.totalSGST?.toFixed(2) || "0.00";
-  const final = cart.finalAmount?.toFixed(2) || "0.00";
-
-  doc.text(`Subtotal: ₹${subtotal}`, 150, y); y += 6;
-  doc.text(`Discount: ₹${discount}`, 150, y); y += 6;
-  doc.text(`CGST: ₹${cgst}`, 150, y); y += 6;
-  doc.text(`SGST: ₹${sgst}`, 150, y); y += 6;
-  doc.setFont("helvetica", "bold");
-  doc.text(`Grand Total: ₹${final}`, 150, y);
-  y += 15;
-
-  // Footer
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text("Thank you for shopping with Smart Cart Pro!", 15, y);
-  y += 6;
-  doc.text("Generated via Admin Panel", 15, y);
-
-  doc.save(`${cart.cartId}_invoice.pdf`);
+// Format payment date properly
+if (rawPaymentTime) {
+  if (typeof rawPaymentTime === "string" && !isNaN(Date.parse(rawPaymentTime))) {
+    paymentDate = new Date(rawPaymentTime).toLocaleString();
+  } else if (!isNaN(Number(rawPaymentTime))) {
+    paymentDate = new Date(Number(rawPaymentTime)).toLocaleString();
+  }
 }
 
+// Detect payment type
+let paymentType = "Online Payment"; // Default
+if (cart.paymentType && cart.paymentType.trim() !== "") {
+  paymentType = cart.paymentType;
+} else if (cart.bill?.paymentType && cart.bill.paymentType.trim() !== "") {
+  paymentType = cart.bill.paymentType;
+} else {
+  // Infer from how data key is stored in paidCarts
+  const paidCartKey = Object.keys(paidCarts || {}).find(
+    key => key.includes(cart.cartId)
+  );
+
+  if (paidCartKey) {
+    // If key starts with CARTID_ → online, if starts with timestamp_ → cash
+    const [firstPart] = paidCartKey.split("_");
+    if (firstPart.toUpperCase().includes("CART")) {
+      paymentType = "Online Payment";
+    } else {
+      paymentType = "Cash Payment";
+    }
+  }
+}
+
+    // ===== CUSTOMER DETAILS =====
+    doc.setFontSize(11);
+    doc.text(`Cart ID: ${cart.cartId || cartId}`, 20, y); y += 6;
+    doc.text(`Customer Phone: ${cart.bill.phone || cart.phone || "N/A"}`, 20, y); y += 6;
+    doc.text(`Payment Time: ${paymentDate}`, 20, y); y += 6;
+    doc.text(`Payment Type: ${paymentType}`, 20, y); y += 8;
+
+    // ===== PARSE SUMMARY ITEMS =====
+    const summaryText = typeof cart.bill.summary === "string" ? cart.bill.summary : "";
+    const summaryLines = summaryText.split("\n").map(l => l.trim());
+    const parsedSummaryItems = [];
+    let i = 0;
+
+    while (i < summaryLines.length) {
+      const line = summaryLines[i];
+      const itemMatch = line.match(/^\d+\.\s*(.+)$/);
+      if (itemMatch) {
+        const item = { name: itemMatch[1], price: 0, qty: 0, subtotal: 0, cgst: 0, sgst: 0 };
+        i++;
+        while (i < summaryLines.length && summaryLines[i] !== "") {
+          const L = summaryLines[i];
+          const priceMatch = L.match(/Price.*₹\s*([\d.]+)/i);
+          const qtyMatch = L.match(/Qty:\s*([\d.]+)/i);
+          const subtotalMatch = L.match(/Subtotal:\s*₹?\s*([\d.]+)/i);
+          const taxLineMatch = L.match(/CGST.*₹\s*([\d.]+).*SGST.*₹\s*([\d.]+)/i);
+          if (priceMatch) item.price = parseFloat(priceMatch[1]);
+          if (qtyMatch) item.qty = Number(qtyMatch[1]);
+          if (subtotalMatch) item.subtotal = parseFloat(subtotalMatch[1]);
+          if (taxLineMatch) {
+            item.cgst = parseFloat(taxLineMatch[1]);
+            item.sgst = parseFloat(taxLineMatch[2]);
+          }
+          i++;
+        }
+        if (!item.subtotal && item.price && item.qty) item.subtotal = item.price * item.qty;
+        parsedSummaryItems.push(item);
+      } else i++;
+    }
+
+    // ===== TABLE DATA =====
+    let tableItems = [];
+    if (Array.isArray(cart.items) && cart.items.length > 0) {
+      tableItems = cart.items.map(it => {
+        const found = parsedSummaryItems.find(s => s.name && it.name && s.name.toLowerCase().includes(it.name.toLowerCase()));
+        const cgst = found ? found.cgst : 0;
+        const sgst = found ? found.sgst : 0;
+        const subtotal = found?.subtotal || (it.price * it.qty);
+        return {
+          name: it.name || "Unnamed",
+          qty: Number(it.qty) || 0,
+          price: Number(it.price) || 0,
+          cgst: Number(cgst) || 0,
+          sgst: Number(sgst) || 0,
+          subtotal: Number(subtotal) || 0
+        };
+      });
+    } else if (parsedSummaryItems.length > 0) {
+      tableItems = parsedSummaryItems;
+    }
+
+    // ===== TABLE HEADER =====
+    doc.setFontSize(11);
+    doc.setFillColor(230, 230, 230);
+    doc.rect(20, y - 5, 170, 8, "F");
+    doc.text("Item Name", 25, y);
+    doc.text("Qty", 95, y);
+    doc.text("Price", 115, y);
+    doc.text("CGST", 140, y);
+    doc.text("SGST", 160, y);
+    doc.text("Subtotal", 175, y);
+    y += 6;
+    doc.line(20, y, 190, y);
+    y += 6;
+
+    // ===== TABLE ROWS =====
+    let totalCGST = 0, totalSGST = 0, subtotalSum = 0;
+    if (tableItems.length > 0) {
+      doc.setFontSize(10);
+      for (const itm of tableItems) {
+        totalCGST += itm.cgst;
+        totalSGST += itm.sgst;
+        subtotalSum += itm.subtotal;
+        doc.text(itm.name.substring(0, 28), 25, y);
+        doc.text(String(itm.qty), 95, y);
+        doc.text(`₹${itm.price.toFixed(2)}`, 115, y);
+        doc.text(`₹${itm.cgst.toFixed(2)}`, 140, y);
+        doc.text(`₹${itm.sgst.toFixed(2)}`, 160, y);
+        doc.text(`₹${itm.subtotal.toFixed(2)}`, 175, y);
+        y += 6;
+        if (y > 270) { doc.addPage(); y = 20; }
+      }
+    } else {
+      doc.text("No items found in this bill.", 25, y);
+      y += 8;
+    }
+
+    // ===== TOTALS =====
+    const bill = cart.bill || {};
+    const totalBefore = Number(bill.originalTotal ?? cart.total ?? subtotalSum) || subtotalSum;
+    const discount = Number(bill.discount || cart.discount || 0) || 0;
+    const billCGST = Number(bill.totalCGST ?? cart.totalCGST ?? totalCGST) || totalCGST;
+    const billSGST = Number(bill.totalSGST ?? cart.totalSGST ?? totalSGST) || totalSGST;
+    const finalPaid = Number(bill.finalPaid ?? cart.finalAmount ?? (totalBefore - discount + billCGST + billSGST)) || 0;
+
+    y += 8;
+    doc.text(`Subtotal: ₹${totalBefore.toFixed(2)}`, 140, y); y += 6;
+    doc.text(`Discount: ₹${discount.toFixed(2)}`, 140, y); y += 6;
+    doc.text(`CGST: ₹${billCGST.toFixed(2)}`, 140, y); y += 6;
+    doc.text(`SGST: ₹${billSGST.toFixed(2)}`, 140, y); y += 6;
+    doc.setFont(undefined, "bold");
+    doc.text(`Grand Total: ₹${finalPaid.toFixed(2)}`, 140, y);
+    doc.setFont(undefined, "normal");
+    y += 10;
+
+    // ===== FOOTER =====
+    doc.setFontSize(9);
+    doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
+    y += 6;
+    doc.text("Generated via Admin Panel", 20, y);
+
+    // ===== SAVE FILE =====
+    const fileTime = rawPaymentTime
+      ? new Date(typeof rawPaymentTime === "string" ? Date.parse(rawPaymentTime) : Number(rawPaymentTime))
+          .toISOString().replace(/[:.]/g, "-")
+      : new Date().toISOString().replace(/[:.]/g, "-");
+
+    doc.save(`Invoice_${cart.cartId || cartId}_${fileTime}.pdf`);
+  }
 </script>
 
 
