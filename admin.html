@@ -14,21 +14,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script>
-  // ✅ Base64-encoded Unicode font (Noto Sans Regular)
-  const notoFontBase64 =
-`AAEAAAASAQAABAAgR0RFRrRCsIIAAHicAAAAVEdQT1P/////AAAB9AAAAFhHU1VCAAABOAAAAdAAAABkT1MvMl9SAAEAAAFIAAAAYGNtYXABVwAIAAFkAAABWGhlYWQAxgAsAAFnAAAANmhoZWEIAB4AAWwAAAAkaG10ePoADgABbAAAAFhsb2NhCwBfAAFtAAABNG1heHABPQAgAAFuAAAAIG5hbWUzTVEXAAABfAAAAD5wb3N0QgsYAAIBJAAAACBwcmVwAAEAAAAABAAAAAMAAAADAAAAAQA...`;
-  
-  // ⚙️ Register the font with jsPDF
-  window.jspdf = window.jspdf || {};
-  const { jsPDF } = window.jspdf;
 
-  // When creating the PDF:
-  const doc = new jsPDF();
-  doc.addFileToVFS("NotoSans-Regular.ttf", notoFontBase64);
-  doc.addFont("NotoSans-Regular.ttf", "NotoSans", "normal");
-  doc.setFont("NotoSans");
-</script>
   <style>
     * {
     box-sizing: border-box;
@@ -2803,84 +2789,110 @@ function getCartStatus(cart) {
 
     // ===== ✅ PAYMENT TIME & TYPE (Robust) =====
     // ===== ✅ PAYMENT TIME & TYPE (Accurate detection) =====
-// ===== Final: Payment Time & Type (normalized + IST formatting + debug) =====
-let paymentDate = "N/A";
-let paymentType = "Online Payment"; // default
+// ---------- Robust Payment Time & Type (replace your old block with this) ----------
 
-// Find paidCarts key (the entry name in paidCarts that contains this cartId)
-const paidCartKey = Object.keys(paidCarts || {}).find(k => k && k.includes(cart.cartId));
-
-// --------------- Payment Type detection (unchanged logic) ---------------
-if (cart.paymentType && cart.paymentType.trim() !== "") {
-  paymentType = cart.paymentType;
-} else if (cart.bill?.paymentType && cart.bill.paymentType.trim() !== "") {
-  paymentType = cart.bill.paymentType;
-} else if (paidCartKey) {
-  const firstPart = paidCartKey.split("_")[0] || "";
-  // key like "CART1_176270..." => Online, key like "176270..._CART1" => Cash
-  if (/^cart/i.test(firstPart) || firstPart.toUpperCase().includes("CART")) {
-    paymentType = "Online Payment";
-  } else {
-    paymentType = "Cash (Marked Paid)";
+// helper: normalize any input (ISO, numeric string, number seconds/ms) -> epoch ms or null
+function normalizeToEpochMs(v) {
+  if (v == null) return null;
+  // number
+  if (typeof v === "number" && !isNaN(v)) {
+    return v < 1e12 ? Math.floor(v * 1000) : Math.floor(v);
   }
+  // numeric string
+  if (typeof v === "string" && /^\d+$/.test(v)) {
+    const n = Number(v);
+    return n < 1e12 ? Math.floor(n * 1000) : Math.floor(n);
+  }
+  // ISO string
+  if (typeof v === "string") {
+    const parsed = Date.parse(v);
+    if (!isNaN(parsed)) return parsed;
+  }
+  return null;
 }
 
-// --------------- Payment Time (robust) ---------------
-let rawPaymentTime = cart.paymentTime ?? cart.paidAt ?? cart.bill?.paymentTime ?? cart.bill?.paidAt ?? null;
-
-function toLocalIST(value) {
-  // returns formatted string in Asia/Kolkata or "N/A"
-  if (value == null) return "N/A";
-
-  let dateObj = null;
-
-  // If it's a string that is an ISO date
-  if (typeof value === "string") {
-    // numeric-like string -> treat as number
-    if (/^\d+$/.test(value)) {
-      let n = Number(value);
-      if (n < 1e12) n = n * 1000; // seconds -> ms
-      dateObj = new Date(n);
-    } else if (!isNaN(Date.parse(value))) {
-      dateObj = new Date(value);
-    } else {
-      return "N/A";
-    }
-  } else if (typeof value === "number") {
-    let n = value;
-    if (n < 1e12) n = n * 1000; // if seconds, convert to ms
-    dateObj = new Date(n);
-  } else {
-    return "N/A";
-  }
-
-  if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) return "N/A";
-
-  // Format explicitly in Asia/Kolkata timezone so your invoice always shows IST
+// helper: format epoch ms to IST string (or "N/A")
+function fmtIST(epochMs) {
+  if (!epochMs) return "N/A";
+  const d = new Date(Number(epochMs));
+  if (isNaN(d.getTime())) return "N/A";
   return new Intl.DateTimeFormat("en-IN", {
     day: "2-digit", month: "short", year: "numeric",
     hour: "2-digit", minute: "2-digit", second: "2-digit",
     hour12: true,
     timeZone: "Asia/Kolkata"
-  }).format(dateObj);
+  }).format(d);
 }
 
-// Try raw fields first
-paymentDate = toLocalIST(rawPaymentTime);
+// 1) Find the exact paidCarts key for this cartId.
+//    Use regex to avoid accidental substring matches (e.g. CART1 vs CART10).
+const cartIdEscaped = (cart.cartId || cartId || "").toString().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+let paidCartKey = null;
+for (const k of Object.keys(paidCarts || {})) {
+  if (!k) continue;
+  // match patterns like "CART1_176..." or "176..._CART1" where CART1 is exact token
+  if (new RegExp(`(^${cartIdEscaped}_\\d{10,13}$)|(^\\d{10,13}_${cartIdEscaped}$)`, 'i').test(k)) {
+    paidCartKey = k;
+    break;
+  }
+}
+// fallback: any key that contains exact token boundaries (_CART1 or CART1_) 
+if (!paidCartKey) {
+  paidCartKey = Object.keys(paidCarts || {}).find(k => k && (k.indexOf(`${cart.cartId}_`) === 0 || k.indexOf(`_${cart.cartId}`) > -1));
+}
 
-// Fallback: if still N/A, try extracting timestamp from paidCartKey (both 10- or 13-digit)
-if ((paymentDate === "N/A" || paymentDate == null) && paidCartKey) {
+// 2) Build candidate epochs from all plausible fields
+const cand = {
+  cart_paymentTime: normalizeToEpochMs(cart.paymentTime ?? null),
+  cart_paidAt: normalizeToEpochMs(cart.paidAt ?? null),
+  bill_paymentTime: normalizeToEpochMs(cart.bill?.paymentTime ?? null),
+  bill_paidAt: normalizeToEpochMs(cart.bill?.paidAt ?? null),
+  key_epoch: null
+};
+
+// extract numeric timestamp from key (10 or 13 digits)
+if (paidCartKey) {
   const m = paidCartKey.match(/\d{13}|\d{10}/);
-  if (m) paymentDate = toLocalIST(m[0]);
+  if (m) cand.key_epoch = normalizeToEpochMs(m[0]);
 }
 
-// DEBUG: log values you can inspect in browser console when generating PDF
-console.log("DEBUG payment extraction:", {
-  cartId: cart.cartId,
+// 3) Choose the best epoch: largest non-null epoch (assumes latest)
+const epochEntries = Object.entries(cand)
+  .filter(([k, v]) => v !== null && v !== undefined)
+  .map(([k, v]) => ({ name: k, epoch: Number(v) }))
+  .sort((a, b) => b.epoch - a.epoch);
+
+const chosenEpoch = epochEntries.length ? epochEntries[0].epoch : null;
+
+// 4) Payment type detection (keeps your rules, uses paidCartKey)
+let paymentType = "Online Payment";
+if (cart.paymentType && cart.paymentType.toString().trim() !== "") {
+  paymentType = cart.paymentType.toString();
+} else if (cart.bill?.paymentType && cart.bill.paymentType.toString().trim() !== "") {
+  paymentType = cart.bill.paymentType.toString();
+} else if (paidCartKey) {
+  const firstPart = (paidCartKey.split("_")[0] || "").toUpperCase();
+  paymentType = (/^CART/i.test(firstPart) || firstPart.includes("CART")) ? "Online Payment" : "Cash (Marked Paid)";
+}
+
+// 5) Final formatted paymentDate
+let paymentDate = chosenEpoch ? fmtIST(chosenEpoch) : "N/A";
+
+// 6) DEBUG — copy this object if still wrong and paste it here
+console.log("FINAL DEBUG payment:", {
+  cartId: cart?.cartId ?? cartId,
   paidCartKey,
-  rawPaymentTime,
-  interpretedPaymentDate: paymentDate,
-  paymentType
+  cand,
+  epochEntries,
+  chosenEpoch,
+  paymentDate,
+  paymentType,
+  rawFieldsSnapshot: {
+    cart_paymentTime: cart?.paymentTime,
+    cart_paidAt: cart?.paidAt,
+    bill_paymentTime: cart?.bill?.paymentTime,
+    bill_paidAt: cart?.bill?.paidAt
+  }
 });
 
 
