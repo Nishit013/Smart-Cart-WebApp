@@ -2789,53 +2789,68 @@ function getCartStatus(cart) {
 
     // ===== ✅ PAYMENT TIME & TYPE (Robust) =====
     // ===== ✅ PAYMENT TIME & TYPE (Accurate detection) =====
-// ===== ✅ PAYMENT TIME & TYPE (Accurate detection) =====
+// ===== ✅ PAYMENT TIME & TYPE (Enhanced & Accurate) =====
+let paymentDate = "N/A";
+let paymentType = "Online Payment"; // default
 
-let paymentTime = "NA";
+// Step 1: Identify the paid cart key
+let paidCartKey = Object.keys(paidCarts || {}).find(
+  key => key.includes(cart.cartId)
+);
 
-// Check for direct paymentTime field
-if (cart.paymentTime) {
-  if (typeof cart.paymentTime === "string") {
-    // ISO string (online payment)
-    paymentTime = new Date(cart.paymentTime).toLocaleString();
-  } else if (typeof cart.paymentTime === "number") {
-    // timestamp (marked paid)
-    paymentTime = new Date(cart.paymentTime).toLocaleString();
-  }
-}
-// Fallback: try from key if missing
-else {
-  const key = cartKey || "";
-  const match = key.match(/(\d{13})/); // extract 13-digit timestamp
-  if (match) {
-    paymentTime = new Date(parseInt(match[1])).toLocaleString();
-  }
-}
-
-
-
-// Detect payment type
-let paymentType = "Online Payment"; // Default
+// Step 2: Try to detect payment type directly
 if (cart.paymentType && cart.paymentType.trim() !== "") {
   paymentType = cart.paymentType;
 } else if (cart.bill?.paymentType && cart.bill.paymentType.trim() !== "") {
   paymentType = cart.bill.paymentType;
-} else {
-  // Infer from how data key is stored in paidCarts
-  const paidCartKey = Object.keys(paidCarts || {}).find(
-    key => key.includes(cart.cartId)
-  );
-
-  if (paidCartKey) {
-    // If key starts with CARTID_ → online, if starts with timestamp_ → cash
-    const [firstPart] = paidCartKey.split("_");
-    if (firstPart.toUpperCase().includes("CART")) {
-      paymentType = "Online Payment";
-    } else {
-      paymentType = "Cash Payment";
-    }
+} else if (paidCartKey) {
+  // If key starts with CARTID_ → Online
+  // If key starts with timestamp_ → Cash
+  const [firstPart] = paidCartKey.split("_");
+  if (firstPart.toUpperCase().includes("CART")) {
+    paymentType = "Online Payment";
+  } else {
+    paymentType = "Cash Payment";
   }
 }
+
+// Step 3: Extract payment time
+let rawPaymentTime =
+  cart.paymentTime ||
+  cart.paidAt ||
+  cart.bill?.paymentTime ||
+  cart.bill?.paidAt;
+
+// Step 4: Format payment time properly
+if (rawPaymentTime) {
+  // Online = ISO string
+  if (typeof rawPaymentTime === "string" && !isNaN(Date.parse(rawPaymentTime))) {
+    paymentDate = new Date(rawPaymentTime).toLocaleString("en-IN", {
+      dateStyle: "medium",
+      timeStyle: "short"
+    });
+  }
+  // Cash = timestamp number
+  else if (!isNaN(Number(rawPaymentTime))) {
+    paymentDate = new Date(Number(rawPaymentTime)).toLocaleString("en-IN", {
+      dateStyle: "medium",
+      timeStyle: "short"
+    });
+  }
+}
+
+// Step 5: Fallback → extract timestamp from the key name itself
+if (paymentDate === "N/A" && paidCartKey) {
+  let timestampMatch = paidCartKey.match(/\d{13}/);
+  if (timestampMatch) {
+    const ts = parseInt(timestampMatch[0]);
+    paymentDate = new Date(ts).toLocaleString("en-IN", {
+      dateStyle: "medium",
+      timeStyle: "short"
+    });
+  }
+}
+
 
     // ===== CUSTOMER DETAILS =====
     doc.setFontSize(11);
