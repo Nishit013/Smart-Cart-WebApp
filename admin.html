@@ -2790,21 +2790,19 @@ function getCartStatus(cart) {
     // ---------- REPLACE your existing payment-type/time block with this ----------
 
 // helper: normalize different time representations into epoch ms (number) or null
+// ---------- REPLACE your existing payment-type/time block with this ----------
+
+// helper: normalize different time representations into epoch ms (number) or null
 function normalizeToEpochMs(val) {
   if (val == null) return null;
-  // number
-  if (typeof val === "number" && !isNaN(val)) {
-    return val < 1e12 ? Math.floor(val * 1000) : Math.floor(val);
-  }
-  // numeric string
+  if (typeof val === "number" && !isNaN(val)) return val < 1e12 ? val * 1000 : val;
   if (typeof val === "string" && /^\d+$/.test(val)) {
     const n = Number(val);
-    return n < 1e12 ? Math.floor(n * 1000) : Math.floor(n);
+    return n < 1e12 ? n * 1000 : n;
   }
-  // ISO string
   if (typeof val === "string") {
-    const p = Date.parse(val);
-    if (!isNaN(p)) return p;
+    const parsed = Date.parse(val);
+    if (!isNaN(parsed)) return parsed;
   }
   return null;
 }
@@ -2812,7 +2810,7 @@ function normalizeToEpochMs(val) {
 // helper: format epoch ms to IST string
 function fmtIST(epochMs) {
   if (!epochMs) return "N/A";
-  const d = new Date(Number(epochMs));
+  const d = new Date(epochMs + (5.5 * 60 * 60 * 1000)); // ✅ shift to IST manually
   if (isNaN(d.getTime())) return "N/A";
   return new Intl.DateTimeFormat("en-IN", {
     day: "2-digit", month: "short", year: "numeric",
@@ -2822,7 +2820,8 @@ function fmtIST(epochMs) {
 }
 
 // 1) ensure we have selectedKey set (if not, try to find it)
-let paidCartKey = typeof selectedKey === "string" && selectedKey ? selectedKey
+let paidCartKey = typeof selectedKey === "string" && selectedKey
+  ? selectedKey
   : Object.keys(paidCarts || {}).find(k => k && k.includes(cart.cartId));
 
 // 2) gather candidate epochs (explicit fields + key)
@@ -2842,16 +2841,12 @@ if (paidCartKey) {
 
 // 3) pick the best epoch (prefer largest valid epoch)
 const epochValues = Object.entries(candidates)
-  .filter(([k, v]) => v !== null && v !== undefined)
-  .map(([k, v]) => ({ key: k, epoch: Number(v) }));
+  .filter(([k, v]) => v !== null)
+  .map(([k, v]) => ({ key: k, epoch: v }));
+epochValues.sort((a, b) => b.epoch - a.epoch);
+const chosenEpoch = epochValues.length ? epochValues[0].epoch : null;
 
-let chosenEpoch = null;
-if (epochValues.length > 0) {
-  epochValues.sort((a, b) => b.epoch - a.epoch); // latest first
-  chosenEpoch = epochValues[0].epoch;
-}
-
-// 4) Payment type detection (keeps your existing rules but uses paidCartKey)
+// 4) Payment type detection
 let paymentType = "Online Payment";
 if (cart.paymentType && cart.paymentType.toString().trim()) {
   paymentType = cart.paymentType.toString();
@@ -2859,23 +2854,16 @@ if (cart.paymentType && cart.paymentType.toString().trim()) {
   paymentType = cart.bill.paymentType.toString();
 } else if (paidCartKey) {
   const first = (paidCartKey.split("_")[0] || "").toUpperCase();
-  paymentType = (/^CART/i.test(first) || first.includes("CART")) ? "Online Payment" : "Cash (Marked Paid)";
+  paymentType = (/^CART/i.test(first) || first.includes("CART"))
+    ? "Online Payment"
+    : "Cash (Marked Paid)";
 }
 
-// 5) final paymentDate: prefer chosenEpoch, else try raw fields fallback
-let paymentDate = "N/A";
-if (chosenEpoch) {
-  paymentDate = fmtIST(chosenEpoch);
-} else {
-  // last-ditch: try normalizeToEpochMs on raw values again in order
-  const fallback = normalizeToEpochMs(cart.paymentTime ?? cart.paidAt ?? cart.bill?.paymentTime ?? cart.bill?.paidAt ?? null);
-  if (fallback) paymentDate = fmtIST(fallback);
-}
+// 5) Final formatted date
+let paymentDate = chosenEpoch ? fmtIST(chosenEpoch) : "N/A";
 
-// 6) FINAL DEBUG (copy this object from the console and paste here if still wrong)
 console.log("FINAL DEBUG payment:", {
   requestedCartId: cartId,
-  selectedKey: selectedKey ?? null,
   paidCartKey,
   candidates,
   epochValues,
@@ -2889,6 +2877,7 @@ console.log("FINAL DEBUG payment:", {
     bill_paidAt: cart.bill?.paidAt
   }
 });
+
 
 // now use `paymentDate` and `paymentType` for the PDF fields:
 
