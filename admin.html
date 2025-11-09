@@ -2749,258 +2749,285 @@ function getCartStatus(cart) {
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-  async function downloadPDF(cartId) {
-    let cart = allCarts[cartId];
-    if (!cart) {
-      const candidates = Object.values(allCarts).filter(c => c.cartId === cartId);
-      if (candidates.length === 0) {
-        alert("❌ Cart not found.");
-        return;
-      }
-      candidates.sort((a, b) => {
-        const ta = Number(a.paidAt || a.paymentTime || a.bill?.paidAt || a.bill?.paymentTime || 0);
-        const tb = Number(b.paidAt || b.paymentTime || b.bill?.paidAt || b.bill?.paymentTime || 0);
-        return tb - ta;
-      });
-      cart = candidates[0];
+async function downloadPDF(cartId) {
+  // ---------- helpers ----------
+  function toEpochMs(v) {
+    if (v == null) return null;
+    if (typeof v === "number" && !isNaN(v)) {
+      // if it's seconds (10 digits) convert to ms
+      return v < 1e12 ? Math.floor(v * 1000) : Math.floor(v);
     }
+    if (typeof v === "string") {
+      // numeric string
+      if (/^\d+$/.test(v)) {
+        const n = Number(v);
+        return n < 1e12 ? Math.floor(n * 1000) : Math.floor(n);
+      }
+      // ISO string
+      const p = Date.parse(v);
+      if (!isNaN(p)) return p;
+    }
+    return null;
+  }
 
-    if (!cart || !cart.bill) {
-      alert("❌ Bill not available for this cart.");
+  function formatIST(epochMs) {
+    if (!epochMs) return "N/A";
+    try {
+      const d = new Date(Number(epochMs));
+      if (isNaN(d.getTime())) return "N/A";
+      return new Intl.DateTimeFormat("en-IN", {
+        day: "2-digit", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit", second: "2-digit",
+        hour12: true,
+        timeZone: "Asia/Kolkata"
+      }).format(d);
+    } catch (e) {
+      return "N/A";
+    }
+  }
+
+  // ---------- find cart object robustly ----------
+  // allCarts is assumed to be an object where each key is either cartId_timestamp or timestamp_cartId
+  let cart = allCarts[cartId];
+  let selectedKey = null;
+  if (cart) {
+    // If the caller passed a top-level key equal to a key in allCarts
+    selectedKey = cartId;
+  } else {
+    // Search for entries that have cart.cartId === cartId
+    const entries = Object.entries(allCarts || {});
+    const candidates = entries
+      .filter(([k, v]) => v && v.cartId === cartId)
+      .map(([k, v]) => ({ key: k, value: v }));
+
+    if (candidates.length === 0) {
+      alert("❌ Cart not found.");
       return;
     }
 
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    let y = 18;
+    // compute epoch for each candidate from fields or key (prefer explicit fields)
+    candidates.forEach(c => {
+      const v = c.value;
+      const fromFields = toEpochMs(v.paidAt) ?? toEpochMs(v.paymentTime) ?? toEpochMs(v.bill?.paidAt) ?? toEpochMs(v.bill?.paymentTime);
+      // extract numeric token from key (10 or 13 digits)
+      const keyMatch = (c.key || "").match(/\d{13}|\d{10}/);
+      const fromKey = keyMatch ? toEpochMs(keyMatch[0]) : null;
+      c.epoch = fromFields ?? fromKey ?? 0;
+    });
 
-    // ===== HEADER =====
-    doc.setFontSize(14);
-    doc.text("Smart Cart Pro – Invoice", 20, y);
-    y += 8;
-    doc.setFontSize(10);
-    doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
-    doc.text("TAX INVOICE", 150, y);
-    y += 6;
-    doc.text("GSTIN: 24XXXXXXX1Z9", 20, y);
-    y += 6;
-    doc.line(20, y, 190, y);
-    y += 8;
-
-    // ===== ✅ PAYMENT TIME & TYPE (Robust) =====
-    // ===== ✅ PAYMENT TIME & TYPE (Accurate detection) =====
-// ===== Final: Payment Time & Type (normalized + IST formatting + debug) =====
-let paymentDate = "N/A";
-let paymentType = "Online Payment"; // default
-
-// Find paidCarts key (the entry name in paidCarts that contains this cartId)
-const paidCartKey = Object.keys(paidCarts || {}).find(k => k && k.includes(cart.cartId));
-
-// --------------- Payment Type detection (unchanged logic) ---------------
-if (cart.paymentType && cart.paymentType.trim() !== "") {
-  paymentType = cart.paymentType;
-} else if (cart.bill?.paymentType && cart.bill.paymentType.trim() !== "") {
-  paymentType = cart.bill.paymentType;
-} else if (paidCartKey) {
-  const firstPart = paidCartKey.split("_")[0] || "";
-  // key like "CART1_176270..." => Online, key like "176270..._CART1" => Cash
-  if (/^cart/i.test(firstPart) || firstPart.toUpperCase().includes("CART")) {
-    paymentType = "Online Payment";
-  } else {
-    paymentType = "Cash (Marked Paid)";
+    // pick candidate with largest epoch (latest)
+    candidates.sort((a, b) => b.epoch - a.epoch);
+    cart = candidates[0].value;
+    selectedKey = candidates[0].key;
   }
-}
 
-// --------------- Payment Time (robust) ---------------
-let rawPaymentTime = cart.paymentTime ?? cart.paidAt ?? cart.bill?.paymentTime ?? cart.bill?.paidAt ?? null;
+  if (!cart || !cart.bill) {
+    alert("❌ Bill not available for this cart.");
+    return;
+  }
 
-function toLocalIST(value) {
-  // returns formatted string in Asia/Kolkata or "N/A"
-  if (value == null) return "N/A";
-
-  let dateObj = null;
-
-  // If it's a string that is an ISO date
-  if (typeof value === "string") {
-    // numeric-like string -> treat as number
-    if (/^\d+$/.test(value)) {
-      let n = Number(value);
-      if (n < 1e12) n = n * 1000; // seconds -> ms
-      dateObj = new Date(n);
-    } else if (!isNaN(Date.parse(value))) {
-      dateObj = new Date(value);
-    } else {
-      return "N/A";
+  // ---------- Payment Type detection ----------
+  // default to Online unless we detect cash via explicit field or key format
+  let paymentType = "Online Payment";
+  if (cart.paymentType && cart.paymentType.toString().trim() !== "") {
+    paymentType = cart.paymentType.toString();
+  } else if (cart.bill?.paymentType && cart.bill.paymentType.toString().trim() !== "") {
+    paymentType = cart.bill.paymentType.toString();
+  } else {
+    // infer from selectedKey if available
+    const k = selectedKey || Object.keys(paidCarts || {}).find(k => k && k.includes(cart.cartId));
+    if (k) {
+      const first = (k.split("_")[0] || "").toUpperCase();
+      if (/^CART/i.test(first) || first.includes("CART")) paymentType = "Online Payment";
+      else paymentType = "Cash (Marked Paid)";
     }
-  } else if (typeof value === "number") {
-    let n = value;
-    if (n < 1e12) n = n * 1000; // if seconds, convert to ms
-    dateObj = new Date(n);
-  } else {
-    return "N/A";
   }
 
-  if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) return "N/A";
+  // ---------- Payment Time extraction (robust) ----------
+  // prefer explicit fields, then key if needed
+  let rawCandidate = cart.paymentTime ?? cart.paidAt ?? cart.bill?.paymentTime ?? cart.bill?.paidAt ?? null;
+  let epoch = toEpochMs(rawCandidate);
 
-  // Format explicitly in Asia/Kolkata timezone so your invoice always shows IST
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "2-digit", month: "short", year: "numeric",
-    hour: "2-digit", minute: "2-digit", second: "2-digit",
-    hour12: true,
-    timeZone: "Asia/Kolkata"
-  }).format(dateObj);
-}
+  // if not found, try extracting from selectedKey
+  if (!epoch && selectedKey) {
+    const m = selectedKey.match(/\d{13}|\d{10}/);
+    if (m) epoch = toEpochMs(m[0]);
+  }
 
-// Try raw fields first
-paymentDate = toLocalIST(rawPaymentTime);
+  // if still not found, try searching paidCarts keys that include cartId
+  if (!epoch) {
+    const keyFound = Object.keys(paidCarts || {}).find(k => k && k.includes(cart.cartId));
+    if (keyFound) {
+      const m = keyFound.match(/\d{13}|\d{10}/);
+      if (m) epoch = toEpochMs(m[0]);
+      selectedKey = keyFound;
+    }
+  }
 
-// Fallback: if still N/A, try extracting timestamp from paidCartKey (both 10- or 13-digit)
-if ((paymentDate === "N/A" || paymentDate == null) && paidCartKey) {
-  const m = paidCartKey.match(/\d{13}|\d{10}/);
-  if (m) paymentDate = toLocalIST(m[0]);
-}
+  const paymentDate = formatIST(epoch);
 
-// DEBUG: log values you can inspect in browser console when generating PDF
-console.log("DEBUG payment extraction:", {
-  cartId: cart.cartId,
-  paidCartKey,
-  rawPaymentTime,
-  interpretedPaymentDate: paymentDate,
-  paymentType
-});
+  // DEBUG: log exact values used — open browser console and inspect these
+  console.log("PDF DEBUG:", {
+    suppliedCartId: cartId,
+    selectedKey,
+    rawCandidate,
+    epoch,
+    paymentDate,
+    paymentType,
+    cartSnippet: {
+      cartId: cart.cartId,
+      paymentTime: cart.paymentTime,
+      paidAt: cart.paidAt,
+      billPaymentTime: cart.bill?.paymentTime,
+      billPaidAt: cart.bill?.paidAt
+    }
+  });
 
+  // ---------- Build PDF ----------
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  let y = 18;
 
+  doc.setFontSize(14);
+  doc.text("Smart Cart Pro – Invoice", 20, y); y += 8;
+  doc.setFontSize(10);
+  doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
+  doc.text("TAX INVOICE", 150, y); y += 6;
+  doc.text("GSTIN: 24XXXXXXX1Z9", 20, y); y += 6;
+  doc.line(20, y, 190, y); y += 8;
 
+  doc.setFontSize(11);
+  doc.setFont(undefined, "bold");
+  doc.text("Cart ID:", 20, y);
+  doc.setFont(undefined, "normal"); doc.text(`${cart.cartId || cartId}`, 40, y); y += 6;
 
-    // ===== CUSTOMER DETAILS =====
-    doc.setFontSize(11);
-    doc.text(`Cart ID: ${cart.cartId || cartId}`, 20, y); y += 6;
-    doc.text(`Customer Phone: ${cart.bill.phone || cart.phone || "N/A"}`, 20, y); y += 6;
-    doc.text(`Payment Time: ${paymentDate}`, 20, y); y += 6;
-    doc.text(`Payment Type: ${paymentType}`, 20, y); y += 8;
+  doc.setFont(undefined, "bold"); doc.text("Customer Phone:", 20, y);
+  doc.setFont(undefined, "normal"); doc.text(`${cart.bill?.phone || cart.phone || "N/A"}`, 60, y); y += 6;
 
-    // ===== PARSE SUMMARY ITEMS =====
-    const summaryText = typeof cart.bill.summary === "string" ? cart.bill.summary : "";
-    const summaryLines = summaryText.split("\n").map(l => l.trim());
-    const parsedSummaryItems = [];
-    let i = 0;
+  doc.setFont(undefined, "bold"); doc.text("Payment Time:", 20, y);
+  doc.setFont(undefined, "normal"); doc.text(`${paymentDate}`, 55, y); y += 6;
 
-    while (i < summaryLines.length) {
-      const line = summaryLines[i];
-      const itemMatch = line.match(/^\d+\.\s*(.+)$/);
-      if (itemMatch) {
-        const item = { name: itemMatch[1], price: 0, qty: 0, subtotal: 0, cgst: 0, sgst: 0 };
-        i++;
-        while (i < summaryLines.length && summaryLines[i] !== "") {
-          const L = summaryLines[i];
-          const priceMatch = L.match(/Price.*₹\s*([\d.]+)/i);
-          const qtyMatch = L.match(/Qty:\s*([\d.]+)/i);
-          const subtotalMatch = L.match(/Subtotal:\s*₹?\s*([\d.]+)/i);
-          const taxLineMatch = L.match(/CGST.*₹\s*([\d.]+).*SGST.*₹\s*([\d.]+)/i);
-          if (priceMatch) item.price = parseFloat(priceMatch[1]);
-          if (qtyMatch) item.qty = Number(qtyMatch[1]);
-          if (subtotalMatch) item.subtotal = parseFloat(subtotalMatch[1]);
-          if (taxLineMatch) {
-            item.cgst = parseFloat(taxLineMatch[1]);
-            item.sgst = parseFloat(taxLineMatch[2]);
-          }
-          i++;
+  doc.setFont(undefined, "bold"); doc.text("Payment Type:", 20, y);
+  doc.setFont(undefined, "normal"); doc.text(`${paymentType}`, 55, y); y += 8;
+
+  // parse summary into items (unchanged from your current code)
+  const summaryText = typeof cart.bill.summary === "string" ? cart.bill.summary : "";
+  const summaryLines = summaryText.split("\n").map(l => l.trim());
+  const parsedSummaryItems = [];
+  let i = 0;
+  while (i < summaryLines.length) {
+    const line = summaryLines[i];
+    const itemMatch = line.match(/^\d+\.\s*(.+)$/);
+    if (itemMatch) {
+      const it = { name: itemMatch[1], price: 0, qty: 0, subtotal: 0, cgst: 0, sgst: 0 };
+      i++;
+      while (i < summaryLines.length && summaryLines[i] !== "") {
+        const L = summaryLines[i];
+        const priceMatch = L.match(/Price.*₹\s*([\d.]+)/i);
+        const qtyMatch = L.match(/Qty:\s*([\d.]+)/i);
+        const subtotalMatch = L.match(/Subtotal:\s*₹?\s*([\d.]+)/i);
+        const taxLineMatch = L.match(/CGST.*₹\s*([\d.]+).*SGST.*₹\s*([\d.]+)/i);
+        if (priceMatch) it.price = parseFloat(priceMatch[1]);
+        if (qtyMatch) it.qty = Number(qtyMatch[1]);
+        if (subtotalMatch) it.subtotal = parseFloat(subtotalMatch[1]);
+        if (taxLineMatch) {
+          it.cgst = parseFloat(taxLineMatch[1]);
+          it.sgst = parseFloat(taxLineMatch[2]);
         }
-        if (!item.subtotal && item.price && item.qty) item.subtotal = item.price * item.qty;
-        parsedSummaryItems.push(item);
-      } else i++;
-    }
-
-    // ===== TABLE DATA =====
-    let tableItems = [];
-    if (Array.isArray(cart.items) && cart.items.length > 0) {
-      tableItems = cart.items.map(it => {
-        const found = parsedSummaryItems.find(s => s.name && it.name && s.name.toLowerCase().includes(it.name.toLowerCase()));
-        const cgst = found ? found.cgst : 0;
-        const sgst = found ? found.sgst : 0;
-        const subtotal = found?.subtotal || (it.price * it.qty);
-        return {
-          name: it.name || "Unnamed",
-          qty: Number(it.qty) || 0,
-          price: Number(it.price) || 0,
-          cgst: Number(cgst) || 0,
-          sgst: Number(sgst) || 0,
-          subtotal: Number(subtotal) || 0
-        };
-      });
-    } else if (parsedSummaryItems.length > 0) {
-      tableItems = parsedSummaryItems;
-    }
-
-    // ===== TABLE HEADER =====
-    doc.setFontSize(11);
-    doc.setFillColor(230, 230, 230);
-    doc.rect(20, y - 5, 170, 8, "F");
-    doc.text("Item Name", 25, y);
-    doc.text("Qty", 95, y);
-    doc.text("Price", 115, y);
-    doc.text("CGST", 140, y);
-    doc.text("SGST", 160, y);
-    doc.text("Subtotal", 175, y);
-    y += 6;
-    doc.line(20, y, 190, y);
-    y += 6;
-
-    // ===== TABLE ROWS =====
-    let totalCGST = 0, totalSGST = 0, subtotalSum = 0;
-    if (tableItems.length > 0) {
-      doc.setFontSize(10);
-      for (const itm of tableItems) {
-        totalCGST += itm.cgst;
-        totalSGST += itm.sgst;
-        subtotalSum += itm.subtotal;
-        doc.text(itm.name.substring(0, 28), 25, y);
-        doc.text(String(itm.qty), 95, y);
-        doc.text(`₹${itm.price.toFixed(2)}`, 115, y);
-        doc.text(`₹${itm.cgst.toFixed(2)}`, 140, y);
-        doc.text(`₹${itm.sgst.toFixed(2)}`, 160, y);
-        doc.text(`₹${itm.subtotal.toFixed(2)}`, 175, y);
-        y += 6;
-        if (y > 270) { doc.addPage(); y = 20; }
+        i++;
       }
-    } else {
-      doc.text("No items found in this bill.", 25, y);
-      y += 8;
-    }
-
-    // ===== TOTALS =====
-    const bill = cart.bill || {};
-    const totalBefore = Number(bill.originalTotal ?? cart.total ?? subtotalSum) || subtotalSum;
-    const discount = Number(bill.discount || cart.discount || 0) || 0;
-    const billCGST = Number(bill.totalCGST ?? cart.totalCGST ?? totalCGST) || totalCGST;
-    const billSGST = Number(bill.totalSGST ?? cart.totalSGST ?? totalSGST) || totalSGST;
-    const finalPaid = Number(bill.finalPaid ?? cart.finalAmount ?? (totalBefore - discount + billCGST + billSGST)) || 0;
-
-    y += 8;
-    doc.text(`Subtotal: ₹${totalBefore.toFixed(2)}`, 140, y); y += 6;
-    doc.text(`Discount: ₹${discount.toFixed(2)}`, 140, y); y += 6;
-    doc.text(`CGST: ₹${billCGST.toFixed(2)}`, 140, y); y += 6;
-    doc.text(`SGST: ₹${billSGST.toFixed(2)}`, 140, y); y += 6;
-    doc.setFont(undefined, "bold");
-    doc.text(`Grand Total: ₹${finalPaid.toFixed(2)}`, 140, y);
-    doc.setFont(undefined, "normal");
-    y += 10;
-
-    // ===== FOOTER =====
-    doc.setFontSize(9);
-    doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
-    y += 6;
-    doc.text("Generated via Admin Panel", 20, y);
-
-    // ===== SAVE FILE =====
-    const fileTime = rawPaymentTime
-      ? new Date(typeof rawPaymentTime === "string" ? Date.parse(rawPaymentTime) : Number(rawPaymentTime))
-          .toISOString().replace(/[:.]/g, "-")
-      : new Date().toISOString().replace(/[:.]/g, "-");
-
-    doc.save(`Invoice_${cart.cartId || cartId}_${fileTime}.pdf`);
+      if (!it.subtotal && it.price && it.qty) it.subtotal = it.price * it.qty;
+      parsedSummaryItems.push(it);
+    } else i++;
   }
+
+  // table items
+  let tableItems = [];
+  if (Array.isArray(cart.items) && cart.items.length > 0) {
+    tableItems = cart.items.map(it => {
+      const found = parsedSummaryItems.find(s => s.name && it.name && s.name.toLowerCase().includes(it.name.toLowerCase()));
+      const cgst = found ? found.cgst : 0;
+      const sgst = found ? found.sgst : 0;
+      const subtotal = found?.subtotal || (it.price * it.qty);
+      return {
+        name: it.name || "Unnamed",
+        qty: Number(it.qty) || 0,
+        price: Number(it.price) || 0,
+        cgst: Number(cgst) || 0,
+        sgst: Number(sgst) || 0,
+        subtotal: Number(subtotal) || 0
+      };
+    });
+  } else if (parsedSummaryItems.length > 0) {
+    tableItems = parsedSummaryItems;
+  }
+
+  // draw table header
+  doc.setFontSize(11);
+  doc.setFillColor(230, 230, 230);
+  doc.rect(20, y - 5, 170, 8, "F");
+  doc.text("Item Name", 25, y);
+  doc.text("Qty", 95, y);
+  doc.text("Price", 115, y);
+  doc.text("CGST", 140, y);
+  doc.text("SGST", 160, y);
+  doc.text("Subtotal", 175, y);
+  y += 6;
+  doc.line(20, y, 190, y);
+  y += 6;
+
+  // rows
+  let totalCGST = 0, totalSGST = 0, subtotalSum = 0;
+  if (tableItems.length > 0) {
+    doc.setFontSize(10);
+    for (const itm of tableItems) {
+      totalCGST += itm.cgst;
+      totalSGST += itm.sgst;
+      subtotalSum += itm.subtotal;
+      doc.text(itm.name.substring(0, 28), 25, y);
+      doc.text(String(itm.qty), 95, y);
+      doc.text(`₹${itm.price.toFixed(2)}`, 115, y);
+      doc.text(`₹${itm.cgst.toFixed(2)}`, 140, y);
+      doc.text(`₹${itm.sgst.toFixed(2)}`, 160, y);
+      doc.text(`₹${itm.subtotal.toFixed(2)}`, 175, y);
+      y += 6;
+      if (y > 270) { doc.addPage(); y = 20; }
+    }
+  } else {
+    doc.text("No items found in this bill.", 25, y);
+    y += 8;
+  }
+
+  // totals
+  const bill = cart.bill || {};
+  const totalBefore = Number(bill.originalTotal ?? cart.total ?? subtotalSum) || subtotalSum;
+  const discount = Number(bill.discount ?? cart.discount ?? 0) || 0;
+  const billCGST = Number(bill.totalCGST ?? cart.totalCGST ?? totalCGST) || totalCGST;
+  const billSGST = Number(bill.totalSGST ?? cart.totalSGST ?? totalSGST) || totalSGST;
+  const finalPaid = Number(bill.finalPaid ?? cart.finalAmount ?? (totalBefore - discount + billCGST + billSGST)) || 0;
+
+  y += 8;
+  doc.text(`Subtotal: ₹${totalBefore.toFixed(2)}`, 140, y); y += 6;
+  doc.text(`Discount: ₹${discount.toFixed(2)}`, 140, y); y += 6;
+  doc.text(`CGST: ₹${billCGST.toFixed(2)}`, 140, y); y += 6;
+  doc.text(`SGST: ₹${billSGST.toFixed(2)}`, 140, y); y += 6;
+  doc.setFont(undefined, "bold");
+  doc.text(`Grand Total: ₹${finalPaid.toFixed(2)}`, 140, y);
+  doc.setFont(undefined, "normal");
+  y += 10;
+
+  // footer
+  doc.setFontSize(9);
+  doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
+  y += 6;
+  doc.text("Generated via Admin Panel", 20, y);
+
+  // filename uses epoch if available so sorting works
+  const fileTime = epoch ? new Date(epoch).toISOString().replace(/[:.]/g, "-") : new Date().toISOString().replace(/[:.]/g, "-");
+  doc.save(`Invoice_${cart.cartId || cartId}_${fileTime}.pdf`);
+}
 </script>
+
 
 
 
