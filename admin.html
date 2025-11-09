@@ -2789,73 +2789,86 @@ function getCartStatus(cart) {
 
     // ===== ✅ PAYMENT TIME & TYPE (Robust) =====
     // ===== ✅ PAYMENT TIME & TYPE (Accurate detection) =====
-// ===== ✅ PAYMENT TIME & TYPE (Enhanced & Accurate) =====
-// ===== ✅ PAYMENT TIME & TYPE (Final & Accurate) =====
+// ===== Final: Payment Time & Type (normalized + IST formatting + debug) =====
 let paymentDate = "N/A";
 let paymentType = "Online Payment"; // default
 
-// Identify the paid cart key
-let paidCartKey = Object.keys(paidCarts || {}).find(
-  key => key.includes(cart.cartId)
-);
+// Find paidCarts key (the entry name in paidCarts that contains this cartId)
+const paidCartKey = Object.keys(paidCarts || {}).find(k => k && k.includes(cart.cartId));
 
-// Detect payment type
+// --------------- Payment Type detection (unchanged logic) ---------------
 if (cart.paymentType && cart.paymentType.trim() !== "") {
   paymentType = cart.paymentType;
 } else if (cart.bill?.paymentType && cart.bill.paymentType.trim() !== "") {
   paymentType = cart.bill.paymentType;
 } else if (paidCartKey) {
-  const [firstPart] = paidCartKey.split("_");
-  if (firstPart.toUpperCase().includes("CART")) {
+  const firstPart = paidCartKey.split("_")[0] || "";
+  // key like "CART1_176270..." => Online, key like "176270..._CART1" => Cash
+  if (/^cart/i.test(firstPart) || firstPart.toUpperCase().includes("CART")) {
     paymentType = "Online Payment";
   } else {
     paymentType = "Cash (Marked Paid)";
   }
 }
 
-// Extract payment timestamp or ISO
-let rawPaymentTime =
-  cart.paymentTime ||
-  cart.paidAt ||
-  cart.bill?.paymentTime ||
-  cart.bill?.paidAt;
+// --------------- Payment Time (robust) ---------------
+let rawPaymentTime = cart.paymentTime ?? cart.paidAt ?? cart.bill?.paymentTime ?? cart.bill?.paidAt ?? null;
 
-// Function: Convert any time format to readable local date
-function formatLocalTime(value) {
-  if (!value) return "N/A";
-  let dateObj;
+function toLocalIST(value) {
+  // returns formatted string in Asia/Kolkata or "N/A"
+  if (value == null) return "N/A";
 
-  if (typeof value === "string" && !isNaN(Date.parse(value))) {
-    // ISO string → Online payment
-    dateObj = new Date(value);
-  } else if (!isNaN(Number(value))) {
-    let num = Number(value);
-    // Sometimes timestamp may be in seconds, convert if needed
-    if (num < 1e12) num *= 1000;
-    dateObj = new Date(num);
+  let dateObj = null;
+
+  // If it's a string that is an ISO date
+  if (typeof value === "string") {
+    // numeric-like string -> treat as number
+    if (/^\d+$/.test(value)) {
+      let n = Number(value);
+      if (n < 1e12) n = n * 1000; // seconds -> ms
+      dateObj = new Date(n);
+    } else if (!isNaN(Date.parse(value))) {
+      dateObj = new Date(value);
+    } else {
+      return "N/A";
+    }
+  } else if (typeof value === "number") {
+    let n = value;
+    if (n < 1e12) n = n * 1000; // if seconds, convert to ms
+    dateObj = new Date(n);
   } else {
     return "N/A";
   }
 
-  return dateObj.toLocaleString("en-IN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    hour12: true
-  });
+  if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) return "N/A";
+
+  // Format explicitly in Asia/Kolkata timezone so your invoice always shows IST
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hour12: true,
+    timeZone: "Asia/Kolkata"
+  }).format(dateObj);
 }
 
-// Format main time
-if (rawPaymentTime) {
-  paymentDate = formatLocalTime(rawPaymentTime);
+// Try raw fields first
+paymentDate = toLocalIST(rawPaymentTime);
+
+// Fallback: if still N/A, try extracting timestamp from paidCartKey (both 10- or 13-digit)
+if ((paymentDate === "N/A" || paymentDate == null) && paidCartKey) {
+  const m = paidCartKey.match(/\d{13}|\d{10}/);
+  if (m) paymentDate = toLocalIST(m[0]);
 }
 
-// Fallback — extract from key (handles both CART1_... and ..._CART1)
-if (paymentDate === "N/A" && paidCartKey) {
-  const timestampMatch = paidCartKey.match(/\d{13}|\d{10}/);
-  if (timestampMatch) {
-    paymentDate = formatLocalTime(timestampMatch[0]);
-  }
-}
+// DEBUG: log values you can inspect in browser console when generating PDF
+console.log("DEBUG payment extraction:", {
+  cartId: cart.cartId,
+  paidCartKey,
+  rawPaymentTime,
+  interpretedPaymentDate: paymentDate,
+  paymentType
+});
+
 
 
 
