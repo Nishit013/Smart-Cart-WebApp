@@ -2750,19 +2750,70 @@ function getCartStatus(cart) {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
   async function downloadPDF(cartId) {
+    // helper: return epoch ms for value that can be:
+    // - number (ms)
+    // - numeric string
+    // - ISO date string
+    // - otherwise null
+    function toEpochMs(v) {
+      if (v == null) return null;
+      // numeric (ms)
+      if (typeof v === "number" && !isNaN(v)) return Math.floor(v);
+      // numeric string
+      if (typeof v === "string") {
+        // if looks like digits only
+        if (/^\d+$/.test(v)) return Number(v);
+        // try parse ISO
+        const p = Date.parse(v);
+        if (!isNaN(p)) return p;
+      }
+      return null;
+    }
+
+    // helper: try to extract a timestamp token from a firebase key like:
+    // "CART1_1762708420270" or "1762708712607_CART1"
+    function extractEpochFromKey(key) {
+      if (!key || typeof key !== "string") return null;
+      const tokens = key.split(/[_-]/);
+      for (const t of tokens) {
+        if (/^\d{10,}$/.test(t)) { // at least 10 digits -> ms or seconds
+          // if looks like seconds (10 digits) convert to ms
+          if (t.length === 10) return Number(t) * 1000;
+          return Number(t);
+        }
+      }
+      return null;
+    }
+
+    // Find cart object:
     let cart = allCarts[cartId];
+
+    // If top-level lookup failed, search entries to find matching cartId values (and keep keys)
     if (!cart) {
-      const candidates = Object.values(allCarts).filter(c => c.cartId === cartId);
+      const entries = Object.entries(allCarts);
+      // collect candidates with their key & value
+      const candidates = entries.filter(([k, v]) => v && v.cartId === cartId)
+        .map(([k, v]) => ({ key: k, value: v }));
+
       if (candidates.length === 0) {
         alert("❌ Cart not found.");
         return;
       }
-      candidates.sort((a, b) => {
-        const ta = Number(a.paidAt || a.paymentTime || a.bill?.paidAt || a.bill?.paymentTime || 0);
-        const tb = Number(b.paidAt || b.paymentTime || b.bill?.paidAt || b.bill?.paymentTime || 0);
-        return tb - ta;
+
+      // determine best candidate using multiple sources of epoch time, prefer:
+      // 1) explicit paidAt/paymentTime fields (value)
+      // 2) bill.paidAt / bill.paymentTime
+      // 3) numeric timestamp in the firebase key
+      candidates.forEach(c => {
+        const v = c.value;
+        const fromFields = toEpochMs(v.paidAt) ?? toEpochMs(v.paymentTime) ?? toEpochMs(v.bill?.paidAt) ?? toEpochMs(v.bill?.paymentTime);
+        const fromKey = extractEpochFromKey(c.key);
+        c.epoch = fromFields ?? fromKey ?? 0;
       });
-      cart = candidates[0];
+
+      // pick candidate with largest epoch
+      candidates.sort((a, b) => b.epoch - a.epoch);
+      cart = candidates[0].value;
     }
 
     if (!cart || !cart.bill) {
@@ -2770,11 +2821,50 @@ function getCartStatus(cart) {
       return;
     }
 
+    // Now robustly compute rawPaymentTime (prefer root fields then bill fields then key)
+    // Also try to find the top-level entry key (if caller passed a top-level key, we already used it).
+    // But if we had to search candidates above, we might want to re-check keys for epoch (not necessary for display)
+    let rawPaymentTime = cart.paymentTime ?? cart.paidAt ?? cart.bill?.paymentTime ?? cart.bill?.paidAt ?? null;
+
+    // If rawPaymentTime is still null, try to find it from the actual object key (if the object exists in allCarts under a timestamped key)
+    if (!rawPaymentTime) {
+      // search keys for this object reference and extract epoch
+      for (const k of Object.keys(allCarts)) {
+        if (allCarts[k] === cart) {
+          const kEpoch = extractEpochFromKey(k);
+          if (kEpoch) rawPaymentTime = kEpoch;
+          break;
+        }
+      }
+    }
+
+    // Format payment date
+    let paymentDate = "N/A";
+    const epoch = toEpochMs(rawPaymentTime);
+    if (epoch) {
+      paymentDate = new Date(epoch).toLocaleString();
+    }
+
+    // Payment type: prefer explicit fields, fallback to inference
+    let paymentType = (cart.paymentType ?? cart.bill?.paymentType ?? "").toString().trim();
+    if (!paymentType) {
+      // if there is a 'finalPaid' or 'finalAmount' and there's no paymentType, assume Online Payment
+      // but if the bill contains "Final Paid" or "Final Amount" only it's ambiguous — default to "Online Payment"
+      paymentType = "Online Payment";
+    } else {
+      // normalize common variants
+      if (/cash/i.test(paymentType)) paymentType = "Cash (Marked Paid)";
+    }
+
+    // Phone: try root first then bill
+    const phone = (cart.phone ?? cart.bill?.phone ?? "N/A").toString();
+
+    // Start building PDF
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     let y = 18;
 
-    // ===== HEADER =====
+    // HEADER
     doc.setFontSize(14);
     doc.text("Smart Cart Pro – Invoice", 20, y);
     y += 8;
@@ -2787,44 +2877,22 @@ function getCartStatus(cart) {
     doc.line(20, y, 190, y);
     y += 8;
 
-    // ===== 🕒 PAYMENT TIME =====
-    let rawPaymentTime =
-      cart.paymentTime ||
-      cart.paidAt ||
-      cart.bill?.paymentTime ||
-      cart.bill?.paidAt;
-
-    let paymentDate = "N/A";
-    if (rawPaymentTime) {
-      if (typeof rawPaymentTime === "string" && !isNaN(Date.parse(rawPaymentTime))) {
-        paymentDate = new Date(rawPaymentTime).toLocaleString();
-      } else if (!isNaN(Number(rawPaymentTime))) {
-        paymentDate = new Date(Number(rawPaymentTime)).toLocaleString();
-      }
-    }
-
-    // ===== 💳 PAYMENT TYPE =====
-    let paymentType =
-      cart.paymentType ||
-      cart.bill?.paymentType ||
-      "Online Payment";
-    if (paymentType.toLowerCase().includes("cash")) {
-      paymentType = "Cash (Marked Paid)";
-    }
-
-    // ===== 📱 CUSTOMER DETAILS =====
-    const phone =
-      cart.phone ||
-      cart.bill?.phone ||
-      "N/A";
-
+    // CUSTOMER / PAYMENT INFO (bold labels)
     doc.setFontSize(11);
-    doc.text(`Cart ID: ${cart.cartId || cartId}`, 20, y); y += 6;
-    doc.text(`Customer Phone: ${phone}`, 20, y); y += 6;
-    doc.text(`Payment Time: ${paymentDate}`, 20, y); y += 6;
-    doc.text(`Payment Type: ${paymentType}`, 20, y); y += 8;
+    doc.setFont(undefined, "bold");
+    doc.text("Cart ID:", 20, y);
+    doc.setFont(undefined, "normal"); doc.text(`${cart.cartId || cartId}`, 40, y); y += 6;
 
-    // ===== 🧾 PARSE SUMMARY TEXT =====
+    doc.setFont(undefined, "bold"); doc.text("Customer Phone:", 20, y);
+    doc.setFont(undefined, "normal"); doc.text(`${phone}`, 60, y); y += 6;
+
+    doc.setFont(undefined, "bold"); doc.text("Payment Time:", 20, y);
+    doc.setFont(undefined, "normal"); doc.text(`${paymentDate}`, 55, y); y += 6;
+
+    doc.setFont(undefined, "bold"); doc.text("Payment Type:", 20, y);
+    doc.setFont(undefined, "normal"); doc.text(`${paymentType}`, 55, y); y += 8;
+
+    // PARSE summary text into items (if available)
     const summaryText = typeof cart.bill.summary === "string" ? cart.bill.summary : "";
     const summaryLines = summaryText.split("\n").map(l => l.trim());
     const parsedSummaryItems = [];
@@ -2855,14 +2923,14 @@ function getCartStatus(cart) {
       } else i++;
     }
 
-    // ===== TABLE DATA =====
+    // Build tableItems from cart.items or summary
     let tableItems = [];
     if (Array.isArray(cart.items) && cart.items.length > 0) {
       tableItems = cart.items.map(it => {
         const found = parsedSummaryItems.find(s => s.name && it.name && s.name.toLowerCase().includes(it.name.toLowerCase()));
-        const cgst = found ? found.cgst : 0;
-        const sgst = found ? found.sgst : 0;
-        const subtotal = found?.subtotal || (it.price * it.qty);
+        const cgst = found ? found.cgst : (it.cgst ? (it.cgst * (it.price * it.qty) / 100) : 0);
+        const sgst = found ? found.sgst : (it.sgst ? (it.sgst * (it.price * it.qty) / 100) : 0);
+        const subtotal = found?.subtotal ?? (Number(it.price || 0) * Number(it.qty || 0));
         return {
           name: it.name || "Unnamed",
           qty: Number(it.qty) || 0,
@@ -2876,7 +2944,7 @@ function getCartStatus(cart) {
       tableItems = parsedSummaryItems;
     }
 
-    // ===== TABLE HEADER =====
+    // TABLE HEADER
     doc.setFontSize(11);
     doc.setFillColor(230, 230, 230);
     doc.rect(20, y - 5, 170, 8, "F");
@@ -2890,7 +2958,7 @@ function getCartStatus(cart) {
     doc.line(20, y, 190, y);
     y += 6;
 
-    // ===== TABLE ROWS =====
+    // TABLE ROWS
     let totalCGST = 0, totalSGST = 0, subtotalSum = 0;
     if (tableItems.length > 0) {
       doc.setFontSize(10);
@@ -2912,20 +2980,13 @@ function getCartStatus(cart) {
       y += 8;
     }
 
-    // ===== 💰 TOTALS =====
+    // TOTALS: robust extraction from bill or cart fields
     const bill = cart.bill || {};
-
-    const totalBefore =
-      Number(bill.originalTotal ?? cart.total ?? subtotalSum) || subtotalSum;
-    const discount =
-      Number(bill.discount ?? cart.discount ?? 0) || 0;
-    const billCGST =
-      Number(bill.totalCGST ?? cart.totalCGST ?? totalCGST) || totalCGST;
-    const billSGST =
-      Number(bill.totalSGST ?? cart.totalSGST ?? totalSGST) || totalSGST;
-
-    const finalPaid =
-      Number(bill.finalPaid ?? cart.finalAmount ?? (totalBefore - discount + billCGST + billSGST)) || 0;
+    const totalBefore = Number(bill.originalTotal ?? cart.total ?? subtotalSum) || subtotalSum;
+    const discount = Number(bill.discount ?? cart.discount ?? 0) || 0;
+    const billCGST = Number(bill.totalCGST ?? cart.totalCGST ?? totalCGST) || totalCGST;
+    const billSGST = Number(bill.totalSGST ?? cart.totalSGST ?? totalSGST) || totalSGST;
+    const finalPaid = Number(bill.finalPaid ?? cart.finalAmount ?? (totalBefore - discount + billCGST + billSGST)) || 0;
 
     y += 8;
     doc.text(`Subtotal: ₹${totalBefore.toFixed(2)}`, 140, y); y += 6;
@@ -2937,18 +2998,14 @@ function getCartStatus(cart) {
     doc.setFont(undefined, "normal");
     y += 10;
 
-    // ===== FOOTER =====
+    // FOOTER
     doc.setFontSize(9);
     doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
     y += 6;
     doc.text("Generated via Admin Panel", 20, y);
 
-    // ===== SAVE FILE =====
-    const fileTime = rawPaymentTime
-      ? new Date(typeof rawPaymentTime === "string" ? Date.parse(rawPaymentTime) : Number(rawPaymentTime))
-          .toISOString().replace(/[:.]/g, "-")
-      : new Date().toISOString().replace(/[:.]/g, "-");
-
+    // FILE NAME: use epoch if available so filenames sort nicely
+    const fileTime = epoch ? new Date(epoch).toISOString().replace(/[:.]/g, "-") : new Date().toISOString().replace(/[:.]/g, "-");
     doc.save(`Invoice_${cart.cartId || cartId}_${fileTime}.pdf`);
   }
 </script>
