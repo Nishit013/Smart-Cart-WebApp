@@ -2788,27 +2788,24 @@ function getCartStatus(cart) {
     doc.line(20, y, 190, y);
     y += 8;
 
-    // ===== ✅ PAYMENT TIME & TYPE (Accurate IST Conversion) =====
+    // ===== ✅ PAYMENT TIME & TYPE =====
     let paymentType = "Online Payment";
     let paymentDate = "N/A";
 
     const paidCartKey = Object.keys(paidCarts || {}).find(k => k && k.includes(cart.cartId));
 
-    // Detect payment type
     if (cart.paymentType && cart.paymentType.trim() !== "") {
       paymentType = cart.paymentType;
     } else if (cart.bill?.paymentType && cart.bill.paymentType.trim() !== "") {
       paymentType = cart.bill.paymentType;
     } else if (paidCartKey) {
       const firstPart = paidCartKey.split("_")[0] || "";
-      if (/^cart/i.test(firstPart) || firstPart.toUpperCase().includes("CART")) {
-        paymentType = "Online Payment";
-      } else {
-        paymentType = "Cash (Marked Paid)";
-      }
+      paymentType = (/^cart/i.test(firstPart) || firstPart.toUpperCase().includes("CART"))
+        ? "Online Payment"
+        : "Cash (Marked Paid)";
     }
 
-    // Extract timestamp from possible fields
+    // ✅ Extract payment timestamp from all possible sources
     let rawPaymentTime =
       cart.paymentTime ??
       cart.paidAt ??
@@ -2816,24 +2813,28 @@ function getCartStatus(cart) {
       cart.bill?.paidAt ??
       null;
 
-    // Fallback: extract from key if missing
+    // ✅ If not found, try extracting timestamp from key
     if (!rawPaymentTime && paidCartKey) {
       const match = paidCartKey.match(/\d{13}|\d{10}/);
       if (match) rawPaymentTime = match[0];
     }
 
-    // ✅ Convert to IST readable format
+    // ✅ Fix timestamp & convert to IST
     function formatToIST(ts) {
       if (!ts) return "N/A";
+
       let ms = Number(ts);
       if (isNaN(ms)) {
         const parsed = Date.parse(ts);
         if (!isNaN(parsed)) ms = parsed;
         else return "N/A";
       }
-      if (ms < 1e12) ms *= 1000; // seconds -> ms
+
+      // ⛔ DO NOT multiply if already in milliseconds
+      if (ms < 1000000000000) ms *= 1000; // only if in seconds
+
       const dateObj = new Date(ms);
-      return new Intl.DateTimeFormat("en-IN", {
+      const formatter = new Intl.DateTimeFormat("en-IN", {
         day: "2-digit",
         month: "short",
         year: "numeric",
@@ -2842,7 +2843,8 @@ function getCartStatus(cart) {
         second: "2-digit",
         hour12: true,
         timeZone: "Asia/Kolkata",
-      }).format(dateObj);
+      });
+      return formatter.format(dateObj);
     }
 
     paymentDate = formatToIST(rawPaymentTime);
