@@ -2748,6 +2748,7 @@ function getCartStatus(cart) {
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
   async function downloadPDF(cartId) {
     let cart = allCarts[cartId];
@@ -2787,85 +2788,71 @@ function getCartStatus(cart) {
     doc.line(20, y, 190, y);
     y += 8;
 
-    // ===== ✅ PAYMENT TIME & TYPE (Robust) =====
-    // ===== ✅ PAYMENT TIME & TYPE (Accurate detection) =====
-// ===== ✅ PAYMENT TIME & TYPE (Final accurate IST version) =====
-let paymentDate = "N/A";
-let paymentType = "Online Payment"; // default
+    // ===== ✅ PAYMENT TIME & TYPE (Accurate IST Conversion) =====
+    let paymentType = "Online Payment";
+    let paymentDate = "N/A";
 
-// --- Detect payment type from available data ---
-const paidCartKey = Object.keys(paidCarts || {}).find(k => k && k.includes(cart.cartId));
+    const paidCartKey = Object.keys(paidCarts || {}).find(k => k && k.includes(cart.cartId));
 
-if (cart.paymentType && cart.paymentType.trim() !== "") {
-  paymentType = cart.paymentType;
-} else if (cart.bill?.paymentType && cart.bill.paymentType.trim() !== "") {
-  paymentType = cart.bill.paymentType;
-} else if (paidCartKey) {
-  const firstPart = paidCartKey.split("_")[0] || "";
-  if (/^cart/i.test(firstPart) || firstPart.toUpperCase().includes("CART")) {
-    paymentType = "Online Payment";
-  } else {
-    paymentType = "Cash (Marked Paid)";
-  }
-}
+    // Detect payment type
+    if (cart.paymentType && cart.paymentType.trim() !== "") {
+      paymentType = cart.paymentType;
+    } else if (cart.bill?.paymentType && cart.bill.paymentType.trim() !== "") {
+      paymentType = cart.bill.paymentType;
+    } else if (paidCartKey) {
+      const firstPart = paidCartKey.split("_")[0] || "";
+      if (/^cart/i.test(firstPart) || firstPart.toUpperCase().includes("CART")) {
+        paymentType = "Online Payment";
+      } else {
+        paymentType = "Cash (Marked Paid)";
+      }
+    }
 
-// --- Extract the timestamp (robustly) ---
-let rawPaymentTime =
-  cart.paymentTime ??
-  cart.paidAt ??
-  cart.bill?.paymentTime ??
-  cart.bill?.paidAt ??
-  null;
+    // Extract timestamp from possible fields
+    let rawPaymentTime =
+      cart.paymentTime ??
+      cart.paidAt ??
+      cart.bill?.paymentTime ??
+      cart.bill?.paidAt ??
+      null;
 
-// ✅ If no direct timestamp found, try extracting from paidCartKey
-if (!rawPaymentTime && paidCartKey) {
-  const match = paidCartKey.match(/\d{13}|\d{10}/);
-  if (match) rawPaymentTime = match[0];
-}
+    // Fallback: extract from key if missing
+    if (!rawPaymentTime && paidCartKey) {
+      const match = paidCartKey.match(/\d{13}|\d{10}/);
+      if (match) rawPaymentTime = match[0];
+    }
 
-// --- Convert timestamp to readable IST ---
-function formatToIST(ts) {
-  if (!ts) return "N/A";
+    // ✅ Convert to IST readable format
+    function formatToIST(ts) {
+      if (!ts) return "N/A";
+      let ms = Number(ts);
+      if (isNaN(ms)) {
+        const parsed = Date.parse(ts);
+        if (!isNaN(parsed)) ms = parsed;
+        else return "N/A";
+      }
+      if (ms < 1e12) ms *= 1000; // seconds -> ms
+      const dateObj = new Date(ms);
+      return new Intl.DateTimeFormat("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+        timeZone: "Asia/Kolkata",
+      }).format(dateObj);
+    }
 
-  let ms = Number(ts);
-  if (isNaN(ms)) {
-    // Handle string date
-    const parsed = Date.parse(ts);
-    if (!isNaN(parsed)) ms = parsed;
-    else return "N/A";
-  }
+    paymentDate = formatToIST(rawPaymentTime);
 
-  // If timestamp is in seconds, convert to ms
-  if (ms < 1e12) ms *= 1000;
-
-  const dateObj = new Date(ms);
-
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-    timeZone: "Asia/Kolkata",
-  }).format(dateObj);
-}
-
-paymentDate = formatToIST(rawPaymentTime);
-
-// --- Debug info (optional) ---
-console.log("🧾 PDF Payment Info", {
-  cartId: cart.cartId,
-  paidCartKey,
-  rawPaymentTime,
-  formattedPaymentDate: paymentDate,
-  paymentType,
-});
-
-
-
-
+    console.log("🧾 PDF Payment Info", {
+      cartId: cart.cartId,
+      rawPaymentTime,
+      formattedPaymentDate: paymentDate,
+      paymentType,
+    });
 
     // ===== CUSTOMER DETAILS =====
     doc.setFontSize(11);
@@ -2989,14 +2976,13 @@ console.log("🧾 PDF Payment Info", {
 
     // ===== SAVE FILE =====
     const fileTime = rawPaymentTime
-      ? new Date(typeof rawPaymentTime === "string" ? Date.parse(rawPaymentTime) : Number(rawPaymentTime))
+      ? new Date(Number(rawPaymentTime < 1e12 ? rawPaymentTime * 1000 : rawPaymentTime))
           .toISOString().replace(/[:.]/g, "-")
       : new Date().toISOString().replace(/[:.]/g, "-");
 
     doc.save(`Invoice_${cart.cartId || cartId}_${fileTime}.pdf`);
   }
 </script>
-
 
 
 
