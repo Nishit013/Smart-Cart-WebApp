@@ -1975,15 +1975,21 @@ body.light-mode select option {
   </div>
 </div>
 <!-- Discount Coupon Modal -->
-<!-- Discount Coupon Modal -->
 <div id="couponModal" class="modal" style="display:none;">
   <div class="modal-content"
-     style="position:fixed; top:45%; left:50%; transform:translate(-50%,-50%);
-            max-width:400px; width:90%; text-align:center;">
-
+       style="position:fixed; top:45%; left:50%; transform:translate(-50%,-50%);
+              max-width:400px; width:90%; text-align:center; padding:20px;">
 
     <h3 style="margin-bottom:15px;">Select Discount Coupon</h3>
 
+    <!-- Cart Totals -->
+    <div style="text-align:left; margin-bottom:15px;">
+      <p>Cart Total: ₹<span id="cartTotal">0.00</span></p>
+      <p>Discount: ₹<span id="couponDiscount">0.00</span></p>
+      <p>Final Total: ₹<span id="finalTotal">0.00</span></p>
+    </div>
+
+    <!-- Coupon Dropdown -->
     <select id="couponSelect"
             style="width:100%; padding:10px; border-radius:8px;
                    border:1px solid var(--border);
@@ -1993,6 +1999,7 @@ body.light-mode select option {
 
     <br><br>
 
+    <!-- Buttons -->
     <div style="display:flex; justify-content:space-between; gap:10px;">
       <button id="applyCouponBtn"
               style="flex:1; padding:10px; border:none; border-radius:8px;
@@ -2009,6 +2016,16 @@ body.light-mode select option {
     </div>
   </div>
 </div>
+<div id="cashModal" class="modal">
+  <div class="modal-content">
+    <h3>Cash Payment</h3>
+    <p>Total Amount: ₹<span id="cashFinalTotal">0</span></p>
+    <label>Cash Received: ₹<input type="number" id="cashReceived" min="0"></label>
+    <p>Change to Give: ₹<span id="cashChange">0</span></p>
+    <button id="confirmCashBtn">Confirm Payment</button>
+  </div>
+</div>
+
 
 <!-- Overlay -->
 <div id="overlay" class="overlay"
@@ -2486,10 +2503,8 @@ function openCouponModal(cartId) {
 
   const today = new Date().toISOString().split('T')[0];
 
-  // Fetch coupons & filter valid ones
   db.ref("offers").once("value").then(snapshot => {
     const offers = snapshot.val() || {};
-
     const availableCoupons = Object.values(offers).filter(o => {
       const start = o.startDate || today;
       const end = o.endDate || today;
@@ -2501,8 +2516,21 @@ function openCouponModal(cartId) {
     cart.discountCoupons = availableCoupons;
 
     const select = document.getElementById('couponSelect');
-    select.innerHTML = `<option value="">No Discount</option>`;
+    const totalSpan = document.getElementById('cartTotal');
+    const discountSpan = document.getElementById('couponDiscount');
+    const finalSpan = document.getElementById('finalTotal');
 
+    // Compute total before discount
+    let totalBeforeDiscount = 0;
+    Object.values(cart.items || {}).forEach(item => {
+      totalBeforeDiscount += Number(item.price || 0) * Number(item.qty || 0);
+    });
+
+    totalSpan.textContent = totalBeforeDiscount.toFixed(2);
+    discountSpan.textContent = "0.00";
+    finalSpan.textContent = totalBeforeDiscount.toFixed(2);
+
+    select.innerHTML = `<option value="">No Discount</option>`;
     availableCoupons.forEach((c, i) => {
       const opt = document.createElement('option');
       opt.value = i;
@@ -2511,18 +2539,34 @@ function openCouponModal(cartId) {
       select.appendChild(opt);
     });
 
+    // Update totals dynamically when coupon is selected
+    select.onchange = () => {
+      let discount = 0;
+      if (select.value !== "") {
+        const coupon = availableCoupons[select.value];
+        if (coupon.discountType === "flat") {
+          discount = Math.min(Number(coupon.discountValue), Number(coupon.maxDiscount || coupon.discountValue));
+        } else if (coupon.discountType === "percentage") {
+          discount = (totalBeforeDiscount * Number(coupon.discountValue)) / 100;
+          if (coupon.maxDiscount > 0) discount = Math.min(discount, Number(coupon.maxDiscount));
+        }
+      }
+      discountSpan.textContent = discount.toFixed(2);
+      finalSpan.textContent = (totalBeforeDiscount - discount).toFixed(2);
+    };
+
     document.getElementById('couponModal').style.display = 'block';
     document.getElementById('overlay').style.display = 'block';
 
     document.getElementById('applyCouponBtn').onclick = function() {
-      const selectedIndex = select.value;
       let selectedCoupon = null;
-      if (selectedIndex !== "") selectedCoupon = availableCoupons[selectedIndex];
+      if (select.value !== "") selectedCoupon = availableCoupons[select.value];
       closeCouponModal();
-      markAsPaid(cartId, selectedCoupon);
+      openCashModal(cartId, selectedCoupon, totalBeforeDiscount); // Open cash modal next
     };
   });
 }
+
 
 
 function closeCouponModal() {
@@ -2530,7 +2574,61 @@ function closeCouponModal() {
   document.getElementById('overlay').style.display = 'none';
 }
 
-function markAsPaid(cartId, selectedCoupon = null) {
+
+
+
+function openCashModal(cartId, selectedCoupon, totalBeforeDiscount) {
+  const cart = allCarts[cartId];
+  if (!cart) return alert("Cart not found");
+
+  let discount = 0;
+  if (selectedCoupon && totalBeforeDiscount >= Number(selectedCoupon.minPurchase)) {
+    if (selectedCoupon.discountType === "flat") {
+      discount = Math.min(Number(selectedCoupon.discountValue), Number(selectedCoupon.maxDiscount || selectedCoupon.discountValue));
+    } else if (selectedCoupon.discountType === "percentage") {
+      discount = (totalBeforeDiscount * Number(selectedCoupon.discountValue)) / 100;
+      if (selectedCoupon.maxDiscount > 0) discount = Math.min(discount, Number(selectedCoupon.maxDiscount));
+    }
+  }
+
+  const finalTotal = totalBeforeDiscount - discount;
+
+  const cashModal = document.getElementById('cashModal');
+  const overlay = document.getElementById('overlay');
+  cashModal.style.display = 'block';
+  overlay.style.display = 'block';
+
+  document.getElementById('cashFinalTotal').textContent = finalTotal.toFixed(2);
+  const cashInput = document.getElementById('cashReceived');
+  const changeSpan = document.getElementById('cashChange');
+
+  cashInput.value = "";
+  changeSpan.textContent = "0.00";
+
+  cashInput.oninput = () => {
+    const cash = Number(cashInput.value || 0);
+    const change = Math.max(0, cash - finalTotal);
+    changeSpan.textContent = change.toFixed(2);
+  };
+
+  document.getElementById('confirmCashBtn').onclick = function() {
+    const cashReceived = Number(cashInput.value || 0);
+    const changeGiven = Math.max(0, cashReceived - finalTotal);
+    if (cashReceived < finalTotal) return alert("❌ Cash received is less than total amount!");
+
+    closeCashModal();
+    markAsPaid(cartId, selectedCoupon, cashReceived, changeGiven);
+  };
+}
+
+function closeCashModal() {
+  document.getElementById('cashModal').style.display = 'none';
+  document.getElementById('overlay').style.display = 'none';
+}
+
+
+
+function markAsPaid(cartId, selectedCoupon = null, cashReceived = 0, changeGiven = 0) {
   const cart = allCarts[cartId];
   if (!cart) return alert("Cart not found.");
 
@@ -2543,48 +2641,32 @@ function markAsPaid(cartId, selectedCoupon = null) {
   const itemsArray = Object.values(cart.items || {});
 
   // --- Step 2: Calculate totals & GST ---
-  let totalBeforeDiscount = 0;
-  let totalCGST = 0;
-  let totalSGST = 0;
-
+  let totalBeforeDiscount = 0, totalCGST = 0, totalSGST = 0;
   itemsArray.forEach(item => {
     const price = Number(item.price || 0);
     const qty = Number(item.qty || 0);
     const cgst = Number(item.cgst || 0);
     const sgst = Number(item.sgst || 0);
-
-    const totalTaxPercent = cgst + sgst;
-    const basePrice = price / (1 + totalTaxPercent / 100);
-    const cgstAmt = (basePrice * (cgst / 100)) * qty;
-    const sgstAmt = (basePrice * (sgst / 100)) * qty;
-
-    totalCGST += cgstAmt;
-    totalSGST += sgstAmt;
+    const basePrice = price / (1 + (cgst + sgst)/100);
+    totalCGST += (basePrice * (cgst/100) * qty);
+    totalSGST += (basePrice * (sgst/100) * qty);
     totalBeforeDiscount += price * qty;
   });
 
   const totalGST = totalCGST + totalSGST;
 
   // --- Step 3: Apply discount ---
-  let discount = 0;
-let appliedCouponCode = null;
-
-if (selectedCoupon && totalBeforeDiscount >= Number(selectedCoupon.minPurchase)) {
-  if (selectedCoupon.discountType === "flat") {
-    discount = Math.min(
-      Number(selectedCoupon.discountValue),
-      Number(selectedCoupon.maxDiscount || selectedCoupon.discountValue)
-    );
-  } else if (selectedCoupon.discountType === "percentage") { // <-- fix here
-    discount = (totalBeforeDiscount * Number(selectedCoupon.discountValue)) / 100;
-    if (selectedCoupon.maxDiscount > 0) {
-      discount = Math.min(discount, Number(selectedCoupon.maxDiscount));
+  let discount = 0, appliedCouponCode = null;
+  if (selectedCoupon && totalBeforeDiscount >= Number(selectedCoupon.minPurchase)) {
+    if (selectedCoupon.discountType === "flat") discount = Math.min(Number(selectedCoupon.discountValue), Number(selectedCoupon.maxDiscount || selectedCoupon.discountValue));
+    else if (selectedCoupon.discountType === "percentage") {
+      discount = (totalBeforeDiscount * Number(selectedCoupon.discountValue))/100;
+      if (selectedCoupon.maxDiscount > 0) discount = Math.min(discount, Number(selectedCoupon.maxDiscount));
     }
+    appliedCouponCode = selectedCoupon.couponCode;
   }
-  appliedCouponCode = selectedCoupon.couponCode;
-}
 
-const finalPaid = totalBeforeDiscount - discount;
+  const finalPaid = totalBeforeDiscount - discount;
 
   // --- Step 4: Build bill summary ---
   const summaryText = buildBillSummary(itemsArray, totalBeforeDiscount, discount, totalCGST, totalSGST);
@@ -2600,9 +2682,11 @@ const finalPaid = totalBeforeDiscount - discount;
     totalSGST,
     totalGST,
     phone,
+    cashReceived,
+    changeGiven,
     paidAt: timestamp,
     paymentTime: timestamp,
-    paymentType: "Cash (Marked Paid)",
+    paymentType: "Cash",
     discountCoupon: appliedCouponCode,
     bill: {
       summary: summaryText,
@@ -2612,11 +2696,13 @@ const finalPaid = totalBeforeDiscount - discount;
       phone,
       totalCGST,
       totalSGST,
-      totalGST
+      totalGST,
+      cashReceived,
+      changeGiven
     }
   };
 
-  // --- Step 6: Save to Firebase, update stock, clear cart ---
+  // --- Step 6: Save to Firebase ---
   db.ref("paidCarts/" + timestamp + "_" + cartId).set(paidData)
     .then(() => db.ref("carts/" + cartId).update({
       total: totalBeforeDiscount,
@@ -2629,7 +2715,9 @@ const finalPaid = totalBeforeDiscount - discount;
       paymentStatus: "Paid",
       isActive: false,
       bill: paidData.bill,
-      items: null // clear cart items
+      items: null,
+      cashReceived,
+      changeGiven
     }))
     .then(() => {
       // Update stock quantity without creating stock history
@@ -2637,11 +2725,9 @@ const finalPaid = totalBeforeDiscount - discount;
         const barcode = item.barcode;
         const qty = Number(item.qty || 0);
         if (!barcode) return Promise.resolve();
-
         return db.ref("products/" + barcode).once("value").then(snap => {
           if (!snap.exists()) return;
-          const currentStock = snap.val().stock || 0;
-          const newStock = Math.max(0, currentStock - qty);
+          const newStock = Math.max(0, (snap.val().stock || 0) - qty);
           return db.ref("products/" + barcode + "/stock").set(newStock);
         });
       });
@@ -2658,7 +2744,7 @@ const finalPaid = totalBeforeDiscount - discount;
       productsData = snapProducts.val() || {};
       renderData();
       renderProductSales();
-      alert("✅ Cart marked as Paid with discount & GST stored!");
+      alert(`✅ Cart marked as Paid!\nCash Received: ₹${cashReceived}\nChange Given: ₹${changeGiven}`);
     })
     .catch(err => {
       console.error("Error in markAsPaid:", err);
