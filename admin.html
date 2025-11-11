@@ -2531,13 +2531,21 @@ function openCouponModal(cartId) {
     finalSpan.textContent = totalBeforeDiscount.toFixed(2);
 
     select.innerHTML = `<option value="">No Discount</option>`;
-    availableCoupons.forEach((c, i) => {
-      const opt = document.createElement('option');
-      opt.value = i;
-      const typeText = c.discountType === "percent" ? `% off` : ` flat ₹`;
-      opt.text = `${c.couponCode} - ${c.discountValue}${typeText} up to ₹${c.maxDiscount}`;
-      select.appendChild(opt);
-    });
+availableCoupons.forEach((c, i) => {
+  const opt = document.createElement('option');
+  opt.value = i;
+  const typeText = c.discountType === "percent" ? `% off` : ` flat ₹`;
+  opt.text = `${c.couponCode} - ${c.discountValue}${typeText} up to ₹${c.maxDiscount}`;
+
+  // Disable option if cart total < minPurchase
+  if (totalBeforeDiscount < Number(c.minPurchase || 0)) {
+    opt.disabled = true;
+    opt.text += ` (Not Eligible)`;
+  }
+
+  select.appendChild(opt);
+});
+
 
     // Update totals dynamically when coupon is selected
     select.onchange = () => {
