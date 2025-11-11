@@ -2746,6 +2746,7 @@ function markAsPaid(cartId, selectedCoupon = null, cashReceived = null, changeGi
       allCarts = snapCarts.val() || {};
       paidCarts = snapPaid.val() || {};
       productsData = snapProducts.val() || {};
+       generatePDF(itemsArray, totalBeforeDiscount, discount, finalPaid);
       renderData();
       renderProductSales();
       alert("✅ Cart marked as Paid with discount, cash received & change stored!");
