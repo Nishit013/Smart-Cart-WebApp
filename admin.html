@@ -23,24 +23,6 @@
   })();
 </script>
 
-<script>
-function formatCurrency(text) {
-  if (!text) return text;
-  return text.replaceAll('₹', 'INR');
-}
-
-// Wait until jsPDF is loaded
-if (window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API) {
-  const originalText = window.jspdf.jsPDF.API.text;
-  window.jspdf.jsPDF.API.text = function(txt, ...args) {
-    if (typeof txt === 'string') txt = formatCurrency(txt);
-    else if (Array.isArray(txt)) txt = txt.map(t => formatCurrency(t));
-    return originalText.call(this, txt, ...args);
-  };
-} else {
-  console.error("jsPDF not loaded yet! Patch failed.");
-}
-</script>
 
   <style>
     * {
@@ -2421,17 +2403,6 @@ barData.push(Number(cart.finalAmount ?? cart.total) || 0);
     `;
   }).join("<hr>");
 }
-
-
-
-
-// Helper function to convert ₹ → INR
-function formatCurrency(text) {
-  if (!text) return text;
-  return text.replaceAll('₹', 'INR');
-}
-
-
 
 function exportCSV() {
   const rows = [["Cart ID", "Total Before Discount", "Discount Applied", "Final Paid", "Date", "Time", "Phone"]];
