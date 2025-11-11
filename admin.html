@@ -2770,14 +2770,20 @@ async function downloadPDF(cartId) {
     return;
   }
 
+  // ===== DEBUG: show all timestamp-like fields from this cart =====
+  console.log("=== DEBUG cart timestamp fields ===");
+  console.log("cart.paymentTime:", cart.paymentTime, typeof cart.paymentTime);
+  console.log("cart.paidAt:", cart.paidAt, typeof cart.paidAt);
+  console.log("cart.bill?.paymentTime:", cart.bill?.paymentTime, typeof cart.bill?.paymentTime);
+  console.log("cart.bill?.paidAt:", cart.bill?.paidAt, typeof cart.bill?.paidAt);
+
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
   let y = 18;
 
-  // ===== HEADER =====
+  // header (same as before)
   doc.setFontSize(14);
-  doc.text("Smart Cart Pro – Invoice", 20, y);
-  y += 8;
+  doc.text("Smart Cart Pro – Invoice", 20, y); y += 8;
   doc.setFontSize(10);
   doc.text("Campus Store - Hall 1, Block B, Tech Street", 20, y);
   doc.text("TAX INVOICE", 150, y);
@@ -2787,12 +2793,9 @@ async function downloadPDF(cartId) {
   doc.line(20, y, 190, y);
   y += 8;
 
-  // ===== PAYMENT TYPE =====
+  // payment type logic unchanged
   let paymentType = "Online Payment";
-  let paymentDate = "N/A";
-
   const paidCartKey = Object.keys(paidCarts || {}).find(k => k && k.includes(cart.cartId));
-
   if (cart.paymentType && cart.paymentType.trim() !== "") {
     paymentType = cart.paymentType;
   } else if (cart.bill?.paymentType && cart.bill.paymentType.trim() !== "") {
@@ -2804,49 +2807,52 @@ async function downloadPDF(cartId) {
       : "Cash (Marked Paid)";
   }
 
-  // --- Helper: normalize various timestamp formats to milliseconds (ms) ---
-  function toMs(val) {
+  // --- Robust normalizer function (aggressively safe)
+  function normalizeToMs(val) {
     if (val === null || val === undefined || val === "") return null;
 
-    // If already a number, attempt to normalize scale
+    // If a number already
     if (typeof val === "number") {
       let n = val;
-      // If number ridiculously large (microseconds or worse), reduce scale until reasonable
-      // Reasonable ms for 2020-2030 ~ 1.5e12..1.8e12
-      while (n > 1e14) n = Math.floor(n / 10); // likely too large, divide by 10 repeatedly
-      if (n > 1e12) return n; // already ms
-      if (n > 1e9) return n * 1000; // seconds -> ms
-      // otherwise weird small number
+      // fix: reduce obvious microsecond/multiply errors by dividing until in plausible range
+      // plausible ms range for years 2000-2050: 9.4e11 .. 2.6e12
+      // while n is absurdly large (> 1e14), reduce by factor 10 repeatedly
+      while (n > 1e14) n = Math.floor(n / 10);
+      // if n appears to be seconds (10 digits) convert to ms
+      if (n >= 1e9 && n < 1e12) return Math.floor(n * 1000);
+      // if n already looks like ms
+      if (n >= 1e12 && n < 1e14) return n;
+      // else return null (we can't safely guess)
       return null;
     }
 
-    // If string of digits
     const s = String(val).trim();
+
+    // pure digits? treat similar to number case
     if (/^\d+$/.test(s)) {
       let n = Number(s);
       while (n > 1e14) n = Math.floor(n / 10);
-      if (n > 1e12) return n; // ms
-      if (n > 1e9) return n * 1000; // seconds -> ms
+      if (n >= 1e9 && n < 1e12) return Math.floor(n * 1000);
+      if (n >= 1e12 && n < 1e14) return n;
       return null;
     }
 
-    // Try Date.parse (handles ISO with T/Z and many formats)
+    // Try Date.parse (handles ISO like "2025-11-09T17:13:40.270Z")
     const parsed = Date.parse(s);
-    if (!isNaN(parsed)) return parsed; // parsed is ms
+    if (!isNaN(parsed)) return parsed; // in ms
 
-    // Try to parse DD/MM/YYYY [ , hh:mm[:ss] [am|pm]]
+    // Try DD/MM/YYYY with optional time and am/pm
     const r = s.match(/^\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[,\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?)?\s*$/i);
     if (r) {
-      let [, d, m, y, hh, mm, ss, ampm] = r;
-      d = d.padStart(2, "0");
-      m = m.padStart(2, "0");
+      let [, d, m, y, hh, mm, ss, ap] = r;
+      d = d.padStart(2, "0"); m = m.padStart(2, "0");
       hh = hh ? parseInt(hh, 10) : 0;
       mm = mm ? mm.padStart(2, "0") : "00";
       ss = ss ? ss.padStart(2, "0") : "00";
-      if (ampm) {
-        ampm = ampm.toLowerCase();
-        if (ampm === "pm" && hh < 12) hh += 12;
-        if (ampm === "am" && hh === 12) hh = 0;
+      if (ap) {
+        ap = ap.toLowerCase();
+        if (ap === "pm" && hh < 12) hh += 12;
+        if (ap === "am" && hh === 12) hh = 0;
       }
       hh = String(hh).padStart(2, "0");
       const isoLike = `${y}-${m}-${d}T${hh}:${mm}:${ss}`;
@@ -2854,16 +2860,52 @@ async function downloadPDF(cartId) {
       if (!isNaN(p)) return p;
     }
 
-    // Give up
     return null;
   }
 
-  // --- Helper: format ms to IST string ---
-  function formatMsToIST(ms) {
-    if (!ms) return "N/A";
+  // fetch raw values and try normalization for each variant (we log all)
+  const candidates = [
+    { key: "cart.paymentTime", v: cart.paymentTime },
+    { key: "cart.paidAt", v: cart.paidAt },
+    { key: "cart.bill.paymentTime", v: cart.bill?.paymentTime },
+    { key: "cart.bill.paidAt", v: cart.bill?.paidAt },
+  ];
+
+  const normalized = candidates.map(c => {
+    const ms = normalizeToMs(c.v);
+    let humanUTC = ms ? new Date(ms).toUTCString() : null;
+    let humanIST = ms ? new Date(ms).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", hour12: true }) : null;
+    console.log(`candidate ${c.key}: raw=`, c.v, typeof c.v, " -> ms=", ms, " -> UTC:", humanUTC, " -> IST:", humanIST);
+    return { ...c, ms, humanUTC, humanIST };
+  });
+
+  // Prefer this order: cart.paymentTime -> cart.paidAt -> bill.paymentTime -> bill.paidAt -> key-extracted ts
+  let rawPaymentTime = cart.paymentTime ?? cart.paidAt ?? cart.bill?.paymentTime ?? cart.bill?.paidAt ?? null;
+
+  // if nothing chosen, try to extract from paidCartKey
+  if (!rawPaymentTime && paidCartKey) {
+    const match = paidCartKey.match(/\d{13}|\d{10}/);
+    if (match) rawPaymentTime = match[0];
+  }
+
+  // If still nothing, try last-resort pick: the first non-null normalized candidate ms
+  let ms = normalizeToMs(rawPaymentTime);
+  if (!ms) {
+    const firstGood = normalized.find(n => n.ms);
+    if (firstGood) {
+      ms = firstGood.ms;
+      console.warn("No direct rawPaymentTime normalized — falling back to candidate:", firstGood.key);
+    }
+  }
+
+  // FINAL: if still null, log everything and set display to Invalid Date
+  if (!ms) {
+    console.error("Timestamp normalization failed for cart. Dumping candidates:");
+    console.table(normalized.map(n => ({ key: n.key, raw: n.v, ms: n.ms })));
+    paymentDate = "Invalid Date";
+  } else {
     const dt = new Date(ms);
-    if (isNaN(dt.getTime())) return "Invalid Date";
-    return dt.toLocaleString("en-IN", {
+    paymentDate = dt.toLocaleString("en-IN", {
       timeZone: "Asia/Kolkata",
       day: "2-digit",
       month: "short",
@@ -2873,26 +2915,8 @@ async function downloadPDF(cartId) {
       second: "2-digit",
       hour12: true
     });
+    console.log("Selected normalized ms for PDF:", ms, " -> UTC:", new Date(ms).toUTCString(), " -> IST:", paymentDate);
   }
-
-  // ===== Extract payment timestamp from all possible sources =====
-  let rawPaymentTime =
-    cart.paymentTime ??
-    cart.paidAt ??
-    cart.bill?.paymentTime ??
-    cart.bill?.paidAt ??
-    null;
-
-  if (!rawPaymentTime && paidCartKey) {
-    const match = paidCartKey.match(/\d{13}|\d{10}/);
-    if (match) rawPaymentTime = match[0];
-  }
-
-  // Normalize & format
-  const ms = toMs(rawPaymentTime);
-  console.log("DEBUG rawPaymentTime:", rawPaymentTime, typeof rawPaymentTime, " -> normalized ms:", ms);
-  paymentDate = ms ? formatMsToIST(ms) : (rawPaymentTime ? formatMsToIST(toMs(String(rawPaymentTime).trim())) : "N/A");
-  console.log("DEBUG paymentDate:", paymentDate);
 
   // ===== CUSTOMER DETAILS =====
   doc.setFontSize(11);
@@ -2901,12 +2925,11 @@ async function downloadPDF(cartId) {
   doc.text(`Payment Time: ${paymentDate}`, 20, y); y += 6;
   doc.text(`Payment Type: ${paymentType}`, 20, y); y += 8;
 
-  // ===== PARSE SUMMARY ITEMS =====
+  // (rest of your original PDF generation - unchanged)
   const summaryText = typeof cart.bill.summary === "string" ? cart.bill.summary : "";
   const summaryLines = summaryText.split("\n").map(l => l.trim());
   const parsedSummaryItems = [];
   let i = 0;
-
   while (i < summaryLines.length) {
     const line = summaryLines[i];
     const itemMatch = line.match(/^\d+\.\s*(.+)$/);
@@ -2933,7 +2956,7 @@ async function downloadPDF(cartId) {
     } else i++;
   }
 
-  // ===== TABLE DATA =====
+  // table items and totals (unchanged from your code)
   let tableItems = [];
   if (Array.isArray(cart.items) && cart.items.length > 0) {
     tableItems = cart.items.map(it => {
@@ -2954,7 +2977,7 @@ async function downloadPDF(cartId) {
     tableItems = parsedSummaryItems;
   }
 
-  // ===== TABLE HEADER =====
+  // render table header & rows (unchanged)
   doc.setFontSize(11);
   doc.setFillColor(230, 230, 230);
   doc.rect(20, y - 5, 170, 8, "F");
@@ -2968,7 +2991,6 @@ async function downloadPDF(cartId) {
   doc.line(20, y, 190, y);
   y += 6;
 
-  // ===== TABLE ROWS =====
   let totalCGST = 0, totalSGST = 0, subtotalSum = 0;
   if (tableItems.length > 0) {
     doc.setFontSize(10);
@@ -2990,7 +3012,6 @@ async function downloadPDF(cartId) {
     y += 8;
   }
 
-  // ===== TOTALS =====
   const bill = cart.bill || {};
   const totalBefore = Number(bill.originalTotal ?? cart.total ?? subtotalSum) || subtotalSum;
   const discount = Number(bill.discount || cart.discount || 0) || 0;
@@ -3008,24 +3029,20 @@ async function downloadPDF(cartId) {
   doc.setFont(undefined, "normal");
   y += 10;
 
-  // ===== FOOTER =====
   doc.setFontSize(9);
   doc.text("Thank you for shopping with Smart Cart Pro!", 20, y);
   y += 6;
   doc.text("Generated via Admin Panel", 20, y);
 
-  // ===== SAVE FILE =====
-  // Use normalized ms for filename too
+  // filename uses normalized ms if available
   let fileTime;
-  if (ms) {
-    fileTime = new Date(ms).toISOString().replace(/[:.]/g, "-");
-  } else {
-    fileTime = new Date().toISOString().replace(/[:.]/g, "-");
-  }
+  if (ms) fileTime = new Date(ms).toISOString().replace(/[:.]/g, "-");
+  else fileTime = new Date().toISOString().replace(/[:.]/g, "-");
 
   doc.save(`Invoice_${cart.cartId || cartId}_${fileTime}.pdf`);
 }
 </script>
+
 
 
 
