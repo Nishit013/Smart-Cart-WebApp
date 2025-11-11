@@ -2821,95 +2821,112 @@ function getCartStatus(cart) {
 
     // ✅ Fix timestamp & convert to IST
     // ✅ Fix timestamp & convert to IST (handles both ISO string and numeric timestamp)
-// --- REPLACE your existing formatToIST() with this function ---
 function formatToIST(ts) {
+  // Quick guard
   if (ts === null || ts === undefined || ts === "") return "N/A";
 
-  // Quick debug (you can remove later)
-  console.log("formatToIST input:", ts, "type:", typeof ts);
+  // DEBUG: show raw input
+  console.log(">> formatToIST raw input:", ts, " (type:", typeof ts + ")");
 
-  let date = null;
+  // Normalize to string for some checks
   const raw = String(ts).trim();
 
-  // 1) If it's a pure numeric string or number -> treat as timestamp
+  // We'll compute a milliseconds-since-epoch value (ms)
+  let ms = NaN;
+
+  // 1) If it's purely numeric (string of digits) or actual number -> treat as timestamp
   if (/^\d+$/.test(raw)) {
-    let n = Number(raw);
-    // if looks like seconds (10 digits) convert to ms
-    if (n < 1e12) n = n * 1000;
-    date = new Date(n);
-    if (!isNaN(date)) {
-      return date.toLocaleString("en-IN", {
-        timeZone: "Asia/Kolkata",
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true
-      });
+    ms = Number(raw);
+    // If it looks like seconds (10 digits or less), convert to ms.
+    // If it's already milliseconds (13+ digits), leave as-is.
+    if (ms < 1e12) {
+      // seconds -> ms
+      ms = ms * 1000;
+      console.log("  interpreted as seconds -> converted to ms:", ms);
+    } else {
+      console.log("  interpreted as milliseconds:", ms);
+    }
+  } else {
+    // 2) If it looks like ISO with Z or T (UTC-aware) -> Date.parse handles it as UTC
+    if (raw.includes("T")) {
+      const p = Date.parse(raw);
+      if (!isNaN(p)) {
+        ms = p;
+        console.log("  parsed ISO/T string -> ms:", ms);
+      } else {
+        console.log("  contains 'T' but Date.parse failed:", raw);
+      }
+    }
+
+    // 3) Try native Date.parse as fallback for many formats (ISO, RFC, etc.)
+    if (isNaN(ms)) {
+      const p2 = Date.parse(raw);
+      if (!isNaN(p2)) {
+        ms = p2;
+        console.log("  Date.parse succeeded -> ms:", ms);
+      } else {
+        console.log("  Date.parse failed for:", raw);
+      }
+    }
+
+    // 4) If still NaN, try to parse DD/MM/YYYY (with optional time and am/pm)
+    if (isNaN(ms)) {
+      const r = raw.match(/^\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[,\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?)?\s*$/i);
+      if (r) {
+        let [, d, m, y, hh, mm_, ss_, ampm] = r;
+        d = d.padStart(2, "0");
+        m = m.padStart(2, "0");
+        hh = hh ? parseInt(hh, 10) : 0;
+        mm_ = mm_ ? mm_.padStart(2, "0") : "00";
+        ss_ = ss_ ? ss_.padStart(2, "0") : "00";
+
+        if (ampm) {
+          ampm = ampm.toLowerCase();
+          if (ampm === "pm" && hh < 12) hh += 12;
+          if (ampm === "am" && hh === 12) hh = 0;
+        }
+        hh = String(hh).padStart(2, "0");
+
+        // Build an ISO-like string in local/UTC-neutral form and parse
+        const isoLike = `${y}-${m}-${d}T${hh}:${mm_}:${ss_}`;
+        const p3 = Date.parse(isoLike);
+        if (!isNaN(p3)) {
+          ms = p3;
+          console.log("  parsed D/M/Y form -> isoLike:", isoLike, " -> ms:", ms);
+        } else {
+          console.log("  failed to parse D/M/Y form ->", isoLike);
+        }
+      } else {
+        console.log("  no D/M/Y pattern matched for:", raw);
+      }
     }
   }
 
-  // 2) Try native Date.parse (handles ISO and many standard formats)
-  const parsed = Date.parse(raw);
-  if (!isNaN(parsed)) {
-    date = new Date(parsed);
-    return date.toLocaleString("en-IN", {
-      timeZone: "Asia/Kolkata",
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true
-    });
+  // If still invalid, return "Invalid Date" so you notice it in PDF and logs
+  if (isNaN(ms)) {
+    console.warn("formatToIST: could not parse timestamp:", ts);
+    return "Invalid Date";
   }
 
-  // 3) Handle common DD/MM/YYYY or D/M/YYYY formats, with optional time & am/pm
-  // Examples matched:
-  //  "11/11/2025, 3:49:45 pm"
-  //  "11-11-2025 15:49"
-  //  "1/2/2025, 7:05 am"
-  const r = raw.match(/^\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[,\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?)?\s*$/i);
-  if (r) {
-    let [, d, m, y, hh, mm, ss, ampm] = r;
-    d = d.padStart(2, "0");
-    m = m.padStart(2, "0");
-    hh = hh ? parseInt(hh, 10) : 0;
-    mm = mm ? mm.padStart(2, "0") : "00";
-    ss = ss ? ss.padStart(2, "0") : "00";
+  // Finally, we have milliseconds (ms). Build Date object and format to IST.
+  const date = new Date(ms);
 
-    if (ampm) {
-      ampm = ampm.toLowerCase();
-      if (ampm === "pm" && hh < 12) hh += 12;
-      if (ampm === "am" && hh === 12) hh = 0;
-    }
-    hh = String(hh).padStart(2, "0");
+  // DEBUG: show what the Date object thinks
+  console.log("  final Date (toString):", date.toString(), " | ms:", ms);
 
-    // create ISO-like string so Date can parse reliably
-    const iso = `${y}-${m}-${d}T${hh}:${mm}:${ss}`;
-    const parsedIso = Date.parse(iso);
-    if (!isNaN(parsedIso)) {
-      date = new Date(parsedIso);
-      return date.toLocaleString("en-IN", {
-        timeZone: "Asia/Kolkata",
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true
-      });
-    }
-  }
+  const out = date.toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true
+  });
 
-  // 4) If still failing, return the raw string (or "Invalid Date") so it's visible in PDF
-  // You can choose to show raw or an "Invalid Date" marker
-  return "Invalid Date";
-
+  console.log("  -> formatted IST:", out);
+  return out;
 
 
 
