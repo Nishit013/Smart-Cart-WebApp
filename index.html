@@ -715,8 +715,18 @@ function updateStockAfterPayment() {
 
   const totalGST = totalCGST + totalSGST;
 
+
+
+
+
   let discount = parseFloat(discountAmountEl.textContent.replace(/[₹,]/g, "")) || 0;
-  let finalAmount = total - discount;
+let finalAmount = Number(total) - discount;
+if (isNaN(finalAmount)) finalAmount = 0;
+
+
+
+
+
 
   const options = {
     key: "rzp_live_es0XjKaI61byUK",
