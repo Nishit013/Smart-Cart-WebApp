@@ -2808,115 +2808,65 @@ async function downloadPDF(cartId) {
   }
 
   // --- Robust normalizer function (aggressively safe)
-  function normalizeToMs(val) {
-    if (val === null || val === undefined || val === "") return null;
+// --- Robust normalizer function
+function normalizeToMs(val) {
+  if (!val) return null;
 
-    // If a number already
-    if (typeof val === "number") {
-      let n = val;
-      // fix: reduce obvious microsecond/multiply errors by dividing until in plausible range
-      // plausible ms range for years 2000-2050: 9.4e11 .. 2.6e12
-      // while n is absurdly large (> 1e14), reduce by factor 10 repeatedly
-      while (n > 1e14) n = Math.floor(n / 10);
-      // if n appears to be seconds (10 digits) convert to ms
-      if (n >= 1e9 && n < 1e12) return Math.floor(n * 1000);
-      // if n already looks like ms
-      if (n >= 1e12 && n < 1e14) return n;
-      // else return null (we can't safely guess)
-      return null;
-    }
-
-    const s = String(val).trim();
-
-    // pure digits? treat similar to number case
-    if (/^\d+$/.test(s)) {
-      let n = Number(s);
-      while (n > 1e14) n = Math.floor(n / 10);
-      if (n >= 1e9 && n < 1e12) return Math.floor(n * 1000);
-      if (n >= 1e12 && n < 1e14) return n;
-      return null;
-    }
-
-    // Try Date.parse (handles ISO like "2025-11-09T17:13:40.270Z")
-    const parsed = Date.parse(s);
-    if (!isNaN(parsed)) return parsed; // in ms
-
-    // Try DD/MM/YYYY with optional time and am/pm
-    const r = s.match(/^\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[,\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?)?\s*$/i);
-    if (r) {
-      let [, d, m, y, hh, mm, ss, ap] = r;
-      d = d.padStart(2, "0"); m = m.padStart(2, "0");
-      hh = hh ? parseInt(hh, 10) : 0;
-      mm = mm ? mm.padStart(2, "0") : "00";
-      ss = ss ? ss.padStart(2, "0") : "00";
-      if (ap) {
-        ap = ap.toLowerCase();
-        if (ap === "pm" && hh < 12) hh += 12;
-        if (ap === "am" && hh === 12) hh = 0;
-      }
-      hh = String(hh).padStart(2, "0");
-      const isoLike = `${y}-${m}-${d}T${hh}:${mm}:${ss}`;
-      const p = Date.parse(isoLike);
-      if (!isNaN(p)) return p;
-    }
-
-    return null;
+  const num = Number(val);
+  if (!isNaN(num)) {
+    if (num > 1e12 && num < 1e14) return num;     // milliseconds
+    if (num > 1e9 && num < 1e12) return num * 1000; // seconds
   }
 
-  // fetch raw values and try normalization for each variant (we log all)
-  const candidates = [
-    { key: "cart.paymentTime", v: cart.paymentTime },
-    { key: "cart.paidAt", v: cart.paidAt },
-    { key: "cart.bill.paymentTime", v: cart.bill?.paymentTime },
-    { key: "cart.bill.paidAt", v: cart.bill?.paidAt },
-  ];
+  const parsed = Date.parse(val);
+  if (!isNaN(parsed)) return parsed;
 
-  const normalized = candidates.map(c => {
-    const ms = normalizeToMs(c.v);
-    let humanUTC = ms ? new Date(ms).toUTCString() : null;
-    let humanIST = ms ? new Date(ms).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", hour12: true }) : null;
-    console.log(`candidate ${c.key}: raw=`, c.v, typeof c.v, " -> ms=", ms, " -> UTC:", humanUTC, " -> IST:", humanIST);
-    return { ...c, ms, humanUTC, humanIST };
+  return null;
+}
+
+// --- Collect and choose timestamp
+const rawCandidates = [
+  { key: "cart.paidAt", v: cart.paidAt },
+  { key: "cart.paymentTime", v: cart.paymentTime },
+  { key: "bill.paidAt", v: cart.bill?.paidAt },
+  { key: "bill.paymentTime", v: cart.bill?.paymentTime },
+  { key: "bill.timestamp", v: cart.bill?.timestamp },
+  { key: "bill.time", v: cart.bill?.time },
+  { key: "bill.createdAt", v: cart.bill?.createdAt },
+  { key: "cart.createdAt", v: cart.createdAt },
+  { key: "cart.updatedAt", v: cart.updatedAt }
+];
+
+const normalized = rawCandidates
+  .map(n => ({ ...n, ms: normalizeToMs(n.v) }))
+  .filter(n => n.ms);
+
+let ms = null;
+if (normalized.length > 0) {
+  ms = Math.max(...normalized.map(n => n.ms));
+}
+
+// FINAL: if still null, log everything and set display to Invalid Date
+if (!ms) {
+  console.error("Timestamp normalization failed for cart. Dumping candidates:");
+  console.table(normalized.map(n => ({ key: n.key, raw: n.v, ms: n.ms })));
+  paymentDate = "Invalid Date";
+} else {
+  const dt = new Date(ms);
+  paymentDate = dt.toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true
   });
+  console.log("✅ Final PDF Date:", paymentDate, " | Raw TS:", ms);
+}
 
-  // Prefer this order: cart.paymentTime -> cart.paidAt -> bill.paymentTime -> bill.paidAt -> key-extracted ts
-  let rawPaymentTime = cart.paymentTime ?? cart.paidAt ?? cart.bill?.paymentTime ?? cart.bill?.paidAt ?? null;
 
-  // if nothing chosen, try to extract from paidCartKey
-  if (!rawPaymentTime && paidCartKey) {
-    const match = paidCartKey.match(/\d{13}|\d{10}/);
-    if (match) rawPaymentTime = match[0];
-  }
-
-  // If still nothing, try last-resort pick: the first non-null normalized candidate ms
-  let ms = normalizeToMs(rawPaymentTime);
-  if (!ms) {
-    const firstGood = normalized.find(n => n.ms);
-    if (firstGood) {
-      ms = firstGood.ms;
-      console.warn("No direct rawPaymentTime normalized — falling back to candidate:", firstGood.key);
-    }
-  }
-
-  // FINAL: if still null, log everything and set display to Invalid Date
-  if (!ms) {
-    console.error("Timestamp normalization failed for cart. Dumping candidates:");
-    console.table(normalized.map(n => ({ key: n.key, raw: n.v, ms: n.ms })));
-    paymentDate = "Invalid Date";
-  } else {
-    const dt = new Date(ms);
-    paymentDate = dt.toLocaleString("en-IN", {
-      timeZone: "Asia/Kolkata",
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true
-    });
-    console.log("Selected normalized ms for PDF:", ms, " -> UTC:", new Date(ms).toUTCString(), " -> IST:", paymentDate);
-  }
 
   // ===== CUSTOMER DETAILS =====
   doc.setFontSize(11);
