@@ -2822,99 +2822,29 @@ function getCartStatus(cart) {
     // ✅ Fix timestamp & convert to IST
     // ✅ Fix timestamp & convert to IST (handles both ISO string and numeric timestamp)
 function formatToIST(ts) {
-  // Quick guard
-  if (ts === null || ts === undefined || ts === "") return "N/A";
+  if (!ts) return "N/A";
+  let num = Number(ts);
 
-  // DEBUG: show raw input
-  console.log(">> formatToIST raw input:", ts, " (type:", typeof ts + ")");
-
-  // Normalize to string for some checks
-  const raw = String(ts).trim();
-
-  // We'll compute a milliseconds-since-epoch value (ms)
-  let ms = NaN;
-
-  // 1) If it's purely numeric (string of digits) or actual number -> treat as timestamp
-  if (/^\d+$/.test(raw)) {
-    ms = Number(raw);
-    // If it looks like seconds (10 digits or less), convert to ms.
-    // If it's already milliseconds (13+ digits), leave as-is.
-    if (ms < 1e12) {
-      // seconds -> ms
-      ms = ms * 1000;
-      console.log("  interpreted as seconds -> converted to ms:", ms);
-    } else {
-      console.log("  interpreted as milliseconds:", ms);
-    }
-  } else {
-    // 2) If it looks like ISO with Z or T (UTC-aware) -> Date.parse handles it as UTC
-    if (raw.includes("T")) {
-      const p = Date.parse(raw);
-      if (!isNaN(p)) {
-        ms = p;
-        console.log("  parsed ISO/T string -> ms:", ms);
-      } else {
-        console.log("  contains 'T' but Date.parse failed:", raw);
-      }
-    }
-
-    // 3) Try native Date.parse as fallback for many formats (ISO, RFC, etc.)
-    if (isNaN(ms)) {
-      const p2 = Date.parse(raw);
-      if (!isNaN(p2)) {
-        ms = p2;
-        console.log("  Date.parse succeeded -> ms:", ms);
-      } else {
-        console.log("  Date.parse failed for:", raw);
-      }
-    }
-
-    // 4) If still NaN, try to parse DD/MM/YYYY (with optional time and am/pm)
-    if (isNaN(ms)) {
-      const r = raw.match(/^\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[,\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?)?\s*$/i);
-      if (r) {
-        let [, d, m, y, hh, mm_, ss_, ampm] = r;
-        d = d.padStart(2, "0");
-        m = m.padStart(2, "0");
-        hh = hh ? parseInt(hh, 10) : 0;
-        mm_ = mm_ ? mm_.padStart(2, "0") : "00";
-        ss_ = ss_ ? ss_.padStart(2, "0") : "00";
-
-        if (ampm) {
-          ampm = ampm.toLowerCase();
-          if (ampm === "pm" && hh < 12) hh += 12;
-          if (ampm === "am" && hh === 12) hh = 0;
-        }
-        hh = String(hh).padStart(2, "0");
-
-        // Build an ISO-like string in local/UTC-neutral form and parse
-        const isoLike = `${y}-${m}-${d}T${hh}:${mm_}:${ss_}`;
-        const p3 = Date.parse(isoLike);
-        if (!isNaN(p3)) {
-          ms = p3;
-          console.log("  parsed D/M/Y form -> isoLike:", isoLike, " -> ms:", ms);
-        } else {
-          console.log("  failed to parse D/M/Y form ->", isoLike);
-        }
-      } else {
-        console.log("  no D/M/Y pattern matched for:", raw);
-      }
-    }
+  // 🧭 Handle string timestamps like "2025-11-09T17:13:40.270Z"
+  if (isNaN(num)) {
+    const parsed = Date.parse(ts);
+    if (!isNaN(parsed)) num = parsed;
   }
 
-  // If still invalid, return "Invalid Date" so you notice it in PDF and logs
-  if (isNaN(ms)) {
-    console.warn("formatToIST: could not parse timestamp:", ts);
-    return "Invalid Date";
+  // 🧮 Auto-fix invalid scales:
+  // Normal timestamps in ms are around 1.7e12 (for 2025)
+  // If greater than 1e13 -> divide until realistic
+  if (num > 1e13) num = Math.floor(num / 10); // too large (ESP32 anomaly)
+  if (num > 1e12 && num < 1e13) {
+    // OK = milliseconds
+  } else if (num > 1e9 && num < 1e12) {
+    num = num * 1000; // seconds → ms
   }
 
-  // Finally, we have milliseconds (ms). Build Date object and format to IST.
-  const date = new Date(ms);
+  const date = new Date(num);
+  if (isNaN(date.getTime())) return "Invalid Date";
 
-  // DEBUG: show what the Date object thinks
-  console.log("  final Date (toString):", date.toString(), " | ms:", ms);
-
-  const out = date.toLocaleString("en-IN", {
+  return date.toLocaleString("en-IN", {
     timeZone: "Asia/Kolkata",
     day: "2-digit",
     month: "short",
@@ -2924,15 +2854,7 @@ function formatToIST(ts) {
     second: "2-digit",
     hour12: true
   });
-
-  console.log("  -> formatted IST:", out);
-  return out;
-
-
-
-
-      return formatter.format(dateObj);
-    }
+}
 
     paymentDate = formatToIST(rawPaymentTime);
 
