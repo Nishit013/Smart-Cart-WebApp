@@ -2966,11 +2966,17 @@ console.log("🧾 Final payment info:", {
   doc.text("Generated via Admin Panel", 20, y);
 
   // filename uses normalized ms if available
-  let fileTime;
-  if (ms) fileTime = new Date(ms).toISOString().replace(/[:.]/g, "-");
-  else fileTime = new Date().toISOString().replace(/[:.]/g, "-");
+  // filename uses normalized ms if available
+let fileTime;
+if (rawPaymentTime) {
+  const normalized = rawPaymentTime < 1e12 ? rawPaymentTime * 1000 : rawPaymentTime;
+  fileTime = new Date(normalized).toISOString().replace(/[:.]/g, "-");
+} else {
+  fileTime = new Date().toISOString().replace(/[:.]/g, "-");
+}
 
-  doc.save(`Invoice_${cart.cartId || cartId}_${fileTime}.pdf`);
+doc.save(`Invoice_${cart.cartId || cartId}_${fileTime}.pdf`);
+
 }
 </script>
 
