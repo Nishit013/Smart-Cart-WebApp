@@ -2808,47 +2808,83 @@ async function downloadPDF(cartId) {
   }
 
   // ==== TIMESTAMP EXTRACTION ====
-  let rawPaymentTime =
-    cart.paymentTime ??
-    cart.paidAt ??
-    cart.bill?.paymentTime ??
-    cart.bill?.paidAt ??
-    null;
+// ==== TIMESTAMP EXTRACTION (MATCH SUMMARY FIRST, ELSE LATEST) ====
+let rawPaymentTime = null;
+let matchedKey = null;
 
-  // If still missing, try extracting from key
-  if (!rawPaymentTime && paidCartKey) {
-    const tsPart = paidCartKey.split("_")[0];
-    if (/^\d{13}$/.test(tsPart)) {
-      rawPaymentTime = Number(tsPart);
+// 1) Try direct fields on cart (if present)
+rawPaymentTime = cart.paymentTime ?? cart.paidAt ?? cart.bill?.paymentTime ?? cart.bill?.paidAt ?? null;
+
+// 2) If still missing, search paidCarts for the paid record that matches the displayed summary
+if (!rawPaymentTime) {
+  const entries = Object.entries(paidCarts || {}).map(([k, v]) => ({ key: k, val: v }));
+
+  // Filter to entries that belong to this cartId (either stored cartId or key contains it)
+  const matching = entries.filter(e => e.val && (e.val.cartId === cart.cartId || e.key.includes(cart.cartId)));
+
+  // 2a) If we have the bill.summary displayed, prefer exact summary match (best)
+  const displayedSummary = cart.bill?.summary;
+  if (displayedSummary) {
+    const exact = matching.find(e => e.val?.bill?.summary === displayedSummary);
+    if (exact) {
+      matchedKey = exact.key;
+      rawPaymentTime = exact.val.paymentTime ?? exact.val.paidAt ?? exact.val.bill?.paymentTime ?? exact.val.bill?.paidAt ?? null;
     }
   }
 
-  // ==== FORMAT TO IST ====
-  function formatToIST(ts) {
-    if (!ts) return "N/A";
-    let dateObj;
-    if (typeof ts === "string") {
-      // ISO string case like "2025-11-09T17:13:40.270Z"
-      dateObj = new Date(ts);
-    } else if (typeof ts === "number") {
-      // If seconds, convert to ms
-      dateObj = new Date(ts < 1e12 ? ts * 1000 : ts);
-    } else {
-      return "N/A";
-    }
-    return dateObj.toLocaleString("en-IN", {
-      timeZone: "Asia/Kolkata",
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true
-    });
+  // 2b) If no exact match found, pick the most recent entry (by timestamp in fields or key)
+  if (!rawPaymentTime && matching.length) {
+    const getTs = (e) => {
+      const v = e.val;
+      if (v.paymentTime) return typeof v.paymentTime === "number" ? v.paymentTime : Date.parse(v.paymentTime);
+      if (v.paidAt) return typeof v.paidAt === "number" ? v.paidAt : Date.parse(v.paidAt);
+      const m = (e.key || "").match(/(\d{10,14})/);
+      return m ? Number(m[1]) : 0;
+    };
+    matching.sort((a, b) => getTs(b) - getTs(a));
+    matchedKey = matching[0].key;
+    const v = matching[0].val;
+    rawPaymentTime = v.paymentTime ?? v.paidAt ?? v.bill?.paymentTime ?? v.bill?.paidAt ?? (matchedKey.match(/(\d{10,14})/) ? Number(matchedKey.match(/(\d{10,14})/)[1]) : null);
   }
 
-  const paymentDate = formatToIST(rawPaymentTime);
+  // 2c) Final fallback: try the single paidCartKey found earlier (if any)
+  if (!rawPaymentTime) {
+    const paidCartKey = Object.keys(paidCarts || {}).find(k => k && k.includes(cart.cartId));
+    if (paidCartKey) {
+      const tsPart = paidCartKey.split("_")[0];
+      if (/^\d{10,14}$/.test(tsPart)) rawPaymentTime = Number(tsPart);
+      else {
+        const m = paidCartKey.match(/(\d{10,14})/);
+        if (m) rawPaymentTime = Number(m[1]);
+      }
+      matchedKey = paidCartKey;
+    }
+  }
+}
+
+// Format to IST (same function you already use)
+function formatToIST(ts) {
+  if (!ts) return "N/A";
+  let d;
+  if (typeof ts === "string") d = new Date(ts); // ISO string like "2025-11-09T17:13:40.270Z"
+  else d = new Date(Number(ts));                 // numeric ms (or seconds if incorrect)
+  if (isNaN(d.getTime())) return "Invalid Date";
+  return d.toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true
+  });
+}
+
+const paymentDate = formatToIST(rawPaymentTime);
+
+console.log("🧾 Final payment info (matched):", { cartId: cart.cartId, matchedKey, rawPaymentTime, formattedIST: paymentDate });
+
 
   console.log("🧾 Final payment info:", {
     cartId: cart.cartId,
