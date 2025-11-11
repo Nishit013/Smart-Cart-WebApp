@@ -2825,15 +2825,29 @@ function formatToIST(ts) {
   if (!ts) return "N/A";
   let date;
 
-  if (typeof ts === "string") {
-    // for online payments like "2025-11-09T17:13:40.270Z"
-    date = new Date(ts);
-  } else if (typeof ts === "number") {
-    // for marked paid like 1762708783194
+  if (typeof ts === "number") {
+    // Numeric timestamp (in ms or s)
     date = new Date(ts < 1e12 ? ts * 1000 : ts);
-  } else {
-    return "N/A";
+  } else if (typeof ts === "string") {
+    if (ts.includes("T") && ts.includes("Z")) {
+      // ISO string
+      date = new Date(ts);
+    } else if (/\d{1,2}\/\d{1,2}\/\d{4}/.test(ts)) {
+      // Handle "11/11/2025, 3:49:45 pm" format
+      const parts = ts.match(/(\d{1,2})\/(\d{1,2})\/(\d{4}), (\d{1,2}):(\d{2}):(\d{2}) (\w{2})/i);
+      if (parts) {
+        let [, d, m, y, h, min, s, ap] = parts;
+        d = d.padStart(2, "0");
+        m = m.padStart(2, "0");
+        h = parseInt(h);
+        if (ap.toLowerCase() === "pm" && h < 12) h += 12;
+        if (ap.toLowerCase() === "am" && h === 12) h = 0;
+        date = new Date(`${y}-${m}-${d}T${h.toString().padStart(2, "0")}:${min}:${s}`);
+      }
+    }
   }
+
+  if (!date || isNaN(date)) return "Invalid Date";
 
   return date.toLocaleString("en-IN", {
     timeZone: "Asia/Kolkata",
@@ -2845,6 +2859,8 @@ function formatToIST(ts) {
     second: "2-digit",
     hour12: true
   });
+
+
 
       return formatter.format(dateObj);
     }
