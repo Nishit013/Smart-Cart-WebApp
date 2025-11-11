@@ -2821,44 +2821,96 @@ function getCartStatus(cart) {
 
     // ✅ Fix timestamp & convert to IST
     // ✅ Fix timestamp & convert to IST (handles both ISO string and numeric timestamp)
+// --- REPLACE your existing formatToIST() with this function ---
 function formatToIST(ts) {
-  if (!ts) return "N/A";
-  let date;
+  if (ts === null || ts === undefined || ts === "") return "N/A";
 
-  if (typeof ts === "number") {
-    // Numeric timestamp (in ms or s)
-    date = new Date(ts < 1e12 ? ts * 1000 : ts);
-  } else if (typeof ts === "string") {
-    if (ts.includes("T") && ts.includes("Z")) {
-      // ISO string
-      date = new Date(ts);
-    } else if (/\d{1,2}\/\d{1,2}\/\d{4}/.test(ts)) {
-      // Handle "11/11/2025, 3:49:45 pm" format
-      const parts = ts.match(/(\d{1,2})\/(\d{1,2})\/(\d{4}), (\d{1,2}):(\d{2}):(\d{2}) (\w{2})/i);
-      if (parts) {
-        let [, d, m, y, h, min, s, ap] = parts;
-        d = d.padStart(2, "0");
-        m = m.padStart(2, "0");
-        h = parseInt(h);
-        if (ap.toLowerCase() === "pm" && h < 12) h += 12;
-        if (ap.toLowerCase() === "am" && h === 12) h = 0;
-        date = new Date(`${y}-${m}-${d}T${h.toString().padStart(2, "0")}:${min}:${s}`);
-      }
+  // Quick debug (you can remove later)
+  console.log("formatToIST input:", ts, "type:", typeof ts);
+
+  let date = null;
+  const raw = String(ts).trim();
+
+  // 1) If it's a pure numeric string or number -> treat as timestamp
+  if (/^\d+$/.test(raw)) {
+    let n = Number(raw);
+    // if looks like seconds (10 digits) convert to ms
+    if (n < 1e12) n = n * 1000;
+    date = new Date(n);
+    if (!isNaN(date)) {
+      return date.toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true
+      });
     }
   }
 
-  if (!date || isNaN(date)) return "Invalid Date";
+  // 2) Try native Date.parse (handles ISO and many standard formats)
+  const parsed = Date.parse(raw);
+  if (!isNaN(parsed)) {
+    date = new Date(parsed);
+    return date.toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true
+    });
+  }
 
-  return date.toLocaleString("en-IN", {
-    timeZone: "Asia/Kolkata",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true
-  });
+  // 3) Handle common DD/MM/YYYY or D/M/YYYY formats, with optional time & am/pm
+  // Examples matched:
+  //  "11/11/2025, 3:49:45 pm"
+  //  "11-11-2025 15:49"
+  //  "1/2/2025, 7:05 am"
+  const r = raw.match(/^\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[,\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?)?\s*$/i);
+  if (r) {
+    let [, d, m, y, hh, mm, ss, ampm] = r;
+    d = d.padStart(2, "0");
+    m = m.padStart(2, "0");
+    hh = hh ? parseInt(hh, 10) : 0;
+    mm = mm ? mm.padStart(2, "0") : "00";
+    ss = ss ? ss.padStart(2, "0") : "00";
+
+    if (ampm) {
+      ampm = ampm.toLowerCase();
+      if (ampm === "pm" && hh < 12) hh += 12;
+      if (ampm === "am" && hh === 12) hh = 0;
+    }
+    hh = String(hh).padStart(2, "0");
+
+    // create ISO-like string so Date can parse reliably
+    const iso = `${y}-${m}-${d}T${hh}:${mm}:${ss}`;
+    const parsedIso = Date.parse(iso);
+    if (!isNaN(parsedIso)) {
+      date = new Date(parsedIso);
+      return date.toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true
+      });
+    }
+  }
+
+  // 4) If still failing, return the raw string (or "Invalid Date") so it's visible in PDF
+  // You can choose to show raw or an "Invalid Date" marker
+  return "Invalid Date";
+
+
 
 
 
