@@ -2541,19 +2541,23 @@ function openCouponModal(cartId) {
 
     // Update totals dynamically when coupon is selected
     select.onchange = () => {
-      let discount = 0;
-      if (select.value !== "") {
-        const coupon = availableCoupons[select.value];
-        if (coupon.discountType === "flat") {
-          discount = Math.min(Number(coupon.discountValue), Number(coupon.maxDiscount || coupon.discountValue));
-        } else if (coupon.discountType === "percentage") {
-          discount = (totalBeforeDiscount * Number(coupon.discountValue)) / 100;
-          if (coupon.maxDiscount > 0) discount = Math.min(discount, Number(coupon.maxDiscount));
-        }
+  let discount = 0;
+  if (select.value !== "") {
+    const coupon = availableCoupons[select.value];
+    // Check minPurchase eligibility
+    if (totalBeforeDiscount >= Number(coupon.minPurchase || 0)) {
+      if (coupon.discountType === "flat") {
+        discount = Math.min(Number(coupon.discountValue), Number(coupon.maxDiscount || coupon.discountValue));
+      } else if (coupon.discountType === "percentage") {
+        discount = (totalBeforeDiscount * Number(coupon.discountValue)) / 100;
+        if (coupon.maxDiscount > 0) discount = Math.min(discount, Number(coupon.maxDiscount));
       }
-      discountSpan.textContent = discount.toFixed(2);
-      finalSpan.textContent = (totalBeforeDiscount - discount).toFixed(2);
-    };
+    }
+  }
+  discountSpan.textContent = discount.toFixed(2);
+  finalSpan.textContent = (totalBeforeDiscount - discount).toFixed(2);
+};
+
 
     document.getElementById('couponModal').style.display = 'block';
     document.getElementById('overlay').style.display = 'block';
@@ -2612,13 +2616,13 @@ function openCashModal(cartId, selectedCoupon, totalBeforeDiscount) {
   };
 
   document.getElementById('confirmCashBtn').onclick = function() {
-    const cashReceived = Number(cashInput.value || 0);
-    const changeGiven = Math.max(0, cashReceived - finalTotal);
-    if (cashReceived < finalTotal) return alert("❌ Cash received is less than total amount!");
+  const cashReceived = Number(cashInput.value || 0);
+  if (cashReceived < finalTotal) return alert("❌ Cash received is less than total amount!");
 
-    closeCashModal();
-    markAsPaid(cartId, selectedCoupon, cashReceived, changeGiven);
-  };
+  const changeGiven = cashReceived - finalTotal; // don't use Math.max, 0 is fine
+  closeCashModal();
+  markAsPaid(cartId, selectedCoupon, cashReceived, changeGiven);
+};
 }
 
 function closeCashModal() {
