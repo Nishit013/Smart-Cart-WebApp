@@ -2794,130 +2794,60 @@ async function downloadPDF(cartId) {
   y += 8;
 
   // PAYMENT TYPE (unchanged)
-  let paymentType = "Online Payment";
-  const paidCartKey = Object.keys(paidCarts || {}).find(k => k && k.includes(cart.cartId));
-  if (cart.paymentType && cart.paymentType.trim() !== "") {
-    paymentType = cart.paymentType;
-  } else if (cart.bill?.paymentType && cart.bill.paymentType.trim() !== "") {
-    paymentType = cart.bill.paymentType;
-  } else if (paidCartKey) {
-    const firstPart = paidCartKey.split("_")[0] || "";
-    paymentType = (/^cart/i.test(firstPart) || firstPart.toUpperCase().includes("CART"))
-      ? "Online Payment"
-      : "Cash (Marked Paid)";
+  // PAYMENT TYPE (unchanged)
+let paymentType = "Online Payment";
+const paidCartKey = Object.keys(paidCarts || {}).find(k => k && k.includes(cart.cartId));
+if (cart.paymentType && cart.paymentType.trim() !== "") {
+  paymentType = cart.paymentType;
+} else if (cart.bill?.paymentType && cart.bill.paymentType.trim() !== "") {
+  paymentType = cart.bill.paymentType;
+} else if (paidCartKey) {
+  const firstPart = paidCartKey.split("_")[0] || "";
+  paymentType = (/^cart/i.test(firstPart) || firstPart.toUpperCase().includes("CART"))
+    ? "Online Payment"
+    : "Cash (Marked Paid)";
+}
+
+// ✅ Extract payment timestamp from all possible sources
+let rawPaymentTime =
+  cart.paymentTime ??
+  cart.paidAt ??
+  cart.bill?.paymentTime ??
+  cart.bill?.paidAt ??
+  null;
+
+// ✅ If still not found, try extracting from Firebase key
+if (!rawPaymentTime && paidCartKey) {
+  const tsPart = paidCartKey.split("_")[0];
+  if (/^\d{13}$/.test(tsPart)) {
+    rawPaymentTime = Number(tsPart);
   }
+}
 
-  // --- Normalizer: convert many formats to milliseconds (ms) or null ---
-  function normalizeToMs(val) {
-    if (val === null || val === undefined || val === "") return null;
+// ✅ Format timestamp into IST
+function formatToIST(ts) {
+  if (!ts) return "N/A";
+  const date = new Date(ts < 1e12 ? ts * 1000 : ts);
+  return date.toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true
+  });
+}
 
-    // If it's already a number
-    if (typeof val === "number") {
-      let n = val;
-      // If obviously too large (microseconds or multiplied), reduce until plausible
-      while (n > 1e14) n = Math.floor(n / 10);
-      // If ms-like (13 digits)
-      if (n >= 1e12 && n < 1e14) return n;
-      // If seconds-like (10 digits)
-      if (n >= 1e9 && n < 1e12) return Math.floor(n * 1000);
-      return null;
-    }
+paymentDate = formatToIST(rawPaymentTime);
 
-    // Trim string
-    const s = String(val).trim();
-
-    // Pure digits string
-    if (/^\d+$/.test(s)) {
-      let n = Number(s);
-      while (n > 1e14) n = Math.floor(n / 10);
-      if (n >= 1e12 && n < 1e14) return n;
-      if (n >= 1e9 && n < 1e12) return Math.floor(n * 1000);
-      return null;
-    }
-
-    // ISO or standard parseable string
-    const p = Date.parse(s);
-    if (!isNaN(p)) return p; // p is ms
-
-    // dd/mm/yyyy or d-m-yyyy with optional time and am/pm
-    const m = s.match(/^\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[,\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?)?\s*$/i);
-    if (m) {
-      let [, d, mo, y, hh, mm, ss, ap] = m;
-      d = d.padStart(2, "0"); mo = mo.padStart(2, "0");
-      hh = hh ? parseInt(hh, 10) : 0;
-      mm = mm ? mm.padStart(2, "0") : "00";
-      ss = ss ? ss.padStart(2, "0") : "00";
-      if (ap) {
-        ap = ap.toLowerCase();
-        if (ap === "pm" && hh < 12) hh += 12;
-        if (ap === "am" && hh === 12) hh = 0;
-      }
-      hh = String(hh).padStart(2, "0");
-      const isoLike = `${y}-${mo}-${d}T${hh}:${mm}:${ss}`;
-      const parsed = Date.parse(isoLike);
-      if (!isNaN(parsed)) return parsed;
-    }
-
-    return null;
-  }
-
-  // --- Gather candidate timestamp fields (common names + paidCartKey fallback) ---
-  const candidateFields = [
-    { key: "cart.paidAt", v: cart.paidAt },
-    { key: "cart.paymentTime", v: cart.paymentTime },
-    { key: "cart.bill.paidAt", v: cart.bill?.paidAt },
-    { key: "cart.bill.paymentTime", v: cart.bill?.paymentTime },
-    { key: "cart.bill.originalTimestamp", v: cart.bill?.timestamp },
-    { key: "cart.createdAt", v: cart.createdAt },
-    { key: "cart.updatedAt", v: cart.updatedAt }
-  ];
-
-  // If paidCartKey contains timestamp, include it as a candidate
-  if (paidCartKey) {
-    const match = paidCartKey.match(/(\d{13}|\d{10})/);
-    if (match) candidateFields.push({ key: "paidCartKey", v: match[0] });
-  }
-
-  // Normalize all candidates and collect ms values
-  const normalized = candidateFields.map(c => ({ key: c.key, raw: c.v, ms: normalizeToMs(c.v) }));
-  console.table(normalized);
-
-  // Pick the latest ms among normalized values
-  const msValues = normalized.map(n => n.ms).filter(Boolean);
-  let ms = msValues.length ? Math.max(...msValues) : null;
-
-  // If still no ms, try direct fallback to cart.paidAt or cart.paymentTime raw using normalizeToMs
-  if (!ms) {
-    ms = normalizeToMs(cart.paidAt ?? cart.paymentTime ?? cart.bill?.paidAt ?? cart.bill?.paymentTime ?? null);
-  }
-
-  // If still null, final fallback: try Date.now() (shouldn't normally be needed)
-  if (!ms) {
-    console.warn("No valid timestamp found in cart; using current time as fallback.");
-    ms = Date.now();
-  }
-
-  // Format the selected ms to IST
-  let paymentDate = "Invalid Date";
-  try {
-    const dt = new Date(ms);
-    if (!isNaN(dt.getTime())) {
-      paymentDate = dt.toLocaleString("en-IN", {
-        timeZone: "Asia/Kolkata",
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true
-      });
-    }
-  } catch (e) {
-    console.error("Error formatting date:", e);
-  }
-
-  console.log("Selected ms used for PDF:", ms, " -> IST:", paymentDate);
+console.log("🧾 Final payment info:", {
+  cartId: cart.cartId,
+  paidCartKey,
+  rawPaymentTime,
+  formattedIST: paymentDate
+});
 
   // === CUSTOMER DETAILS ===
   doc.setFontSize(11);
