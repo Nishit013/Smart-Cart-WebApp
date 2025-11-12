@@ -2720,57 +2720,65 @@ const finalPaid = totalBeforeDiscount - discount;
 
   // --- Step 6: Save to Firebase, update stock, clear cart ---
   db.ref("paidCarts/" + timestamp + "_" + cartId).set(paidData)
-        .then(() => {
-      // ✅ Trigger user side before clearing cart
-      db.ref("carts/" + cartId + "/handled").set(false);
+  .then(() => {
+    const cartRef = db.ref("carts/" + cartId);
 
-      return db.ref("carts/" + cartId).update({
-        total: totalBeforeDiscount,
-        finalAmount: finalPaid,
-        discount,
-        totalCGST,
-        totalSGST,
-        totalGST,
-        discountCoupon: appliedCouponCode,
-        paymentStatus: "Paid",
-        isActive: false,
-        bill: paidData.bill,
-        items: null // clear cart items after handled flag
-      });
-    })
-.then(() => {
-      // Update stock quantity without creating stock history
-      const stockUpdates = itemsArray.map(item => {
-        const barcode = item.barcode;
-        const qty = Number(item.qty || 0);
-        if (!barcode) return Promise.resolve();
-
-        return db.ref("products/" + barcode).once("value").then(snap => {
-          if (!snap.exists()) return;
-          const currentStock = snap.val().stock || 0;
-          const newStock = Math.max(0, currentStock - qty);
-          return db.ref("products/" + barcode + "/stock").set(newStock);
+    // ✅ Step 1: Trigger user-side first before other updates
+    return cartRef.child("handled").set(false)
+      .then(() => {
+        // ✅ Step 2: Update all cart payment details
+        return cartRef.update({
+          total: totalBeforeDiscount,
+          finalAmount: finalPaid,
+          discount,
+          totalCGST,
+          totalSGST,
+          totalGST,
+          discountCoupon: appliedCouponCode,
+          paymentStatus: "Paid",
+          isActive: false,
+          bill: paidData.bill
         });
+      })
+      .then(() => {
+        // ✅ Step 3: Clear items after updates fully saved
+        return cartRef.child("items").set(null);
       });
-      return Promise.all(stockUpdates);
-    })
-    .then(() => Promise.all([
-      db.ref("carts").once("value"),
-      db.ref("paidCarts").once("value"),
-      db.ref("products").once("value")
-    ]))
-    .then(([snapCarts, snapPaid, snapProducts]) => {
-      allCarts = snapCarts.val() || {};
-      paidCarts = snapPaid.val() || {};
-      productsData = snapProducts.val() || {};
-      renderData();
-      renderProductSales();
-      alert("✅ Cart marked as Paid with discount & GST stored!");
-    })
-    .catch(err => {
-      console.error("Error in markAsPaid:", err);
-      alert("❌ Something went wrong while marking as paid (check console).");
+  })
+  .then(() => {
+    // ✅ Step 4: Update stock quantity without creating stock history
+    const stockUpdates = itemsArray.map(item => {
+      const barcode = item.barcode;
+      const qty = Number(item.qty || 0);
+      if (!barcode) return Promise.resolve();
+
+      return db.ref("products/" + barcode).once("value").then(snap => {
+        if (!snap.exists()) return;
+        const currentStock = snap.val().stock || 0;
+        const newStock = Math.max(0, currentStock - qty);
+        return db.ref("products/" + barcode + "/stock").set(newStock);
+      });
     });
+    return Promise.all(stockUpdates);
+  })
+  .then(() => Promise.all([
+    db.ref("carts").once("value"),
+    db.ref("paidCarts").once("value"),
+    db.ref("products").once("value")
+  ]))
+  .then(([snapCarts, snapPaid, snapProducts]) => {
+    allCarts = snapCarts.val() || {};
+    paidCarts = snapPaid.val() || {};
+    productsData = snapProducts.val() || {};
+    renderData();
+    renderProductSales();
+    alert("✅ Cart marked as Paid with discount & GST stored!");
+  })
+  .catch(err => {
+    console.error("Error in markAsPaid:", err);
+    alert("❌ Something went wrong while marking as paid (check console).");
+  });
+
 }
 
 // --- Updated bill summary helper ---
