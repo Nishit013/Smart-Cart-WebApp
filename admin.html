@@ -2720,22 +2720,25 @@ const finalPaid = totalBeforeDiscount - discount;
 
   // --- Step 6: Save to Firebase, update stock, clear cart ---
   db.ref("paidCarts/" + timestamp + "_" + cartId).set(paidData)
-    .then(() => db.ref("carts/" + cartId).update({
-      total: totalBeforeDiscount,
-      finalAmount: finalPaid,
-      discount,
-      totalCGST,
-      totalSGST,
-      totalGST,
-      discountCoupon: appliedCouponCode,
-      paymentStatus: "Paid",
-      isActive: false,
-      handled: false, // ✅ make sure user can detect this as a new payment
-      bill: paidData.bill,
-      items: null // clear cart items
-    }))
-    .then(() => db.ref("carts/" + cartId + "/handled").set(false)) // ✅ reset for user trigger
-    .then(() => {
+        .then(() => {
+      // ✅ Trigger user side before clearing cart
+      db.ref("carts/" + cartId + "/handled").set(false);
+
+      return db.ref("carts/" + cartId).update({
+        total: totalBeforeDiscount,
+        finalAmount: finalPaid,
+        discount,
+        totalCGST,
+        totalSGST,
+        totalGST,
+        discountCoupon: appliedCouponCode,
+        paymentStatus: "Paid",
+        isActive: false,
+        bill: paidData.bill,
+        items: null // clear cart items after handled flag
+      });
+    })
+.then(() => {
       // Update stock quantity without creating stock history
       const stockUpdates = itemsArray.map(item => {
         const barcode = item.barcode;
