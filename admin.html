@@ -2730,9 +2730,11 @@ const finalPaid = totalBeforeDiscount - discount;
       discountCoupon: appliedCouponCode,
       paymentStatus: "Paid",
       isActive: false,
+      handled: false, // ✅ make sure user can detect this as a new payment
       bill: paidData.bill,
       items: null // clear cart items
     }))
+    .then(() => db.ref("carts/" + cartId + "/handled").set(false)) // ✅ reset for user trigger
     .then(() => {
       // Update stock quantity without creating stock history
       const stockUpdates = itemsArray.map(item => {
