@@ -365,35 +365,44 @@ function loadCartFromFirebase() {
 
  function watchCartPayment() {
   let paymentHandled = false; // local flag to prevent multiple triggers per session
-
   const ref = db.ref("carts/" + cartId);
 
   ref.on("value", snapshot => {
-  const data = snapshot.val() || {};
-  console.log("🔄 Cart update detected:", data); // ✅ add this
+    const data = snapshot.val() || {};
+    console.log("🔄 Cart update detected:", data);
 
-  if (data.paymentStatus === "Paid" && !data.handled && !paymentHandled) {
-    console.log("🧾 Payment trigger fired for cart:", cartId);
-    paymentHandled = true;
+    // ✅ Normalize handled (sometimes missing)
+    const isHandled = data.hasOwnProperty("handled") ? data.handled : false;
 
-    showToast("✅ Payment Successful (Marked Paid by Admin)");
+    // ✅ Trigger only when status is Paid and we haven't already done it
+    if (data.paymentStatus === "Paid" && !isHandled && !paymentHandled) {
+      console.log("🧾 Payment trigger fired for cart:", cartId);
+      paymentHandled = true;
 
-    const bill = data.bill || {};
-    
-    generatePDF(
-      Object.values(cartItems || []),
-      bill.originalTotal || data.total || 0,
-      bill.discount || data.discount || 0,
-      bill.finalPaid || data.finalAmount || data.total || 0
-    );
+      showToast("✅ Payment Successful (Marked Paid by Admin)");
 
-    sendWhatsAppBill(bill.summary || "", bill.phone || "");
+      const bill = data.bill || {};
 
-    clearCart(true);
-    ref.update({ handled: true });
-  }
-});
+      // Defensive checks to avoid undefined values
+      const items = Array.isArray(cartItems) ? cartItems : [];
+      const originalTotal = bill.originalTotal || data.total || 0;
+      const discount = bill.discount || data.discount || 0;
+      const finalPaid = bill.finalPaid || data.finalAmount || originalTotal;
+
+      // ✅ Generate bill & WhatsApp
+      generatePDF(items, originalTotal, discount, finalPaid);
+      sendWhatsAppBill(bill.summary || "", bill.phone || "");
+
+      clearCart(true);
+
+      // ✅ Mark handled after successful generation
+      ref.update({ handled: true }).catch(err =>
+        console.error("❌ Failed to mark handled:", err)
+      );
+    }
+  });
 }
+
 
 
 document.addEventListener("DOMContentLoaded", () => {
