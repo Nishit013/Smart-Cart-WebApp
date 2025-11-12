@@ -1976,19 +1976,13 @@ body.light-mode select option {
 </div>
 <!-- Discount Coupon Modal -->
 <!-- Discount Coupon Modal -->
-<!-- 🟩 Coupon Modal -->
 <div id="couponModal" class="modal" style="display:none;">
   <div class="modal-content"
      style="position:fixed; top:45%; left:50%; transform:translate(-50%,-50%);
-            max-width:420px; width:90%; text-align:center;">
+            max-width:400px; width:90%; text-align:center;">
 
-    <h3 style="margin-bottom:10px;">Select Discount Coupon</h3>
 
-    <div style="margin-bottom:10px; font-size:14px;">
-      <p>Cart Total: <b id="cartTotalDisplay">₹0</b></p>
-      <p>Discount: <b id="discountDisplay">₹0</b></p>
-      <p>Final Total: <b id="finalDisplay">₹0</b></p>
-    </div>
+    <h3 style="margin-bottom:15px;">Select Discount Coupon</h3>
 
     <select id="couponSelect"
             style="width:100%; padding:10px; border-radius:8px;
@@ -2003,60 +1997,18 @@ body.light-mode select option {
       <button id="applyCouponBtn"
               style="flex:1; padding:10px; border:none; border-radius:8px;
                      background:var(--accent); color:#fff; font-weight:600;
-                     cursor:pointer;">
-        Continue to Cash Payment
+                     cursor:pointer; transition:all 0.3s ease;">
+        Apply Coupon
       </button>
       <button onclick="closeCouponModal()"
               style="flex:1; padding:10px; border:none; border-radius:8px;
                      background:var(--border); color:var(--text); font-weight:600;
-                     cursor:pointer;">
+                     cursor:pointer; transition:all 0.3s ease;">
         Cancel
       </button>
     </div>
   </div>
 </div>
-
-<!-- 🟦 Cash Payment Modal -->
-<div id="cashModal" class="modal" style="display:none;">
-  <div class="modal-content"
-     style="position:fixed; top:45%; left:50%; transform:translate(-50%,-50%);
-            max-width:420px; width:90%; text-align:center;">
-
-    <h3 style="margin-bottom:10px;">💵 Cash Payment</h3>
-
-    <div style="font-size:15px; margin-bottom:15px;">
-      <p>Total Amount: <b id="finalAmountCash">₹0</b></p>
-      <label>Cash Received:</label>
-      <input id="cashReceived" type="number" placeholder="Enter cash received"
-             style="width:100%; padding:8px; border-radius:6px; margin-top:5px;
-                    border:1px solid var(--border); background:var(--bg); color:var(--text);">
-      <p style="margin-top:10px;">Change to Return: <b id="cashChange">₹0</b></p>
-    </div>
-
-    <div style="margin-bottom:10px;">
-      <label>Customer Phone:</label>
-      <input id="cashPhone" type="tel" placeholder="Enter 10-digit phone"
-             style="width:100%; padding:8px; border-radius:6px;
-                    border:1px solid var(--border); background:var(--bg); color:var(--text);">
-    </div>
-
-    <div style="display:flex; justify-content:space-between; gap:10px;">
-      <button id="confirmCashBtn"
-              style="flex:1; padding:10px; border:none; border-radius:8px;
-                     background:var(--accent); color:#fff; font-weight:600;
-                     cursor:pointer;">
-        Confirm Payment
-      </button>
-      <button onclick="closeCashModal()"
-              style="flex:1; padding:10px; border:none; border-radius:8px;
-                     background:var(--border); color:var(--text); font-weight:600;
-                     cursor:pointer;">
-        Cancel
-      </button>
-    </div>
-  </div>
-</div>
-
 
 <!-- Overlay -->
 <div id="overlay" class="overlay"
@@ -2531,11 +2483,13 @@ function toggleCart(cartId) {
 function openCouponModal(cartId) {
   const cart = allCarts[cartId];
   if (!cart) return alert("Cart not found");
-  const totalBeforeDiscount = Object.values(cart.items || {}).reduce((sum, i) => sum + i.price * i.qty, 0);
+
   const today = new Date().toISOString().split('T')[0];
 
+  // Fetch coupons & filter valid ones
   db.ref("offers").once("value").then(snapshot => {
     const offers = snapshot.val() || {};
+
     const availableCoupons = Object.values(offers).filter(o => {
       const start = o.startDate || today;
       const end = o.endDate || today;
@@ -2544,102 +2498,46 @@ function openCouponModal(cartId) {
       return isActive && isWithinDate;
     });
 
+    cart.discountCoupons = availableCoupons;
+
     const select = document.getElementById('couponSelect');
     select.innerHTML = `<option value="">No Discount</option>`;
 
     availableCoupons.forEach((c, i) => {
       const opt = document.createElement('option');
-      const eligible = totalBeforeDiscount >= Number(c.minPurchase || 0);
-      const typeText = c.discountType === "percent" ? `% off` : ` flat ₹`;
       opt.value = i;
-      opt.text = `${c.couponCode} - ${c.discountValue}${typeText} (Min ₹${c.minPurchase})`;
-      if (!eligible) {
-        opt.disabled = true;
-        opt.text += " ❌ Not Eligible";
-      }
+      const typeText = c.discountType === "percent" ? `% off` : ` flat ₹`;
+      opt.text = `${c.couponCode} - ${c.discountValue}${typeText} up to ₹${c.maxDiscount}`;
       select.appendChild(opt);
     });
 
-    const updateTotals = () => {
-      const selectedIndex = select.value;
-      let discount = 0;
-      if (selectedIndex !== "") {
-        const c = availableCoupons[selectedIndex];
-        if (totalBeforeDiscount >= Number(c.minPurchase)) {
-          if (c.discountType === "flat")
-            discount = Math.min(Number(c.discountValue), Number(c.maxDiscount || c.discountValue));
-          else if (c.discountType === "percentage")
-            discount = Math.min((totalBeforeDiscount * Number(c.discountValue)) / 100, Number(c.maxDiscount));
-        }
-      }
-      const final = totalBeforeDiscount - discount;
-      document.getElementById("cartTotalDisplay").textContent = `₹${totalBeforeDiscount.toFixed(2)}`;
-      document.getElementById("discountDisplay").textContent = `₹${discount.toFixed(2)}`;
-      document.getElementById("finalDisplay").textContent = `₹${final.toFixed(2)}`;
-    };
-
-    select.onchange = updateTotals;
-    updateTotals();
-
     document.getElementById('couponModal').style.display = 'block';
+    document.getElementById('overlay').style.display = 'block';
+
     document.getElementById('applyCouponBtn').onclick = function() {
       const selectedIndex = select.value;
       let selectedCoupon = null;
       if (selectedIndex !== "") selectedCoupon = availableCoupons[selectedIndex];
       closeCouponModal();
-      openCashModal(cartId, totalBeforeDiscount, selectedCoupon);
+      markAsPaid(cartId, selectedCoupon);
     };
   });
 }
 
-function openCashModal(cartId, totalBeforeDiscount, selectedCoupon) {
-  let discount = 0;
-  if (selectedCoupon && totalBeforeDiscount >= Number(selectedCoupon.minPurchase)) {
-    if (selectedCoupon.discountType === "flat")
-      discount = Math.min(Number(selectedCoupon.discountValue), Number(selectedCoupon.maxDiscount || selectedCoupon.discountValue));
-    else if (selectedCoupon.discountType === "percentage")
-      discount = Math.min((totalBeforeDiscount * Number(selectedCoupon.discountValue)) / 100, Number(selectedCoupon.maxDiscount));
-  }
-  const finalAmount = totalBeforeDiscount - discount;
-
-  document.getElementById("finalAmountCash").textContent = `₹${finalAmount.toFixed(2)}`;
-  document.getElementById("cashReceived").value = "";
-  document.getElementById("cashChange").textContent = "₹0";
-  document.getElementById("cashModal").style.display = "block";
-
-  document.getElementById("cashReceived").oninput = function() {
-    const received = parseFloat(this.value) || 0;
-    const change = Math.max(0, received - finalAmount);
-    document.getElementById("cashChange").textContent = `₹${change.toFixed(2)}`;
-  };
-
-  document.getElementById("confirmCashBtn").onclick = function() {
-    const phone = document.getElementById("cashPhone").value.trim();
-    const received = parseFloat(document.getElementById("cashReceived").value);
-    if (!/^\d{10}$/.test(phone)) return alert("❌ Enter valid 10-digit phone number");
-    if (isNaN(received) || received < finalAmount) return alert("💰 Insufficient cash received!");
-    closeCashModal();
-    markAsPaid(cartId, selectedCoupon, phone);
-  };
-}
-
-function closeCashModal() {
-  document.getElementById("cashModal").style.display = "none";
-}
 
 function closeCouponModal() {
   document.getElementById('couponModal').style.display = 'none';
+  document.getElementById('overlay').style.display = 'none';
 }
 
-
-function markAsPaid(cartId, selectedCoupon = null, phoneFromCash = null) {
+function markAsPaid(cartId, selectedCoupon = null) {
   const cart = allCarts[cartId];
   if (!cart) return alert("Cart not found.");
 
-  const phone = phoneFromCash || prompt("Enter customer phone number:");
+  // --- Step 1: Ask for phone ---
+  let phone = prompt("Enter customer phone number:");
   if (!phone || !/^\d{10}$/.test(phone)) return alert("❌ Please enter a valid 10-digit phone number!");
   if (!confirm("Mark this cart as Paid?")) return;
-
 
   const timestamp = Date.now();
   const itemsArray = Object.values(cart.items || {});
@@ -2720,65 +2618,52 @@ const finalPaid = totalBeforeDiscount - discount;
 
   // --- Step 6: Save to Firebase, update stock, clear cart ---
   db.ref("paidCarts/" + timestamp + "_" + cartId).set(paidData)
-  .then(() => {
-
-    // 👇 Trigger user side update only if NO discount & change > 0
-    if (!appliedCouponCode && change > 0) {
-      db.ref("carts/" + cartId + "/handled").set(false);
-    } else {
-      // For other 3 cases, handled stays true (no bill generation)
-      db.ref("carts/" + cartId + "/handled").set(true);
-    }
-
-    // ✅ Update cart data in Firebase
-    return db.ref("carts/" + cartId).update({
+    .then(() => db.ref("carts/" + cartId).update({
       total: totalBeforeDiscount,
       finalAmount: finalPaid,
       discount,
       totalCGST,
       totalSGST,
       totalGST,
-      discountCoupon: appliedCouponCode || null,
+      discountCoupon: appliedCouponCode,
       paymentStatus: "Paid",
       isActive: false,
       bill: paidData.bill,
-      items: null // clear cart items after handled flag
-    });
-  })
-  .then(() => {
-    // ✅ Update stock without history
-    const stockUpdates = itemsArray.map(item => {
-      const barcode = item.barcode;
-      const qty = Number(item.qty || 0);
-      if (!barcode) return Promise.resolve();
+      items: null // clear cart items
+    }))
+    .then(() => {
+      // Update stock quantity without creating stock history
+      const stockUpdates = itemsArray.map(item => {
+        const barcode = item.barcode;
+        const qty = Number(item.qty || 0);
+        if (!barcode) return Promise.resolve();
 
-      return db.ref("products/" + barcode).once("value").then(snap => {
-        if (!snap.exists()) return;
-        const currentStock = snap.val().stock || 0;
-        const newStock = Math.max(0, currentStock - qty);
-        return db.ref("products/" + barcode + "/stock").set(newStock);
+        return db.ref("products/" + barcode).once("value").then(snap => {
+          if (!snap.exists()) return;
+          const currentStock = snap.val().stock || 0;
+          const newStock = Math.max(0, currentStock - qty);
+          return db.ref("products/" + barcode + "/stock").set(newStock);
+        });
       });
+      return Promise.all(stockUpdates);
+    })
+    .then(() => Promise.all([
+      db.ref("carts").once("value"),
+      db.ref("paidCarts").once("value"),
+      db.ref("products").once("value")
+    ]))
+    .then(([snapCarts, snapPaid, snapProducts]) => {
+      allCarts = snapCarts.val() || {};
+      paidCarts = snapPaid.val() || {};
+      productsData = snapProducts.val() || {};
+      renderData();
+      renderProductSales();
+      alert("✅ Cart marked as Paid with discount & GST stored!");
+    })
+    .catch(err => {
+      console.error("Error in markAsPaid:", err);
+      alert("❌ Something went wrong while marking as paid (check console).");
     });
-    return Promise.all(stockUpdates);
-  })
-  .then(() => Promise.all([
-    db.ref("carts").once("value"),
-    db.ref("paidCarts").once("value"),
-    db.ref("products").once("value")
-  ]))
-  .then(([snapCarts, snapPaid, snapProducts]) => {
-    allCarts = snapCarts.val() || {};
-    paidCarts = snapPaid.val() || {};
-    productsData = snapProducts.val() || {};
-    renderData();
-    renderProductSales();
-    alert("✅ Cart marked as Paid successfully!");
-  })
-  .catch(err => {
-    console.error("Error in markAsPaid:", err);
-    alert("❌ Something went wrong while marking as paid (check console).");
-  });
-
 }
 
 // --- Updated bill summary helper ---
