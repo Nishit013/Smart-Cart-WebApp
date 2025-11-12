@@ -369,34 +369,30 @@ function loadCartFromFirebase() {
   const ref = db.ref("carts/" + cartId);
 
   ref.on("value", snapshot => {
-    const data = snapshot.val() || {};
+  const data = snapshot.val() || {};
+  console.log("🔄 Cart update detected:", data); // ✅ add this
 
-    // ✅ Only trigger if Paid and not handled yet
-    if (data.paymentStatus === "Paid" && !data.handled && !paymentHandled) {
-      paymentHandled = true;
+  if (data.paymentStatus === "Paid" && !data.handled && !paymentHandled) {
+    console.log("🧾 Payment trigger fired for cart:", cartId);
+    paymentHandled = true;
 
-      showToast("✅ Payment Successful (Marked Paid by Admin)");
+    showToast("✅ Payment Successful (Marked Paid by Admin)");
 
-      const bill = data.bill || {};
-      
-      // Generate PDF
-      generatePDF(
-        Object.values(cartItems || []),
-        bill.originalTotal || data.total || 0,
-        bill.discount || data.discount || 0,
-        bill.finalPaid || data.finalAmount || data.total || 0
-      );
+    const bill = data.bill || {};
+    
+    generatePDF(
+      Object.values(cartItems || []),
+      bill.originalTotal || data.total || 0,
+      bill.discount || data.discount || 0,
+      bill.finalPaid || data.finalAmount || data.total || 0
+    );
 
-      // Send WhatsApp bill
-      sendWhatsAppBill(bill.summary || "", bill.phone || "");
+    sendWhatsAppBill(bill.summary || "", bill.phone || "");
 
-      // Clear cart UI only (not Firebase)
-      clearCart(true);
-
-      // ✅ Mark as handled in Firebase
-      ref.update({ handled: true });
-    }
-  });
+    clearCart(true);
+    ref.update({ handled: true });
+  }
+});
 }
 
 
