@@ -2507,40 +2507,53 @@ function openCouponModal(cartId) {
   db.ref("offers").once("value").then(snapshot => {
     const offers = snapshot.val() || {};
 
-    const availableCoupons = Object.values(offers).filter(o => {
-      const start = o.startDate || today;
-      const end = o.endDate || today;
-      const isActive = (o.status && o.status.toLowerCase() === "active");
+    const allCoupons = Object.values(offers);  // We need ALL coupons now
+    const select = document.getElementById('couponSelect');
+    select.innerHTML = `<option value="">No Discount</option>`;
+
+    const availableCoupons = [];  // Only eligible will be stored here
+
+    // Build dropdown list (eligible + disabled ones)
+    allCoupons.forEach((c, idx) => {
+
+      const start = c.startDate || today;
+      const end = c.endDate || today;
+      const isActive = (c.status && c.status.toLowerCase() === "active");
       const isWithinDate = today >= start && today <= end;
+      const minMatch = totalBefore >= (c.minAmount || 0);
 
-      // Eligibility Check (minAmount)
-      const minMatch = totalBefore >= (o.minAmount || 0);
+      const eligible = isActive && isWithinDate && minMatch;
 
-      return isActive && isWithinDate && minMatch;
+      // If eligible, keep in active pool
+      if (eligible) availableCoupons.push(c);
+
+      const typeText = c.discountType === "percent" ? `% off` : ` flat ₹`;
+
+      const opt = document.createElement('option');
+      opt.disabled = !eligible;
+      opt.style.color = eligible ? "var(--text)" : "gray";
+
+      // Mapping value: if eligible → its index inside availableCoupons
+      opt.value = eligible ? (availableCoupons.length - 1) : "";
+
+      opt.text = eligible
+        ? `${c.couponCode} - ${c.discountValue}${typeText} (Max ₹${c.maxDiscount})`
+        : `${c.couponCode} - Not Eligible`;
+
+      select.appendChild(opt);
     });
 
     cart.discountCoupons = availableCoupons;
 
-    const select = document.getElementById('couponSelect');
-    select.innerHTML = `<option value="">No Discount</option>`;
-
-    availableCoupons.forEach((c, i) => {
-      const typeText = c.discountType === "percent" ? `% off` : ` flat ₹`;
-      const opt = document.createElement('option');
-      opt.value = i;
-      opt.text = `${c.couponCode} - ${c.discountValue}${typeText} (Max ₹${c.maxDiscount})`;
-      select.appendChild(opt);
-    });
-
-    // When user selects coupon → Update discount preview
+    // LIVE preview when coupon selected
     select.onchange = function () {
       let discount = 0;
 
       if (select.value !== "") {
         const c = availableCoupons[select.value];
 
-        if ( c.discountType === "percent" ) {
-          discount = Math.min( (totalBefore * c.discountValue) / 100 , c.maxDiscount );
+        if (c.discountType === "percent") {
+          discount = Math.min((totalBefore * c.discountValue) / 100, c.maxDiscount);
         } else {
           discount = Math.min(c.discountValue, c.maxDiscount);
         }
@@ -2552,17 +2565,19 @@ function openCouponModal(cartId) {
       document.getElementById("couponFinalAmount").innerText = finalAmount.toFixed(2);
     };
 
-    // Open the modal
+    // Open modal
     document.getElementById('couponModal').style.display = 'block';
     document.getElementById('overlay').style.display = 'block';
 
-    document.getElementById('applyCouponBtn').onclick = function() {
+    // Apply button
+    document.getElementById('applyCouponBtn').onclick = function () {
       const selectedIndex = select.value;
       let selectedCoupon = null;
       if (selectedIndex !== "") selectedCoupon = availableCoupons[selectedIndex];
       closeCouponModal();
       markAsPaid(cartId, selectedCoupon);
     };
+
   });
 }
 
