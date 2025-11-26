@@ -1976,33 +1976,13 @@ body.light-mode select option {
 </div>
 <!-- Discount Coupon Modal -->
 <!-- Discount Coupon Modal -->
-<!-- Overlay (ensure you have one) -->
-<div id="overlay" style="display:none;
-     position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:999;"></div>
-
-<!-- UPDATED Discount Coupon Modal (shows totals + eligible coupons) -->
 <div id="couponModal" class="modal" style="display:none;">
   <div class="modal-content"
-       style="position:fixed; top:45%; left:50%; transform:translate(-50%,-50%);
-              max-width:420px; width:92%; text-align:center; z-index:1000;">
-    <h3 style="margin-bottom:12px;">Select Discount Coupon</h3>
+     style="position:fixed; top:45%; left:50%; transform:translate(-50%,-50%);
+            max-width:400px; width:90%; text-align:center;">
 
-    <!-- Totals display (detailed labels per Option B) -->
-    <div id="couponTotals" style="text-align:left; padding:8px 12px; border-radius:8px;
-                                  border:1px solid var(--border); background:var(--bg); color:var(--text); margin-bottom:12px;">
-      <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-        <div>Cart Total (Before Discount):</div>
-        <div id="couponTotalAmt">₹0</div>
-      </div>
-      <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-        <div>Discount Applied:</div>
-        <div id="couponDiscountAmt">-₹0</div>
-      </div>
-      <div style="display:flex; justify-content:space-between; font-weight:700;">
-        <div>Final Payable Amount:</div>
-        <div id="couponFinalAmt">₹0</div>
-      </div>
-    </div>
+
+    <h3 style="margin-bottom:15px;">Select Discount Coupon</h3>
 
     <select id="couponSelect"
             style="width:100%; padding:10px; border-radius:8px;
@@ -2017,85 +1997,13 @@ body.light-mode select option {
       <button id="applyCouponBtn"
               style="flex:1; padding:10px; border:none; border-radius:8px;
                      background:var(--accent); color:#fff; font-weight:600;
-                     cursor:pointer; transition:all 0.2s ease;">
+                     cursor:pointer; transition:all 0.3s ease;">
         Apply Coupon
       </button>
-      <button id="cancelCouponBtn"
+      <button onclick="closeCouponModal()"
               style="flex:1; padding:10px; border:none; border-radius:8px;
                      background:var(--border); color:var(--text); font-weight:600;
-                     cursor:pointer; transition:all 0.2s ease;">
-        Cancel
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- NEW Cash Received Modal (simple popup style) -->
-<div id="cashModal" class="modal" style="display:none;">
-  <div class="modal-content"
-       style="position:fixed; top:45%; left:50%; transform:translate(-50%,-50%);
-              max-width:360px; width:90%; text-align:center; z-index:1000;">
-    <h3 style="margin-bottom:12px;">Cash Received</h3>
-
-    <div style="text-align:left; padding:8px 12px; border-radius:8px;
-                border:1px solid var(--border); background:var(--bg); color:var(--text); margin-bottom:12px;">
-      <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-        <div>Amount Due:</div>
-        <div id="cashAmountDue">₹0</div>
-      </div>
-      <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-        <div>Cash Received:</div>
-        <div>
-          <input id="cashReceivedInput" type="number" min="0" step="1"
-                 style="width:120px; padding:6px; border-radius:6px; border:1px solid var(--border);
-                        background:var(--bg); color:var(--text);" />
-        </div>
-      </div>
-      <div style="display:flex; justify-content:space-between; font-weight:700;">
-        <div>Change to Give:</div>
-        <div id="cashChangeAmt">₹0</div>
-      </div>
-    </div>
-
-    <div style="display:flex; justify-content:space-between; gap:10px;">
-      <button id="confirmCashBtn"
-              style="flex:1; padding:10px; border:none; border-radius:8px;
-                     background:var(--accent); color:#fff; font-weight:600;
-                     cursor:pointer; transition:all 0.2s ease;">
-        Confirm Cash
-      </button>
-      <button id="cancelCashBtn"
-              style="flex:1; padding:10px; border:none; border-radius:8px;
-                     background:var(--border); color:var(--text); font-weight:600;
-                     cursor:pointer; transition:all 0.2s ease;">
-        Cancel
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- NEW Phone Modal (simple popup to enter phone number) -->
-<div id="phoneModal" class="modal" style="display:none;">
-  <div class="modal-content"
-       style="position:fixed; top:45%; left:50%; transform:translate(-50%,-50%);
-              max-width:360px; width:90%; text-align:center; z-index:1000;">
-    <h3 style="margin-bottom:12px;">Enter Customer Mobile</h3>
-
-    <input id="phoneInput" type="tel" placeholder="10-digit mobile number"
-           style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border);
-                  background:var(--bg); color:var(--text); margin-bottom:12px;" />
-
-    <div style="display:flex; justify-content:space-between; gap:10px;">
-      <button id="confirmPhoneBtn"
-              style="flex:1; padding:10px; border:none; border-radius:8px;
-                     background:var(--accent); color:#fff; font-weight:600;
-                     cursor:pointer; transition:all 0.2s ease;">
-        Confirm & Mark Paid
-      </button>
-      <button id="cancelPhoneBtn"
-              style="flex:1; padding:10px; border:none; border-radius:8px;
-                     background:var(--border); color:var(--text); font-weight:600;
-                     cursor:pointer; transition:all 0.2s ease;">
+                     cursor:pointer; transition:all 0.3s ease;">
         Cancel
       </button>
     </div>
@@ -2572,265 +2480,69 @@ function toggleCart(cartId) {
 
 // ✅ Place these two outside of any other function
 // --- Coupon Modal functions ---
-// --- Globals to hold state for the flow ---
-let _markCartId = null;
-let _availableCouponsForCart = []; // array of coupon objects
-let _selectedCouponForCart = null; // coupon object or null
-let _cashDetailsForCart = { cashReceived: 0, changeGiven: 0 };
-
-// Utility: format rupee
-function fmtRupee(n) { return "₹" + (Number(n) || 0).toFixed(2); }
-
-// --- Open Coupon Modal (updated) ---
 function openCouponModal(cartId) {
   const cart = allCarts[cartId];
   if (!cart) return alert("Cart not found");
 
-  _markCartId = cartId;
-  _selectedCouponForCart = null;
-  _availableCouponsForCart = [];
-
-  // compute cart totals (same logic as your markAsPaid earlier)
-  const itemsArray = Object.values(cart.items || {});
-  let totalBeforeDiscount = 0;
-  let totalCGST = 0;
-  let totalSGST = 0;
-
-  itemsArray.forEach(item => {
-    const price = Number(item.price || 0);
-    const qty = Number(item.qty || 0);
-    const cgst = Number(item.cgst || 0);
-    const sgst = Number(item.sgst || 0);
-
-    const totalTaxPercent = cgst + sgst;
-    const basePrice = price / (1 + totalTaxPercent / 100);
-    const cgstAmt = (basePrice * (cgst / 100)) * qty;
-    const sgstAmt = (basePrice * (sgst / 100)) * qty;
-
-    totalCGST += cgstAmt;
-    totalSGST += sgstAmt;
-    totalBeforeDiscount += price * qty;
-  });
-
-  cart._computedTotals = {
-    totalBeforeDiscount,
-    totalCGST,
-    totalSGST,
-    totalGST: totalCGST + totalSGST
-  };
-
-  // show placeholders
-  document.getElementById('couponTotalAmt').innerText = fmtRupee(totalBeforeDiscount);
-  document.getElementById('couponDiscountAmt').innerText = "-₹0.00";
-  document.getElementById('couponFinalAmt').innerText = fmtRupee(totalBeforeDiscount);
-
-  // Fetch offers & filter by date/status/minPurchase
   const today = new Date().toISOString().split('T')[0];
+
+  // Fetch coupons & filter valid ones
   db.ref("offers").once("value").then(snapshot => {
     const offers = snapshot.val() || {};
-    const candidateCoupons = Object.values(offers).filter(o => {
+
+    const availableCoupons = Object.values(offers).filter(o => {
       const start = o.startDate || today;
       const end = o.endDate || today;
       const isWithinDate = today >= start && today <= end;
       const isActive = (o.status && o.status.toLowerCase() === "active");
-      // ensure minPurchase is number, treat missing as 0
-      const minPurchase = Number(o.minPurchase || 0);
-      return isActive && isWithinDate && totalBeforeDiscount >= minPurchase;
+      return isActive && isWithinDate;
     });
 
-    _availableCouponsForCart = candidateCoupons;
+    cart.discountCoupons = availableCoupons;
 
     const select = document.getElementById('couponSelect');
     select.innerHTML = `<option value="">No Discount</option>`;
 
-    candidateCoupons.forEach((c, i) => {
+    availableCoupons.forEach((c, i) => {
       const opt = document.createElement('option');
       opt.value = i;
-      // support both "percentage" or "percent" and "flat" naming variants
-      const typeText = (c.discountType === "flat" || c.discountType === "flat_amount") ? ` flat ₹` : ` % off`;
-      const discVal = c.discountValue || c.value || 0;
-      opt.text = `${c.couponCode || ("COUPON" + i)} - ${discVal}${typeText} up to ₹${c.maxDiscount || 0}`;
+      const typeText = c.discountType === "percent" ? `% off` : ` flat ₹`;
+      opt.text = `${c.couponCode} - ${c.discountValue}${typeText} up to ₹${c.maxDiscount}`;
       select.appendChild(opt);
     });
 
-    // hook onchange to update preview
-    select.onchange = function() {
-      updateCouponPreview();
-    };
-
-    // apply/cancel handlers
-    document.getElementById('applyCouponBtn').onclick = function() {
-      applyCouponAndOpenCash();
-    };
-    document.getElementById('cancelCouponBtn').onclick = function() {
-      closeCouponModal();
-      _markCartId = null;
-      _availableCouponsForCart = [];
-      _selectedCouponForCart = null;
-    };
-
-    // show modal + overlay
     document.getElementById('couponModal').style.display = 'block';
     document.getElementById('overlay').style.display = 'block';
-  }).catch(err => {
-    console.error("Error fetching offers:", err);
-    alert("Error fetching coupons (see console).");
+
+    document.getElementById('applyCouponBtn').onclick = function() {
+      const selectedIndex = select.value;
+      let selectedCoupon = null;
+      if (selectedIndex !== "") selectedCoupon = availableCoupons[selectedIndex];
+      closeCouponModal();
+      markAsPaid(cartId, selectedCoupon);
+    };
   });
 }
 
-// --- Update coupon totals preview when select changes ---
-function updateCouponPreview() {
-  const cart = allCarts[_markCartId];
-  if (!cart) return;
 
-  const totals = cart._computedTotals || { totalBeforeDiscount: 0 };
-  const totalBeforeDiscount = Number(totals.totalBeforeDiscount || 0);
-
-  const select = document.getElementById('couponSelect');
-  const selectedIndex = select.value;
-
-  let discount = 0;
-  let selectedCoupon = null;
-
-  if (selectedIndex !== "") {
-    selectedCoupon = _availableCouponsForCart[selectedIndex];
-    if (selectedCoupon) {
-      const discVal = Number(selectedCoupon.discountValue || selectedCoupon.value || 0);
-      const maxDisc = Number(selectedCoupon.maxDiscount || 0);
-
-      // handle both naming variants
-      const dtype = (selectedCoupon.discountType || "").toLowerCase();
-      if (dtype === "flat" || dtype === "flat_amount") {
-        discount = Math.min(discVal, maxDisc || discVal);
-      } else { // percentage or percent or other => percentage
-        discount = (totalBeforeDiscount * discVal) / 100;
-        if (maxDisc > 0) discount = Math.min(discount, maxDisc);
-      }
-    }
-  }
-
-  _selectedCouponForCart = selectedCoupon || null;
-  const finalAmt = Math.max(0, totalBeforeDiscount - discount);
-
-  document.getElementById('couponTotalAmt').innerText = fmtRupee(totalBeforeDiscount);
-  document.getElementById('couponDiscountAmt').innerText = "- " + fmtRupee(discount);
-  document.getElementById('couponFinalAmt').innerText = fmtRupee(finalAmt);
-}
-
-// --- Close Coupon Modal ---
 function closeCouponModal() {
   document.getElementById('couponModal').style.display = 'none';
   document.getElementById('overlay').style.display = 'none';
 }
 
-// --- Open Cash Modal after Apply Coupon ---
-function applyCouponAndOpenCash() {
-  // ensure cart exists
-  const cartId = _markCartId;
-  const cart = allCarts[cartId];
-  if (!cart) return alert("Cart not found");
-
-  // Ensure preview is up to date
-  updateCouponPreview();
-
-  // Get final amount for payment
-  const totals = cart._computedTotals || { totalBeforeDiscount: 0 };
-  const totalBeforeDiscount = Number(totals.totalBeforeDiscount || 0);
-  let discount = 0;
-  if (_selectedCouponForCart) {
-    const discVal = Number(_selectedCouponForCart.discountValue || _selectedCouponForCart.value || 0);
-    const maxDisc = Number(_selectedCouponForCart.maxDiscount || 0);
-    const dtype = (_selectedCouponForCart.discountType || "").toLowerCase();
-    if (dtype === "flat" || dtype === "flat_amount") {
-      discount = Math.min(discVal, maxDisc || discVal);
-    } else {
-      discount = (totalBeforeDiscount * discVal) / 100;
-      if (maxDisc > 0) discount = Math.min(discount, maxDisc);
-    }
-  }
-
-  const finalAmt = Math.max(0, totalBeforeDiscount - discount);
-
-  // Save computed cash state
-  _cashDetailsForCart = { amountDue: finalAmt, cashReceived: 0, changeGiven: 0 };
-
-  // Close coupon modal
-  closeCouponModal();
-
-  // populate cash modal fields
-  document.getElementById('cashAmountDue').innerText = fmtRupee(finalAmt);
-  document.getElementById('cashReceivedInput').value = '';
-  document.getElementById('cashChangeAmt').innerText = fmtRupee(0);
-
-  // show cash modal & overlay
-  document.getElementById('cashModal').style.display = 'block';
-  document.getElementById('overlay').style.display = 'block';
-
-  // wire buttons
-  document.getElementById('cancelCashBtn').onclick = function() {
-    document.getElementById('cashModal').style.display = 'none';
-    document.getElementById('overlay').style.display = 'none';
-    _markCartId = null;
-    _selectedCouponForCart = null;
-    _availableCouponsForCart = [];
-  };
-
-  // input change -> auto-calc change
-  const cashInput = document.getElementById('cashReceivedInput');
-  cashInput.oninput = function() {
-    const val = Number(cashInput.value || 0);
-    const change = Math.max(0, val - Number(_cashDetailsForCart.amountDue || 0));
-    document.getElementById('cashChangeAmt').innerText = fmtRupee(change);
-    _cashDetailsForCart.cashReceived = val;
-    _cashDetailsForCart.changeGiven = change;
-  };
-
-  // confirm cash -> open phone modal
-  document.getElementById('confirmCashBtn').onclick = function() {
-    const cash = Number(document.getElementById('cashReceivedInput').value || 0);
-    if (isNaN(cash) || cash <= 0) return alert("Enter a valid cash received amount.");
-    if (cash < Number(_cashDetailsForCart.amountDue)) {
-      // Allow but warn? you chose auto-change -> it's better to block insufficient cash
-      return alert("Cash received is less than amount due. Please enter equal or higher amount.");
-    }
-    // update cached cash details
-    _cashDetailsForCart.cashReceived = cash;
-    _cashDetailsForCart.changeGiven = Math.max(0, cash - Number(_cashDetailsForCart.amountDue));
-
-    // close cash modal and open phone modal
-    document.getElementById('cashModal').style.display = 'none';
-    // overlay remains visible
-    document.getElementById('phoneModal').style.display = 'block';
-
-    // clear phone input
-    document.getElementById('phoneInput').value = '';
-
-    // phone modal buttons
-    document.getElementById('cancelPhoneBtn').onclick = function() {
-      document.getElementById('phoneModal').style.display = 'none';
-      document.getElementById('overlay').style.display = 'none';
-      _markCartId = null;
-      _selectedCouponForCart = null;
-      _availableCouponsForCart = [];
-      _cashDetailsForCart = { cashReceived: 0, changeGiven: 0 };
-    };
-
-    document.getElementById('confirmPhoneBtn').onclick = function() {
-      const phone = document.getElementById('phoneInput').value.trim();
-      if (!/^\d{10}$/.test(phone)) return alert("Enter valid 10-digit phone number.");
-      // Now finalize mark as paid
-      finalizeMarkAsPaid(_markCartId, _selectedCouponForCart, _cashDetailsForCart, phone);
-    };
-  };
-}
-
-// --- Finalization: compute taxes, build paidData, save to Firebase etc. ---
-function finalizeMarkAsPaid(cartId, selectedCoupon, cashDetails, phone) {
+function markAsPaid(cartId, selectedCoupon = null) {
   const cart = allCarts[cartId];
   if (!cart) return alert("Cart not found.");
 
-  // compute totals same as previously
+  // --- Step 1: Ask for phone ---
+  let phone = prompt("Enter customer phone number:");
+  if (!phone || !/^\d{10}$/.test(phone)) return alert("❌ Please enter a valid 10-digit phone number!");
+  if (!confirm("Mark this cart as Paid?")) return;
+
+  const timestamp = Date.now();
   const itemsArray = Object.values(cart.items || {});
+
+  // --- Step 2: Calculate totals & GST ---
   let totalBeforeDiscount = 0;
   let totalCGST = 0;
   let totalSGST = 0;
@@ -2853,31 +2565,31 @@ function finalizeMarkAsPaid(cartId, selectedCoupon, cashDetails, phone) {
 
   const totalGST = totalCGST + totalSGST;
 
-  // calculate discount
+  // --- Step 3: Apply discount ---
   let discount = 0;
-  let appliedCouponCode = null;
-  if (selectedCoupon && totalBeforeDiscount >= Number(selectedCoupon.minPurchase || 0)) {
-    const dtype = (selectedCoupon.discountType || "").toLowerCase();
-    const discVal = Number(selectedCoupon.discountValue || selectedCoupon.value || 0);
-    const maxDisc = Number(selectedCoupon.maxDiscount || 0);
+let appliedCouponCode = null;
 
-    if (dtype === "flat" || dtype === "flat_amount") {
-      discount = Math.min(discVal, maxDisc || discVal);
-    } else {
-      discount = (totalBeforeDiscount * discVal) / 100;
-      if (maxDisc > 0) discount = Math.min(discount, maxDisc);
+if (selectedCoupon && totalBeforeDiscount >= Number(selectedCoupon.minPurchase)) {
+  if (selectedCoupon.discountType === "flat") {
+    discount = Math.min(
+      Number(selectedCoupon.discountValue),
+      Number(selectedCoupon.maxDiscount || selectedCoupon.discountValue)
+    );
+  } else if (selectedCoupon.discountType === "percentage") { // <-- fix here
+    discount = (totalBeforeDiscount * Number(selectedCoupon.discountValue)) / 100;
+    if (selectedCoupon.maxDiscount > 0) {
+      discount = Math.min(discount, Number(selectedCoupon.maxDiscount));
     }
-    appliedCouponCode = selectedCoupon.couponCode || selectedCoupon.code || null;
   }
+  appliedCouponCode = selectedCoupon.couponCode;
+}
 
-  const finalPaid = Math.max(0, totalBeforeDiscount - discount);
+const finalPaid = totalBeforeDiscount - discount;
 
-  // Build bill summary using existing helper if available
-  const summaryText = typeof buildBillSummary === "function"
-    ? buildBillSummary(itemsArray, totalBeforeDiscount, discount, totalCGST, totalSGST)
-    : "";
+  // --- Step 4: Build bill summary ---
+  const summaryText = buildBillSummary(itemsArray, totalBeforeDiscount, discount, totalCGST, totalSGST);
 
-  const timestamp = Date.now();
+  // --- Step 5: Build paidData ---
   const paidData = {
     cartId: cart.cartId || cartId,
     items: cart.items || {},
@@ -2892,11 +2604,6 @@ function finalizeMarkAsPaid(cartId, selectedCoupon, cashDetails, phone) {
     paymentTime: timestamp,
     paymentType: "Cash (Marked Paid)",
     discountCoupon: appliedCouponCode,
-    cashDetails: {
-      cashReceived: Number(cashDetails.cashReceived || 0),
-      changeGiven: Number(cashDetails.changeGiven || 0),
-      amountDue: Number(cashDetails.amountDue || finalPaid)
-    },
     bill: {
       summary: summaryText,
       originalTotal: totalBeforeDiscount,
@@ -2909,33 +2616,31 @@ function finalizeMarkAsPaid(cartId, selectedCoupon, cashDetails, phone) {
     }
   };
 
-  // Save & update (keeps same logic as your earlier code)
+  // --- Step 6: Save to Firebase, update stock, clear cart ---
   db.ref("paidCarts/" + timestamp + "_" + cartId).set(paidData)
-  .then(() => db.ref("carts/" + cartId).update({
-    total: totalBeforeDiscount,
-    finalAmount: finalPaid,
-    discount,
-    totalCGST,
-    totalSGST,
-    totalGST,
-    discountCoupon: appliedCouponCode,
-    paymentStatus: "Paid",
-    isActive: false,
-    bill: paidData.bill,
-    // items: null, // <-- removed so user can generate bill reliably
-    cashDetails: paidData.cashDetails,
-    handled: false, // let user client pick this up (and set handled:true after processing)
-    adminMarkedPaid: true // optional metadata flag
-  }))
-  .then(() => {
-      // Update stock quantity
+    .then(() => db.ref("carts/" + cartId).update({
+      total: totalBeforeDiscount,
+      finalAmount: finalPaid,
+      discount,
+      totalCGST,
+      totalSGST,
+      totalGST,
+      discountCoupon: appliedCouponCode,
+      paymentStatus: "Paid",
+      isActive: false,
+      bill: paidData.bill,
+      items: null // clear cart items
+    }))
+    .then(() => {
+      // Update stock quantity without creating stock history
       const stockUpdates = itemsArray.map(item => {
         const barcode = item.barcode;
         const qty = Number(item.qty || 0);
         if (!barcode) return Promise.resolve();
+
         return db.ref("products/" + barcode).once("value").then(snap => {
           if (!snap.exists()) return;
-          const currentStock = Number(snap.val().stock || 0);
+          const currentStock = snap.val().stock || 0;
           const newStock = Math.max(0, currentStock - qty);
           return db.ref("products/" + barcode + "/stock").set(newStock);
         });
@@ -2953,21 +2658,11 @@ function finalizeMarkAsPaid(cartId, selectedCoupon, cashDetails, phone) {
       productsData = snapProducts.val() || {};
       renderData();
       renderProductSales();
-
-      // close phone modal & overlay
-      document.getElementById('phoneModal').style.display = 'none';
-      document.getElementById('overlay').style.display = 'none';
-
-      alert("✅ Cart marked as Paid. Cash details saved to Firebase!");
-      // reset temporary state
-      _markCartId = null;
-      _availableCouponsForCart = [];
-      _selectedCouponForCart = null;
-      _cashDetailsForCart = { cashReceived: 0, changeGiven: 0 };
+      alert("✅ Cart marked as Paid with discount & GST stored!");
     })
     .catch(err => {
-      console.error("Error finalizing markAsPaid:", err);
-      alert("❌ Something went wrong while finalizing payment. Check console.");
+      console.error("Error in markAsPaid:", err);
+      alert("❌ Something went wrong while marking as paid (check console).");
     });
 }
 
