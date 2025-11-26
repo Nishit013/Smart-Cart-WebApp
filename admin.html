@@ -1976,49 +1976,39 @@ body.light-mode select option {
 </div>
 <!-- Discount Coupon Modal -->
 <!-- Discount Coupon Modal -->
-<!-- Discount Coupon Modal -->
 <div id="couponModal" class="modal" style="display:none;">
   <div class="modal-content"
      style="position:fixed; top:45%; left:50%; transform:translate(-50%,-50%);
-            max-width:400px; width:90%; text-align:center; padding:20px;">
+            max-width:400px; width:90%; text-align:center;">
+
 
     <h3 style="margin-bottom:15px;">Select Discount Coupon</h3>
-
-    <!-- Price Summary -->
-    <div id="couponPriceBox"
-         style="background:var(--card); padding:12px; border-radius:8px;
-                margin-bottom:15px; text-align:left;">
-
-      <p><strong>Total Before Discount:</strong> ₹<span id="couponTotalBefore">0</span></p>
-      <p><strong>Discount Amount:</strong> ₹<span id="couponDiscountAmount">0</span></p>
-      <p><strong>Final Amount:</strong> ₹<span id="couponFinalAmount">0</span></p>
-
-    </div>
 
     <select id="couponSelect"
             style="width:100%; padding:10px; border-radius:8px;
                    border:1px solid var(--border);
-                   background:var(--bg); color:var(--text); margin-bottom:15px;">
+                   background:var(--bg); color:var(--text);">
       <option value="">No Discount</option>
     </select>
+
+    <br><br>
 
     <div style="display:flex; justify-content:space-between; gap:10px;">
       <button id="applyCouponBtn"
               style="flex:1; padding:10px; border:none; border-radius:8px;
                      background:var(--accent); color:#fff; font-weight:600;
-                     cursor:pointer;">
-        Apply
+                     cursor:pointer; transition:all 0.3s ease;">
+        Apply Coupon
       </button>
       <button onclick="closeCouponModal()"
               style="flex:1; padding:10px; border:none; border-radius:8px;
                      background:var(--border); color:var(--text); font-weight:600;
-                     cursor:pointer;">
+                     cursor:pointer; transition:all 0.3s ease;">
         Cancel
       </button>
     </div>
   </div>
 </div>
-
 
 <!-- Overlay -->
 <div id="overlay" class="overlay"
@@ -2489,81 +2479,45 @@ function toggleCart(cartId) {
 }
 
 // ✅ Place these two outside of any other function
+// --- Coupon Modal functions ---
 function openCouponModal(cartId) {
   const cart = allCarts[cartId];
   if (!cart) return alert("Cart not found");
 
-  const itemsArray = Object.values(cart.items || {});
-  let totalBefore = 0;
-
-  itemsArray.forEach(it => totalBefore += (it.price * it.qty));
-
-  document.getElementById("couponTotalBefore").innerText = totalBefore.toFixed(2);
-  document.getElementById("couponDiscountAmount").innerText = 0;
-  document.getElementById("couponFinalAmount").innerText = totalBefore.toFixed(2);
-
   const today = new Date().toISOString().split('T')[0];
 
+  // Fetch coupons & filter valid ones
   db.ref("offers").once("value").then(snapshot => {
     const offers = snapshot.val() || {};
 
-    // Only ACTIVE coupons
-    const activeCoupons = Object.values(offers).filter(c =>
-      c.status && c.status.toLowerCase() === "active"
-    );
+    const availableCoupons = Object.values(offers).filter(o => {
+      const start = o.startDate || today;
+      const end = o.endDate || today;
+      const isWithinDate = today >= start && today <= end;
+      const isActive = (o.status && o.status.toLowerCase() === "active");
+      return isActive && isWithinDate;
+    });
+
+    cart.discountCoupons = availableCoupons;
 
     const select = document.getElementById('couponSelect');
     select.innerHTML = `<option value="">No Discount</option>`;
 
-    // Map all active coupons, but disable if cart total < minAmount
-    activeCoupons.forEach((c, idx) => {
-      const minAmount = c.minAmount || 0;
-      const eligible = totalBefore >= minAmount;
-
-      const typeText = c.discountType === "percent" ? `% off` : ` flat ₹`;
+    availableCoupons.forEach((c, i) => {
       const opt = document.createElement('option');
-
-      // Use index in activeCoupons array as value only if eligible
-      opt.value = eligible ? idx : ""; 
-      opt.disabled = !eligible;
-      opt.style.color = eligible ? "var(--text)" : "gray";
-      opt.text = eligible
-        ? `${c.couponCode} - ${c.discountValue}${typeText} (Max ₹${c.maxDiscount})`
-        : `${c.couponCode} - Not Eligible`;
-
+      opt.value = i;
+      const typeText = c.discountType === "percent" ? `% off` : ` flat ₹`;
+      opt.text = `${c.couponCode} - ${c.discountValue}${typeText} up to ₹${c.maxDiscount}`;
       select.appendChild(opt);
     });
 
-    cart.discountCoupons = activeCoupons;
-
-    // Live preview on selection
-    select.onchange = function () {
-      let discount = 0;
-
-      if (select.value !== "") {
-        const c = activeCoupons[select.value];
-        if (c.discountType === "percent") {
-          discount = Math.min((totalBefore * c.discountValue) / 100, c.maxDiscount);
-        } else {
-          discount = Math.min(c.discountValue, c.maxDiscount);
-        }
-      }
-
-      const finalAmount = totalBefore - discount;
-
-      document.getElementById("couponDiscountAmount").innerText = discount.toFixed(2);
-      document.getElementById("couponFinalAmount").innerText = finalAmount.toFixed(2);
-    };
-
-    // Open modal
     document.getElementById('couponModal').style.display = 'block';
     document.getElementById('overlay').style.display = 'block';
 
-    // Apply button
-    document.getElementById('applyCouponBtn').onclick = function () {
+    document.getElementById('applyCouponBtn').onclick = function() {
       const selectedIndex = select.value;
       let selectedCoupon = null;
-      if (selectedIndex !== "") selectedCoupon = activeCoupons[selectedIndex];
+      if (selectedIndex !== "") selectedCoupon = availableCoupons[selectedIndex];
       closeCouponModal();
       markAsPaid(cartId, selectedCoupon);
     };
