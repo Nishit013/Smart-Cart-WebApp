@@ -2829,18 +2829,8 @@ function finalizeMarkAsPaid(cartId, selectedCoupon, cashDetails, phone) {
   const cart = allCarts[cartId];
   if (!cart) return alert("Cart not found.");
 
-  // extract items array
+  // compute totals same as previously
   const itemsArray = Object.values(cart.items || {});
-
-  // --- FIX #1: Convert array → object for user side compatibility ---
-  const itemsObject = {};
-  itemsArray.forEach((it, index) => {
-    const key = it.barcode || ("item" + index);
-    itemsObject[key] = it;
-  });
-  // -----------------------------------------------------------------
-
-  // compute totals
   let totalBeforeDiscount = 0;
   let totalCGST = 0;
   let totalSGST = 0;
@@ -2863,10 +2853,9 @@ function finalizeMarkAsPaid(cartId, selectedCoupon, cashDetails, phone) {
 
   const totalGST = totalCGST + totalSGST;
 
-  // discount calculations
+  // calculate discount
   let discount = 0;
   let appliedCouponCode = null;
-
   if (selectedCoupon && totalBeforeDiscount >= Number(selectedCoupon.minPurchase || 0)) {
     const dtype = (selectedCoupon.discountType || "").toLowerCase();
     const discVal = Number(selectedCoupon.discountValue || selectedCoupon.value || 0);
@@ -2878,23 +2867,20 @@ function finalizeMarkAsPaid(cartId, selectedCoupon, cashDetails, phone) {
       discount = (totalBeforeDiscount * discVal) / 100;
       if (maxDisc > 0) discount = Math.min(discount, maxDisc);
     }
-
     appliedCouponCode = selectedCoupon.couponCode || selectedCoupon.code || null;
   }
 
   const finalPaid = Math.max(0, totalBeforeDiscount - discount);
 
-  // bill summary
+  // Build bill summary using existing helper if available
   const summaryText = typeof buildBillSummary === "function"
     ? buildBillSummary(itemsArray, totalBeforeDiscount, discount, totalCGST, totalSGST)
     : "";
 
   const timestamp = Date.now();
-
-  // --- FINAL paidData that user side uses ---
   const paidData = {
     cartId: cart.cartId || cartId,
-    items: itemsObject,  // <-- FIXED
+    items: cart.items || {},
     total: totalBeforeDiscount,
     discount,
     finalAmount: finalPaid,
@@ -2923,34 +2909,30 @@ function finalizeMarkAsPaid(cartId, selectedCoupon, cashDetails, phone) {
     }
   };
 
-  // Save to paidCarts
+  // Save & update (keeps same logic as your earlier code)
   db.ref("paidCarts/" + timestamp + "_" + cartId).set(paidData)
-    .then(() => {
-
-      // update cart node (do not remove items here)
-      return db.ref("carts/" + cartId).update({
-        total: totalBeforeDiscount,
-        finalAmount: finalPaid,
-        discount,
-        totalCGST,
-        totalSGST,
-        totalGST,
-        discountCoupon: appliedCouponCode,
-        paymentStatus: "Paid",
-        isActive: false,
-        bill: paidData.bill,
-        cashDetails: paidData.cashDetails,
-        handled: false,  // user-side listener triggers here
-        adminMarkedPaid: true
-      });
-    })
-    .then(() => {
-      // Update stock
+  .then(() => db.ref("carts/" + cartId).update({
+    total: totalBeforeDiscount,
+    finalAmount: finalPaid,
+    discount,
+    totalCGST,
+    totalSGST,
+    totalGST,
+    discountCoupon: appliedCouponCode,
+    paymentStatus: "Paid",
+    isActive: false,
+    bill: paidData.bill,
+    // items: null, // <-- removed so user can generate bill reliably
+    cashDetails: paidData.cashDetails,
+    handled: false, // let user client pick this up (and set handled:true after processing)
+    adminMarkedPaid: true // optional metadata flag
+  }))
+  .then(() => {
+      // Update stock quantity
       const stockUpdates = itemsArray.map(item => {
         const barcode = item.barcode;
         const qty = Number(item.qty || 0);
         if (!barcode) return Promise.resolve();
-
         return db.ref("products/" + barcode).once("value").then(snap => {
           if (!snap.exists()) return;
           const currentStock = Number(snap.val().stock || 0);
@@ -2969,15 +2951,15 @@ function finalizeMarkAsPaid(cartId, selectedCoupon, cashDetails, phone) {
       allCarts = snapCarts.val() || {};
       paidCarts = snapPaid.val() || {};
       productsData = snapProducts.val() || {};
-
       renderData();
       renderProductSales();
 
+      // close phone modal & overlay
       document.getElementById('phoneModal').style.display = 'none';
       document.getElementById('overlay').style.display = 'none';
 
-      alert("✅ Cart marked as Paid. Cash details saved!");
-
+      alert("✅ Cart marked as Paid. Cash details saved to Firebase!");
+      // reset temporary state
       _markCartId = null;
       _availableCouponsForCart = [];
       _selectedCouponForCart = null;
@@ -2985,10 +2967,9 @@ function finalizeMarkAsPaid(cartId, selectedCoupon, cashDetails, phone) {
     })
     .catch(err => {
       console.error("Error finalizing markAsPaid:", err);
-      alert("❌ Something went wrong. Check console.");
+      alert("❌ Something went wrong while finalizing payment. Check console.");
     });
 }
-
 
 // --- Updated bill summary helper ---
 function buildBillSummary(itemsArray, total, discount, totalCGST, totalSGST) {
