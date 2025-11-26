@@ -371,33 +371,46 @@ function loadCartFromFirebase() {
   ref.on("value", snapshot => {
     const data = snapshot.val() || {};
 
-    // ✅ Only trigger if Paid and not handled yet
+    // Only trigger when Paid and not handled yet
     if (data.paymentStatus === "Paid" && !data.handled && !paymentHandled) {
       paymentHandled = true;
 
       showToast("✅ Payment Successful (Marked Paid by Admin)");
 
       const bill = data.bill || {};
-      
+
+      // Use the cart items from the DB if available, otherwise fallback to local cartItems
+      // Prefer data.items because admin now keeps items until the user clears them.
+      const itemsFromDb = data.items ? Object.values(data.items || {}) : [];
+      const itemsToUse = itemsFromDb.length ? itemsFromDb : (Object.values(cartItems || []));
+
       // Generate PDF
       generatePDF(
-        Object.values(cartItems || []),
+        itemsToUse,
         bill.originalTotal || data.total || 0,
         bill.discount || data.discount || 0,
         bill.finalPaid || data.finalAmount || data.total || 0
       );
 
-      // Send WhatsApp bill
+      // Send WhatsApp bill (keep same behavior)
       sendWhatsAppBill(bill.summary || "", bill.phone || "");
 
       // Clear cart UI only (not Firebase)
       clearCart(true);
 
-      // ✅ Mark as handled in Firebase
-      ref.update({ handled: true });
+      // Now mark as handled AND clear items in Firebase so admin/data store is clean.
+      // Use a single update to avoid race conditions.
+      ref.update({ handled: true, items: null })
+        .then(() => {
+          console.log("Cart handled and items cleared in DB.");
+        })
+        .catch(err => {
+          console.error("Failed to mark handled/clear items in DB:", err);
+        });
     }
   });
 }
+
 
 
 document.addEventListener("DOMContentLoaded", () => {
