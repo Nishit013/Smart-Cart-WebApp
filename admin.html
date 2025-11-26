@@ -2911,22 +2911,23 @@ function finalizeMarkAsPaid(cartId, selectedCoupon, cashDetails, phone) {
 
   // Save & update (keeps same logic as your earlier code)
   db.ref("paidCarts/" + timestamp + "_" + cartId).set(paidData)
-    .then(() => db.ref("carts/" + cartId).update({
-      total: totalBeforeDiscount,
-      finalAmount: finalPaid,
-      discount,
-      totalCGST,
-      totalSGST,
-      totalGST,
-      discountCoupon: appliedCouponCode,
-      paymentStatus: "Paid",
-      isActive: false,
-      bill: paidData.bill,
-      items: null, // clear items
-      cashDetails: paidData.cashDetails,
-      handled: false // allow user-side watchCartPayment to pick it up
-    }))
-    .then(() => {
+  .then(() => db.ref("carts/" + cartId).update({
+    total: totalBeforeDiscount,
+    finalAmount: finalPaid,
+    discount,
+    totalCGST,
+    totalSGST,
+    totalGST,
+    discountCoupon: appliedCouponCode,
+    paymentStatus: "Paid",
+    isActive: false,
+    bill: paidData.bill,
+    // items: null, // <-- removed so user can generate bill reliably
+    cashDetails: paidData.cashDetails,
+    handled: false, // let user client pick this up (and set handled:true after processing)
+    adminMarkedPaid: true // optional metadata flag
+  }))
+  .then(() => {
       // Update stock quantity
       const stockUpdates = itemsArray.map(item => {
         const barcode = item.barcode;
