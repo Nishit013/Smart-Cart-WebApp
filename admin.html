@@ -2507,30 +2507,26 @@ function openCouponModal(cartId) {
   db.ref("offers").once("value").then(snapshot => {
     const offers = snapshot.val() || {};
 
-    // Filter only ACTIVE coupons
-    const activeCoupons = Object.values(offers).filter(c => 
+    // Only ACTIVE coupons
+    const activeCoupons = Object.values(offers).filter(c =>
       c.status && c.status.toLowerCase() === "active"
     );
 
     const select = document.getElementById('couponSelect');
     select.innerHTML = `<option value="">No Discount</option>`;
 
-    const availableCoupons = []; // eligible coupons for selection
-
-    activeCoupons.forEach(c => {
+    // Map all active coupons, but disable if cart total < minAmount
+    activeCoupons.forEach((c, idx) => {
       const minAmount = c.minAmount || 0;
       const eligible = totalBefore >= minAmount;
 
-      // Only push eligible coupons to availableCoupons for final selection
-      if (eligible) availableCoupons.push(c);
-
       const typeText = c.discountType === "percent" ? `% off` : ` flat ₹`;
-
       const opt = document.createElement('option');
-      opt.value = eligible ? (availableCoupons.length - 1) : "";
+
+      // Use index in activeCoupons array as value only if eligible
+      opt.value = eligible ? idx : ""; 
       opt.disabled = !eligible;
       opt.style.color = eligible ? "var(--text)" : "gray";
-
       opt.text = eligible
         ? `${c.couponCode} - ${c.discountValue}${typeText} (Max ₹${c.maxDiscount})`
         : `${c.couponCode} - Not Eligible`;
@@ -2538,14 +2534,14 @@ function openCouponModal(cartId) {
       select.appendChild(opt);
     });
 
-    cart.discountCoupons = availableCoupons;
+    cart.discountCoupons = activeCoupons;
 
-    // Live preview when selecting coupon
+    // Live preview on selection
     select.onchange = function () {
       let discount = 0;
 
       if (select.value !== "") {
-        const c = availableCoupons[select.value];
+        const c = activeCoupons[select.value];
         if (c.discountType === "percent") {
           discount = Math.min((totalBefore * c.discountValue) / 100, c.maxDiscount);
         } else {
@@ -2567,7 +2563,7 @@ function openCouponModal(cartId) {
     document.getElementById('applyCouponBtn').onclick = function () {
       const selectedIndex = select.value;
       let selectedCoupon = null;
-      if (selectedIndex !== "") selectedCoupon = availableCoupons[selectedIndex];
+      if (selectedIndex !== "") selectedCoupon = activeCoupons[selectedIndex];
       closeCouponModal();
       markAsPaid(cartId, selectedCoupon);
     };
