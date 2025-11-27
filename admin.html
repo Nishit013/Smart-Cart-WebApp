@@ -2027,11 +2027,14 @@ body.light-mode select option {
     <span style="font-weight:600;">Final Amount</span>
     <b id="cp_final"
        style="font-size:18px; font-weight:700; color:#ffffff;">₹0</b>
-      
   </div>
-  <div style="margin-top:15px;">
-  <label>Cash Received:</label>
-  <input type="number" id="cashReceived" placeholder="Enter cash received" style="width:100%; padding:8px;">
+  <div style="margin-top:15px; text-align:left;">
+  <label>Cash Received: ₹</label>
+  <input type="number" id="cp_cashReceived" min="0" style="width:100%; padding:5px; margin-top:5px;">
+</div>
+
+<div style="margin-top:10px; text-align:left;">
+  <strong>Change: ₹<span id="cp_change">0</span></strong>
 </div>
 
 </div>
@@ -2612,6 +2615,11 @@ function openCouponModal(cartId) {
 
       updateCouponPriceBox(totalBefore, discount);
     };
+document.getElementById('cp_cashReceived').oninput = () => {
+  const total = parseFloat(document.getElementById('cp_totalBefore').innerText.replace('₹','')) || 0;
+  const discount = parseFloat(document.getElementById('cp_discount').innerText.replace('₹','')) || 0;
+  updateCouponPriceBox(total, discount);
+};
 
     // --- Open modal ---
     document.getElementById('couponModal').style.display = 'block';
@@ -2619,35 +2627,36 @@ function openCouponModal(cartId) {
 
     // --- Apply coupon button ---
     document.getElementById('applyCouponBtn').onclick = function () {
-  const idx = select.value;
+  const idx = document.getElementById('couponSelect').value;
   let selectedCoupon = null;
-  if (idx !== "") selectedCoupon = availableCoupons[idx];
+  if (idx !== "") selectedCoupon = cart.discountCoupons[idx];
 
-  const cashReceived = Number(document.getElementById("cashReceived").value);
-  const finalAmount = Number(document.getElementById('cp_final').innerText.replace("₹", ""));
+  const cashReceived = parseFloat(document.getElementById('cp_cashReceived').value) || 0;
+  const totalBefore = parseFloat(document.getElementById('cp_totalBefore').innerText.replace('₹','')) || 0;
+  const discount = parseFloat(document.getElementById('cp_discount').innerText.replace('₹','')) || 0;
+  const finalAmount = totalBefore - discount;
+  const changeGiven = cashReceived - finalAmount;
 
-  if (!cashReceived || cashReceived < finalAmount) {
-    return alert("Cash received must be equal or greater than final amount!");
-  }
-
-  const change = cashReceived - finalAmount;
-
-  const cashDetails = {  
-    cashReceived,
-    changeReturned: change
-  };
+  if (cashReceived < finalAmount) return alert(`❌ Cash received must be at least ₹${finalAmount}`);
 
   closeCouponModal();
-  markAsPaid(cartId, selectedCoupon, cashDetails);
+  markAsPaid(cartId, selectedCoupon, cashReceived, changeGiven);
 };
 
   });
 }
 function updateCouponPriceBox(total, discount) {
+  const finalAmount = total - discount;
   document.getElementById('cp_totalBefore').innerText = "₹" + total;
   document.getElementById('cp_discount').innerText = "₹" + discount;
-  document.getElementById('cp_final').innerText = "₹" + (total - discount);
+  document.getElementById('cp_final').innerText = "₹" + finalAmount;
+
+  // --- Calculate change if cash received entered ---
+  const cashReceived = parseFloat(document.getElementById('cp_cashReceived').value) || 0;
+  const change = cashReceived - finalAmount;
+  document.getElementById('cp_change').innerText = change >= 0 ? change.toFixed(2) : 0;
 }
+
 
 
 
@@ -2656,8 +2665,7 @@ function closeCouponModal() {
   document.getElementById('overlay').style.display = 'none';
 }
 
-function markAsPaid(cartId, selectedCoupon = null, cashDetails = {}) {
-
+function markAsPaid(cartId, selectedCoupon = null) {
   const cart = allCarts[cartId];
   if (!cart) return alert("Cart not found.");
 
@@ -2712,7 +2720,8 @@ if (selectedCoupon && totalBeforeDiscount >= Number(selectedCoupon.minPurchase))
 }
 
 const finalPaid = totalBeforeDiscount - discount;
-
+cashReceived = cashReceived || finalPaid;
+  changeGiven = changeGiven || 0;
   // --- Step 4: Build bill summary ---
   const summaryText = buildBillSummary(itemsArray, totalBeforeDiscount, discount, totalCGST, totalSGST);
 
@@ -2723,12 +2732,12 @@ const finalPaid = totalBeforeDiscount - discount;
     total: totalBeforeDiscount,
     discount,
     finalAmount: finalPaid,
-    cashReceived: cashDetails.cashReceived || 0,
-    changeReturned: cashDetails.changeReturned || 0,
     totalCGST,
     totalSGST,
     totalGST,
     phone,
+    cashReceived,
+    changeGiven,
     paidAt: timestamp,
     paymentTime: timestamp,
     paymentType: "Cash (Marked Paid)",
@@ -2738,12 +2747,12 @@ const finalPaid = totalBeforeDiscount - discount;
       originalTotal: totalBeforeDiscount,
       discount,
       finalPaid,
-      cashReceived: cashDetails.cashReceived || 0,
-      changeReturned: cashDetails.changeReturned || 0,
       phone,
       totalCGST,
       totalSGST,
-      totalGST
+      totalGST,
+      cashReceived,
+      changeGiven
     }
   };
 
