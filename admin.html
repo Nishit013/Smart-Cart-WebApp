@@ -1995,39 +1995,41 @@ body.light-mode select option {
     </h2>
 
     <!-- ⭐ Updated Professional Price Box -->
-    <div id="couponPriceBox"
-         style="
-            text-align:left;
-            padding:18px;
-            border-radius:14px;
-            background:rgba(255,255,255,0.05);
-            border:1px solid rgba(255,255,255,0.15);
-            backdrop-filter:blur(6px);
-            margin-bottom:20px;
-            font-size:15.5px;
-            box-shadow:0 4px 18px rgba(0,0,0,0.2);
-         ">
+    <!-- Modern Price Summary Box (All Amounts White) -->
+<div id="couponPriceBox"
+     style="
+        text-align:left;
+        padding:18px;
+        border-radius:14px;
+        background:rgba(255,255,255,0.05);
+        border:1px solid rgba(255,255,255,0.15);
+        backdrop-filter:blur(6px);
+        margin-bottom:20px;
+        font-size:15.5px;
+        box-shadow:0 4px 18px rgba(0,0,0,0.2);
+     ">
 
-      <div style="display:flex; justify-content:space-between;">
-        <span style="opacity:0.85;">Total Before Discount</span>
-        <b id="cp_totalBefore"
-           style="color:var(--accent); font-size:16px;">₹0</b>
-      </div>
+  <div style="display:flex; justify-content:space-between;">
+    <span style="opacity:0.85;">Total Before Discount</span>
+    <b id="cp_totalBefore"
+       style="font-size:16px; color:#ffffff;">₹0</b>
+  </div>
 
-      <div style="display:flex; justify-content:space-between; margin-top:10px;">
-        <span style="opacity:0.85;">Discount</span>
-        <b id="cp_discount"
-           style="color:#ff7675; font-size:16px;">₹0</b>
-      </div>
+  <div style="display:flex; justify-content:space-between; margin-top:10px;">
+    <span style="opacity:0.85;">Discount</span>
+    <b id="cp_discount"
+       style="font-size:16px; color:#ffffff;">₹0</b>
+  </div>
 
-      <hr style="border:none; border-top:1px solid rgba(255,255,255,0.15); margin:14px 0;">
+  <hr style="border:none; border-top:1px solid rgba(255,255,255,0.15); margin:14px 0;">
 
-      <div style="display:flex; justify-content:space-between;">
-        <span style="font-weight:600;">Final Amount</span>
-        <b id="cp_final"
-           style="color:#4cd137; font-size:18px; font-weight:700;">₹0</b>
-      </div>
-    </div>
+  <div style="display:flex; justify-content:space-between;">
+    <span style="font-weight:600;">Final Amount</span>
+    <b id="cp_final"
+       style="font-size:18px; font-weight:700; color:#ffffff;">₹0</b>
+  </div>
+</div>
+
 
     <!-- Original Dropdown (still fine) -->
     <select id="couponSelect"
