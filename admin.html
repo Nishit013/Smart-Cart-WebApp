@@ -1976,14 +1976,24 @@ body.light-mode select option {
 </div>
 <!-- Discount Coupon Modal -->
 <!-- Discount Coupon Modal -->
+<!-- Discount Coupon Modal -->
 <div id="couponModal" class="modal" style="display:none;">
   <div class="modal-content"
-     style="position:fixed; top:45%; left:50%; transform:translate(-50%,-50%);
-            max-width:400px; width:90%; text-align:center;">
-
+       style="position:fixed; top:45%; left:50%; transform:translate(-50%,-50%);
+              max-width:420px; width:90%; text-align:center; padding:20px;">
 
     <h3 style="margin-bottom:15px;">Select Discount Coupon</h3>
 
+    <!-- Price Summary Box -->
+    <div id="couponPriceBox"
+         style="text-align:left; padding:12px; border-radius:10px;
+                background:var(--border); margin-bottom:15px; font-size:15px;">
+      <div>🧾 Total Before Discount: <b id="cp_totalBefore">₹0</b></div>
+      <div>💸 Discount: <b id="cp_discount">₹0</b></div>
+      <div>✅ Final Amount: <b id="cp_final">₹0</b></div>
+    </div>
+
+    <!-- Coupon Dropdown -->
     <select id="couponSelect"
             style="width:100%; padding:10px; border-radius:8px;
                    border:1px solid var(--border);
@@ -1996,19 +2006,20 @@ body.light-mode select option {
     <div style="display:flex; justify-content:space-between; gap:10px;">
       <button id="applyCouponBtn"
               style="flex:1; padding:10px; border:none; border-radius:8px;
-                     background:var(--accent); color:#fff; font-weight:600;
-                     cursor:pointer; transition:all 0.3s ease;">
+                     background:var(--accent); color:#fff; font-weight:600;">
         Apply Coupon
       </button>
+
       <button onclick="closeCouponModal()"
               style="flex:1; padding:10px; border:none; border-radius:8px;
-                     background:var(--border); color:var(--text); font-weight:600;
-                     cursor:pointer; transition:all 0.3s ease;">
+                     background:var(--border); color:var(--text); font-weight:600;">
         Cancel
       </button>
     </div>
+
   </div>
 </div>
+
 
 <!-- Overlay -->
 <div id="overlay" class="overlay"
@@ -2486,7 +2497,15 @@ function openCouponModal(cartId) {
 
   const today = new Date().toISOString().split('T')[0];
 
-  // Fetch coupons & filter valid ones
+  // --- Calculate cart total before discount ---
+  const itemsArray = Object.values(cart.items || {});
+  let totalBefore = 0;
+
+  itemsArray.forEach(it => {
+    totalBefore += Number(it.price || 0) * Number(it.qty || 0);
+  });
+
+  // --- Load Coupons ---
   db.ref("offers").once("value").then(snapshot => {
     const offers = snapshot.val() || {};
 
@@ -2494,7 +2513,7 @@ function openCouponModal(cartId) {
       const start = o.startDate || today;
       const end = o.endDate || today;
       const isWithinDate = today >= start && today <= end;
-      const isActive = (o.status && o.status.toLowerCase() === "active");
+      const isActive = o.status && o.status.toLowerCase() === "active";
       return isActive && isWithinDate;
     });
 
@@ -2503,26 +2522,72 @@ function openCouponModal(cartId) {
     const select = document.getElementById('couponSelect');
     select.innerHTML = `<option value="">No Discount</option>`;
 
+    // --- Fill coupon list with eligibility check ---
     availableCoupons.forEach((c, i) => {
-      const opt = document.createElement('option');
+      const eligible = totalBefore >= Number(c.minPurchase || 0);
+
+      const opt = document.createElement("option");
       opt.value = i;
+
       const typeText = c.discountType === "percent" ? `% off` : ` flat ₹`;
-      opt.text = `${c.couponCode} - ${c.discountValue}${typeText} up to ₹${c.maxDiscount}`;
+
+      opt.text = `${c.couponCode} - ${c.discountValue}${typeText} (Min ₹${c.minPurchase})`;
+
+      // disable if not eligible
+      if (!eligible) {
+        opt.disabled = true;
+        opt.style.color = "gray";
+      }
+
       select.appendChild(opt);
     });
 
+    // --- Show initial price box ---
+    updateCouponPriceBox(totalBefore, 0);
+
+    // --- Live preview when selecting a coupon ---
+    select.onchange = () => {
+      const val = select.value;
+
+      if (val === "") {
+        updateCouponPriceBox(totalBefore, 0);
+        return;
+      }
+
+      const coup = availableCoupons[val];
+      let discount = 0;
+
+      if (coup.discountType === "flat") {
+        discount = Math.min(Number(coup.discountValue), Number(coup.maxDiscount));
+      } else {
+        discount = (totalBefore * Number(coup.discountValue)) / 100;
+        discount = Math.min(discount, Number(coup.maxDiscount));
+      }
+
+      updateCouponPriceBox(totalBefore, discount);
+    };
+
+    // --- Open modal ---
     document.getElementById('couponModal').style.display = 'block';
     document.getElementById('overlay').style.display = 'block';
 
-    document.getElementById('applyCouponBtn').onclick = function() {
-      const selectedIndex = select.value;
+    // --- Apply coupon button ---
+    document.getElementById('applyCouponBtn').onclick = function () {
+      const idx = select.value;
       let selectedCoupon = null;
-      if (selectedIndex !== "") selectedCoupon = availableCoupons[selectedIndex];
+      if (idx !== "") selectedCoupon = availableCoupons[idx];
+
       closeCouponModal();
       markAsPaid(cartId, selectedCoupon);
     };
   });
 }
+function updateCouponPriceBox(total, discount) {
+  document.getElementById('cp_totalBefore').innerText = "₹" + total;
+  document.getElementById('cp_discount').innerText = "₹" + discount;
+  document.getElementById('cp_final').innerText = "₹" + (total - discount);
+}
+
 
 
 function closeCouponModal() {
