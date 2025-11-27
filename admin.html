@@ -1977,12 +1977,13 @@ body.light-mode select option {
 <!-- Discount Coupon Modal -->
 <!-- Discount Coupon Modal -->
 <!-- Discount Coupon Modal -->
+<!-- Discount Coupon Modal -->
 <div id="couponModal" class="modal" style="display:none;">
   <div class="modal-content"
        style="position:fixed; top:45%; left:50%; transform:translate(-50%,-50%);
               max-width:420px; width:90%; text-align:center; padding:20px;">
 
-    <!-- ⭐ Professional Heading -->
+    <!-- ⭐ Updated Professional Heading -->
     <h2 style="
         margin-bottom:20px;
         font-size:22px;
@@ -1993,42 +1994,44 @@ body.light-mode select option {
         Apply Discount Coupon
     </h2>
 
-    <!-- ⭐ Modern Price Summary Box (White Amounts) -->
-    <div id="couponPriceBox"
-         style="
-            text-align:left;
-            padding:18px;
-            border-radius:14px;
-            background:rgba(255,255,255,0.05);
-            border:1px solid rgba(255,255,255,0.15);
-            backdrop-filter:blur(6px);
-            margin-bottom:20px;
-            font-size:15.5px;
-            box-shadow:0 4px 18px rgba(0,0,0,0.2);
-         ">
+    <!-- ⭐ Updated Professional Price Box -->
+    <!-- Modern Price Summary Box (All Amounts White) -->
+<div id="couponPriceBox"
+     style="
+        text-align:left;
+        padding:18px;
+        border-radius:14px;
+        background:rgba(255,255,255,0.05);
+        border:1px solid rgba(255,255,255,0.15);
+        backdrop-filter:blur(6px);
+        margin-bottom:20px;
+        font-size:15.5px;
+        box-shadow:0 4px 18px rgba(0,0,0,0.2);
+     ">
 
-      <div style="display:flex; justify-content:space-between;">
-        <span style="opacity:0.85;">Total Before Discount</span>
-        <b id="cp_totalBefore"
-           style="font-size:16px; color:#ffffff;">₹0</b>
-      </div>
+  <div style="display:flex; justify-content:space-between;">
+    <span style="opacity:0.85;">Total Before Discount</span>
+    <b id="cp_totalBefore"
+       style="font-size:16px; color:#ffffff;">₹0</b>
+  </div>
 
-      <div style="display:flex; justify-content:space-between; margin-top:10px;">
-        <span style="opacity:0.85;">Discount</span>
-        <b id="cp_discount"
-           style="font-size:16px; color:#ffffff;">₹0</b>
-      </div>
+  <div style="display:flex; justify-content:space-between; margin-top:10px;">
+    <span style="opacity:0.85;">Discount</span>
+    <b id="cp_discount"
+       style="font-size:16px; color:#ffffff;">₹0</b>
+  </div>
 
-      <hr style="border:none; border-top:1px solid rgba(255,255,255,0.15); margin:14px 0;">
+  <hr style="border:none; border-top:1px solid rgba(255,255,255,0.15); margin:14px 0;">
 
-      <div style="display:flex; justify-content:space-between;">
-        <span style="font-weight:600;">Final Amount</span>
-        <b id="cp_final"
-           style="font-size:18px; font-weight:700; color:#ffffff;">₹0</b>
-      </div>
-    </div>
+  <div style="display:flex; justify-content:space-between;">
+    <span style="font-weight:600;">Final Amount</span>
+    <b id="cp_final"
+       style="font-size:18px; font-weight:700; color:#ffffff;">₹0</b>
+  </div>
+</div>
 
-    <!-- ⭐ Coupon Dropdown -->
+
+    <!-- Original Dropdown (still fine) -->
     <select id="couponSelect"
             style="width:100%; padding:10px; border-radius:8px;
                    border:1px solid var(--border);
@@ -2036,44 +2039,10 @@ body.light-mode select option {
       <option value="">No Discount</option>
     </select>
 
-    <!-- ⭐ Cash Section (Placed Directly Below Dropdown) -->
-    <div id="cashSection"
-         style="
-            margin-top:15px;
-            padding:16px;
-            border-radius:12px;
-            background:rgba(255,255,255,0.05);
-            border:1px solid rgba(255,255,255,0.12);
-            backdrop-filter:blur(6px);
-            box-shadow:0 4px 18px rgba(0,0,0,0.2);
-         ">
-         
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span style="opacity:0.85;">Cash Received</span>
-        <input id="cashReceivedInput"
-               type="number"
-               placeholder="Enter amount"
-               style="
-                  width:120px;
-                  padding:6px 8px;
-                  border-radius:8px;
-                  border:none;
-                  background:rgba(255,255,255,0.1);
-                  color:white;
-                  text-align:right;
-               ">
-      </div>
+    <br><br>
 
-      <div style="margin-top:12px; display:flex; justify-content:space-between;">
-        <span style="opacity:0.85;">Change to Return</span>
-        <b id="changeToReturn"
-           style="font-size:16px; color:#ffffff;">₹0</b>
-      </div>
-
-    </div>
-
-    <!-- ⭐ Buttons -->
-    <div style="display:flex; justify-content:space-between; gap:10px; margin-top:18px;">
+    <!-- Buttons Section -->
+    <div style="display:flex; justify-content:space-between; gap:10px;">
       <button id="applyCouponBtn"
               style="flex:1; padding:10px; border:none; border-radius:8px;
                      background:var(--accent); color:#fff; font-weight:600;">
@@ -2089,7 +2058,6 @@ body.light-mode select option {
 
   </div>
 </div>
-
 
 
 
@@ -2643,37 +2611,14 @@ function openCouponModal(cartId) {
     document.getElementById('couponModal').style.display = 'block';
     document.getElementById('overlay').style.display = 'block';
 
-    document.getElementById("cashReceivedInput").addEventListener("input", function () {
-  const cash = Number(this.value || 0);
-  const final = Number(document.getElementById("cp_final").innerText.replace("₹", ""));
-
-  let change = cash - final;
-  if (change < 0) change = 0;
-
-  document.getElementById("changeToReturn").innerText = "₹" + change;
-});
-
-
     // --- Apply coupon button ---
     document.getElementById('applyCouponBtn').onclick = function () {
       const idx = select.value;
       let selectedCoupon = null;
       if (idx !== "") selectedCoupon = availableCoupons[idx];
 
-     
-      const cashReceived = Number(document.getElementById("cashReceivedInput").value || 0);
-const finalAmt = Number(document.getElementById("cp_final").innerText.replace("₹", ""));
-
-if (cashReceived < finalAmt) {
-  alert("❌ Cash received is less than final amount!");
-  return;
-}
-
-const changeGiven = cashReceived - finalAmt;
-
-closeCouponModal();
-markAsPaid(cartId, selectedCoupon, cashReceived, changeGiven);
-
+      closeCouponModal();
+      markAsPaid(cartId, selectedCoupon);
     };
   });
 }
@@ -2690,8 +2635,7 @@ function closeCouponModal() {
   document.getElementById('overlay').style.display = 'none';
 }
 
-function markAsPaid(cartId, selectedCoupon = null, cashReceived = 0, changeGiven = 0) {
-
+function markAsPaid(cartId, selectedCoupon = null) {
   const cart = allCarts[cartId];
   if (!cart) return alert("Cart not found.");
 
@@ -2736,7 +2680,7 @@ if (selectedCoupon && totalBeforeDiscount >= Number(selectedCoupon.minPurchase))
       Number(selectedCoupon.discountValue),
       Number(selectedCoupon.maxDiscount || selectedCoupon.discountValue)
     );
-  } else if (selectedCoupon.discountType === "percent") { // <-- fix here
+  } else if (selectedCoupon.discountType === "percentage") { // <-- fix here
     discount = (totalBeforeDiscount * Number(selectedCoupon.discountValue)) / 100;
     if (selectedCoupon.maxDiscount > 0) {
       discount = Math.min(discount, Number(selectedCoupon.maxDiscount));
@@ -2765,23 +2709,17 @@ const finalPaid = totalBeforeDiscount - discount;
     paymentTime: timestamp,
     paymentType: "Cash (Marked Paid)",
     discountCoupon: appliedCouponCode,
-    cashReceived,          // NEW
-    changeGiven,           // NEW
-
     bill: {
       summary: summaryText,
       originalTotal: totalBeforeDiscount,
       discount,
       finalPaid,
-      cashReceived,        // NEW
-      changeGiven,         // NEW
       phone,
       totalCGST,
       totalSGST,
       totalGST
     }
-};
-
+  };
 
   // --- Step 6: Save to Firebase, update stock, clear cart ---
   db.ref("paidCarts/" + timestamp + "_" + cartId).set(paidData)
