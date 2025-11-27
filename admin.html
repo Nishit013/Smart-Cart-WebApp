@@ -2027,7 +2027,13 @@ body.light-mode select option {
     <span style="font-weight:600;">Final Amount</span>
     <b id="cp_final"
        style="font-size:18px; font-weight:700; color:#ffffff;">₹0</b>
+      
   </div>
+  <div style="margin-top:15px;">
+  <label>Cash Received:</label>
+  <input type="number" id="cashReceived" placeholder="Enter cash received" style="width:100%; padding:8px;">
+</div>
+
 </div>
 
 
@@ -2613,13 +2619,28 @@ function openCouponModal(cartId) {
 
     // --- Apply coupon button ---
     document.getElementById('applyCouponBtn').onclick = function () {
-      const idx = select.value;
-      let selectedCoupon = null;
-      if (idx !== "") selectedCoupon = availableCoupons[idx];
+  const idx = select.value;
+  let selectedCoupon = null;
+  if (idx !== "") selectedCoupon = availableCoupons[idx];
 
-      closeCouponModal();
-      markAsPaid(cartId, selectedCoupon);
-    };
+  const cashReceived = Number(document.getElementById("cashReceived").value);
+  const finalAmount = Number(document.getElementById('cp_final').innerText.replace("₹", ""));
+
+  if (!cashReceived || cashReceived < finalAmount) {
+    return alert("Cash received must be equal or greater than final amount!");
+  }
+
+  const change = cashReceived - finalAmount;
+
+  const cashDetails = {  
+    cashReceived,
+    changeReturned: change
+  };
+
+  closeCouponModal();
+  markAsPaid(cartId, selectedCoupon, cashDetails);
+};
+
   });
 }
 function updateCouponPriceBox(total, discount) {
@@ -2635,7 +2656,8 @@ function closeCouponModal() {
   document.getElementById('overlay').style.display = 'none';
 }
 
-function markAsPaid(cartId, selectedCoupon = null) {
+function markAsPaid(cartId, selectedCoupon = null, cashDetails = {}) {
+
   const cart = allCarts[cartId];
   if (!cart) return alert("Cart not found.");
 
@@ -2701,6 +2723,8 @@ const finalPaid = totalBeforeDiscount - discount;
     total: totalBeforeDiscount,
     discount,
     finalAmount: finalPaid,
+    cashReceived: cashDetails.cashReceived || 0,
+    changeReturned: cashDetails.changeReturned || 0,
     totalCGST,
     totalSGST,
     totalGST,
@@ -2714,6 +2738,8 @@ const finalPaid = totalBeforeDiscount - discount;
       originalTotal: totalBeforeDiscount,
       discount,
       finalPaid,
+      cashReceived: cashDetails.cashReceived || 0,
+      changeReturned: cashDetails.changeReturned || 0,
       phone,
       totalCGST,
       totalSGST,
